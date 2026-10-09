@@ -85,3 +85,7 @@ Gold is the real-life reward currency, derived from claimed quests in `engine.js
 Kobra Kai: tap ⚔ LeetCode in the action bar, choose "I'm doing LeetCode" when talking to Gilfoyle, or accept a LeetCode quest. Gilfoyle calls her over and the ferry takes her to the dojo, where she sits down at the desk. Sensei Fletcher offers a problem, kata or today's LeetCode quest. A realm can set its own sky (`R.sky`), which `applySky` blends in while she is there. Hush Hollow uses this for its permanent golden hour.
 
 Saves: Treasury redemptions are also packed into hidden `custom-reward-*` custom quests by `lib/save-store.mjs` on every write and unpacked on every read. They therefore survive even a save backend that drops unknown fields, which `tests/treasury.test.mjs` covers.
+
+## Veer
+
+Veer is Nivetha's Kombai: a tan-red coat, black muzzle, folded rose ears, a curled tail, and a red collar with a gold tag. He is built with `makeDog(..., { muzzle, ears: 'rose', collar, scale })` and driven by `veerFrame()`. He follows on her right everywhere, including the realms and the ferry. When she stops he sits and looks up at her, and when she sits down (rest, campfire, phone, meditation, LeetCode) he lies down with his head on her lap. "Pet Veer" (key 6) gives him a cuddle, and Mochi can still be petted by clicking her. He also appears in her portrait.
