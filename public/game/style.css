@@ -500,3 +500,8 @@ dialog{background-image:radial-gradient(400px 200px at 50% 0,#ffffff,transparent
 @media(max-width:760px){.vault{grid-template-columns:1fr;padding:20px}.vault-gold{font-size:36px}.vault-next{grid-template-columns:1fr}.treasure-grid{grid-template-columns:repeat(2,1fr);gap:8px}.tier header{flex-wrap:wrap}.tier header .secondary{margin-left:0}}
 .vault .eyebrow{color:var(--gold-hi)}
 .vault-next{grid-template-columns:1fr;gap:8px}
+.realm-strip{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.w3-lc{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 16px 8px 8px;border-radius:999px;font:700 11px var(--display);letter-spacing:1.2px;color:#f2d68c;background:linear-gradient(180deg,#1f1d1c,#0e0d0c);box-shadow:0 0 0 1.5px #e3c35c,0 0 14px #e3c35c44}
+.w3-lc i{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;font-style:normal;color:#121212;background:#e3c35c}
+.w3-lc:hover{box-shadow:0 0 0 1.5px #ffe08a,0 0 22px #e3c35c99}
+@media(max-width:760px){.w3-lc{flex:1;justify-content:center}}

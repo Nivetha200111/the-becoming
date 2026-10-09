@@ -860,6 +860,14 @@ const REALMS = [
     palette: { g1: '#7aa860', g2: '#4f8a52', g3: '#9fc77a', sand: '#dccfa6', seabed: '#8e8a74', rock: '#8a8a86', pave: '#d0cfc4' },
     pads: [[0, -2, 5.6, 2.6, 1], [5, 3, 1.8, 2.3, 1]], paths: [[0, 3, 5, 8, 1.4]],
     arrive: 'Starfall Shrine. Make a wish; the statue has been listening for a long time.', build: buildStarfall },
+  { id: 'kobra', name: 'Kobra Kai', sub: 'The LeetCode dojo', glyph: '⚔', at: [170, -238], rx: 20, rz: 16, H: 1.6, base: 0, seed: 61, labelH: 15,
+    palette: { g1: '#6f8f4a', g2: '#4f6e3a', g3: '#8a9a58', sand: '#cdbb92', seabed: '#7d735f', rock: '#5c5650', pave: '#3d3632' },
+    pads: [[0, -6.5, 7, 1.6, 1], [0, 5.5, 4.8, 1.6, 1], [-6.2, .6, 2.6, 1.6, 1]], paths: [[0, 8, -6, 14, 2.2], [0, -2, 0, 3, 2]],
+    arrive: 'Kobra Kai. Pattern first, edge case last, no mercy for bugs.', build: buildKobra },
+  { id: 'hollow', name: 'Hush Hollow', sub: 'A quiet wood at golden hour', glyph: '❀', at: [-175, 165], rx: 26, rz: 21, H: 1.4, base: 0, seed: 73, labelH: 16,
+    palette: { g1: '#8cba5c', g2: '#62a04a', g3: '#c8d474', sand: '#e6d3a4', seabed: '#a3956f', rock: '#8a8270', pave: '#d9c49a' },
+    pads: [[0, -1.5, 6.5, 1.4, 0], [8.5, 4.5, 3, 1.3, 0]], paths: [],
+    arrive: 'Hush Hollow. Soft light, sleepy cats, happy dogs. Nothing to do here but breathe.', build: buildHollow },
 ];
 function realmField(R) {
   const S0 = Math.min(R.rx, R.rz);
@@ -1146,6 +1154,153 @@ function buildStarfall(R, F) {
   const tick = t => { orb.position.y = Y + 6.45 + Math.sin(t * 1.4) * .08; crystal.rotation.y = t * .8; wp.position.y = F.height(5, 3) + 2 + Math.sin(t * 1.2) * .15; rings[0].rotation.set(t * .7, t * .4, 0); rings[1].rotation.set(-t * .5, 0, t * .6); };
   return { stat: k.g, dyn, obstacles, spots, trees, tick, treeKinds: [['pine', 8], ['birch', 6]] };
 }
+// Kobra Kai: the LeetCode dojo. Gilfoyle sends her here whenever she says she's doing LeetCode.
+function emblemTexture() {
+  return canvasTexture(256, (g, s) => {
+    g.fillStyle = '#121212'; g.fillRect(0, 0, s, s);
+    g.strokeStyle = '#e3c35c'; g.lineWidth = 12; g.beginPath(); g.arc(s / 2, s / 2, s * .44, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 3; g.beginPath(); g.arc(s / 2, s / 2, s * .38, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = '#e3c35c'; g.beginPath(); g.ellipse(s / 2, s * .4, s * .17, s * .2, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#121212'; g.beginPath(); g.ellipse(s / 2, s * .43, s * .1, s * .14, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#e3c35c'; g.beginPath(); g.ellipse(s / 2, s * .3, s * .055, s * .07, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#c0392b'; for (const x of [-1, 1]) { g.beginPath(); g.arc(s / 2 + x * s * .025, s * .29, s * .012, 0, Math.PI * 2); g.fill(); }
+    g.strokeStyle = '#e3c35c'; g.lineWidth = 14; g.lineCap = 'round'; g.beginPath(); g.moveTo(s / 2, s * .6); g.bezierCurveTo(s * .3, s * .66, s * .72, s * .72, s * .46, s * .8); g.stroke();
+    g.fillStyle = '#e3c35c'; g.font = `bold ${s * .085}px Georgia, serif`; g.textAlign = 'center'; g.fillText('KOBRA KAI', s / 2, s * .93);
+  });
+}
+function bannerTexture(text) {
+  return canvasTexture(256, (g, s) => {
+    g.fillStyle = '#141414'; g.fillRect(0, 0, s, s); g.strokeStyle = '#e3c35c'; g.lineWidth = 8; g.strokeRect(14, 8, s - 28, s - 16);
+    g.fillStyle = '#e3c35c'; g.font = `bold ${s * .16}px Georgia, serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    text.split(' ').forEach((w, i, a) => g.fillText(w, s / 2, s / 2 + (i - (a.length - 1) / 2) * s * .2));
+  });
+}
+function codeScreen() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 170; const g = c.getContext('2d');
+  g.fillStyle = '#16181d'; g.fillRect(0, 0, 256, 170);
+  const lines = [['#c792ea', 'class Solution {'], ['#82aaff', '  boolean isValid(String s) {'], ['#ffcb6b', '    Deque<Character> st = new ArrayDeque<>();'], ['#c3e88d', '    for (char ch : s.toCharArray()) {'], ['#89ddff', '      if (open(ch)) st.push(ch);'], ['#f78c6c', '      else if (st.isEmpty()) return false;'], ['#89ddff', '      else if (!pair(st.pop(), ch)) return false;'], ['#c3e88d', '    }'], ['#82aaff', '    return st.isEmpty();  // O(n)'], ['#c792ea', '  }'], ['#c792ea', '}']];
+  g.font = '11px Menlo, monospace'; lines.forEach(([col, t], i) => { g.fillStyle = '#4a5060'; g.fillText(String(i + 1).padStart(2), 4, 16 + i * 14); g.fillStyle = col; g.fillText(t, 24, 16 + i * 14); });
+  g.fillStyle = '#7dffb2'; g.fillText('✓ Accepted · 0 ms', 140, 162);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; return tex;
+}
+function buildKobra(R, F) {
+  const k = kit(), dyn = new THREE.Group(), Y = R.base + 1.6, obstacles = [], spots = [], trees = [];
+  const black = solid('#1b1918', .7), red = solid('#7a1f1a', .55), gold = M.gold, tiles = roofMat('#2b2725'), stone = M.stoneDark;
+  // The dojo hall on its platform, black and gold with the cobra over the door.
+  k.box(11.4, .5, 8.2, M.woodDark, 0, Y + .25, -6.5);
+  k.box(9.6, 3.2, 6.6, black, 0, Y + .5 + 1.6, -6.5);
+  for (const yy of [.62, 3.55]) k.box(9.7, .14, 6.7, gold, 0, Y + yy, -6.5);
+  for (const [x, z] of [[-4.8, -3.2], [4.8, -3.2], [-4.8, -9.8], [4.8, -9.8], [-1.7, -3.2], [1.7, -3.2]]) k.box(.3, 3.3, .3, red, x, Y + 2.15, z);
+  k.box(2.6, 2.5, .12, M.woodDark, 0, Y + 1.75, -3.15); k.box(.06, 2.5, .14, gold, 0, Y + 1.75, -3.1);
+  k.prism(10.8, 2.3, 7.9, tiles, 0, Y + 3.62, -6.5); k.box(11, .14, .14, gold, 0, Y + 5.9, -6.5);
+  for (const [x, z] of [[-5.4, -2.55], [5.4, -2.55], [-5.4, -10.45], [5.4, -10.45]]) k.add(new THREE.ConeGeometry(.12, .5, 6), gold, x, Y + 3.75, z, .5 * Math.sign(z + 6.5), 0, -.5 * Math.sign(x));
+  const emblem = new THREE.Mesh(new THREE.CircleGeometry(1.15, 40), new THREE.MeshStandardMaterial({ map: emblemTexture(), roughness: .6, emissive: '#e3c35c', emissiveIntensity: .08 })); emblem.position.set(0, Y + 4.35, -2.6); dyn.add(emblem);
+  for (const [x, text] of [[-3.3, 'PATTERN FIRST'], [3.3, 'NO MERCY FOR BUGS']]) { const b = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 2.6), new THREE.MeshStandardMaterial({ map: bannerTexture(text), side: THREE.DoubleSide, roughness: .9 })); b.position.set(x, Y + 2.2, -3.05); dyn.add(b); }
+  obstacles.push([0, -6.5, 5.8], [-3.6, -6.5, 4.1], [3.6, -6.5, 4.1]);
+  // Training yard: a mat, wooden dummies, a heavy bag and a weapon rack.
+  k.box(4.4, .06, 4.4, solid('#c9b27a', .9), 0, Y + .03, 5.5); k.box(4.7, .04, 4.7, black, 0, Y + .015, 5.5);
+  for (const [x, z] of [[-4.6, 3.6], [-4.6, 7.2]]) { k.cyl(.2, .22, 1.7, M.wood, x, Y + .85, z, 10); for (const [yy, ry] of [[1.35, .4], [1.35, -.4], [.85, 0]]) k.add(new THREE.CylinderGeometry(.05, .05, .5, 6), M.woodDark, x + Math.sin(ry) * .25, Y + yy, z + Math.cos(ry) * .25, Math.PI / 2, ry, 0); k.box(.7, .1, .7, M.woodDark, x, Y + .05, z); obstacles.push([x, z, .55]); }
+  for (const s of [-1, 1]) k.cyl(.08, .09, 2.8, M.woodDark, 4.6 + s * .9, Y + 1.4, 6, 8); k.box(2.1, .14, .14, M.woodDark, 4.6, Y + 2.8, 6);
+  const bag = new THREE.Group(); bag.userData.noCollide = true; bag.position.set(4.6, Y + 2.75, 6); const bagMesh = new THREE.Mesh(new THREE.CapsuleGeometry(.26, .8, 4, 12), red); bagMesh.position.y = -1.05; bagMesh.castShadow = true; bag.add(bagMesh); dyn.add(bag);
+  obstacles.push([3.7, 6, .4], [5.5, 6, .4], [4.6, 6, .5]);
+  k.box(1.8, 1.3, .3, M.woodDark, 5.2, Y + .65, 1.8, -.3); for (let i = 0; i < 4; i++) k.add(new THREE.CylinderGeometry(.025, .025, 1.6, 6), M.wood, 4.6 + i * .35, Y + .95, 2.0, 0, -.3, .12); obstacles.push([5.2, 1.8, 1]);
+  // Gold cobra statues guarding the path.
+  for (const sx of [-1, 1]) { const ck = kit(); ck.box(.9, .7, .9, stone, 0, .35, 0); ck.add(new THREE.TorusGeometry(.38, .12, 8, 24).rotateX(Math.PI / 2), gold, 0, .82, 0);
+    ck.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(.38, .82, 0), new THREE.Vector3(.25, 1.3, 0), new THREE.Vector3(0, 1.8, .05), new THREE.Vector3(0, 2.15, .1)]), 16, .1, 8), gold);
+    ck.add(new THREE.SphereGeometry(1, 16, 10), gold, 0, 2.2, .08).scale.set(.32, .4, .09); ck.add(new THREE.SphereGeometry(1, 12, 8), gold, 0, 2.42, .22).scale.set(.12, .08, .17);
+    for (const e of [-1, 1]) ck.ball(.025, glow('#ff3b2f', 2), e * .05, 2.46, .36, 6);
+    ck.g.position.set(sx * 1.9 - 4.5, Y, 11.2); ck.g.rotation.y = .65; k.g.add(ck.g); obstacles.push([sx * 1.9 - 4.5, 11.2, .7]); }
+  // The LeetCode desk under a little pavilion: a cushion, a low table and a laptop showing today's solution.
+  const px = -6.2, pz = .6;
+  for (const [x, z] of [[-1.3, -1.1], [1.3, -1.1], [-1.3, 1.3], [1.3, 1.3]]) { k.cyl(.08, .09, 2.6, red, px + x, Y + 1.3, pz + z, 8); obstacles.push([px + x, pz + z, .25]); }
+  k.prism(3.4, 1, 3.2, tiles, px, Y + 2.6, pz + .1, Math.PI / 2);
+  k.box(1.1, .32, .6, M.woodDark, px, Y + .16, pz - .35); k.box(.75, .07, .75, red, px, Y + .035, pz + .55);
+  const laptop = new THREE.Group(); laptop.position.set(px, Y + .33, pz - .4);
+  const lb = new THREE.Mesh(new THREE.BoxGeometry(.46, .025, .32), solid('#2b2b2f', .4)); laptop.add(lb);
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(.44, .29), new THREE.MeshBasicMaterial({ map: codeScreen(), toneMapped: false })); screen.position.set(0, .15, -.16); screen.rotation.x = -.25; laptop.add(screen);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(.46, .31, .015), solid('#2b2b2f', .4)); lid.position.set(0, .15, -.17); lid.rotation.x = -.25; laptop.add(lid); dyn.add(laptop);
+  dyn.add(particles(22, 1, { size: .06, speed: .5, rise: 1.1, spread: .5, origin: [px, Y + .6, pz - .4], color: '#7dffb2', boost: 2.2 }));
+  spots.push({ u: px, v: pz + .55, face: Math.PI, act: 'leetcode', label: 'Grind a LeetCode problem' });
+  spots.push({ u: 0, v: 5.6, face: Math.PI, act: 'kata', label: 'Train kata on the mat' });
+  // Torches and stone lanterns.
+  for (const [u, v] of [[-2.6, 9.5], [2.6, 9.5], [-6, -1.8], [6, -1.8]]) { const y = F.height(u, v); k.cyl(.3, .38, .25, stone, u, y + .12, v, 8); k.cyl(.09, .11, .9, stone, u, y + .65, v, 8); k.box(.42, .42, .42, M.lantern, u, y + 1.3, v); k.cone(.42, .3, stone, u, y + 1.66, v, 4, Math.PI / 4); obstacles.push([u, v, .45]); }
+  const npcs = [{ name: 'Sensei Fletcher', color: '#e3c35c', u: -3.4, v: 2.6, face: -.9, look: { skin: '#d9ab86', hair: '#2a2a2a', hairStyle: 'bald', eyes: '#3b2c24', top: '#151515', sleeve: '#151515', legs: '#151515', boots: '#151515', coat: '#151515', belt: '#e3c35c', trim: '#e3c35c', blush: false },
+    lines: ['Pattern first. Then complexity. Then the edge case. In that order.', 'You don’t pass a problem. You understand it.', 'Lunch slot is sacred. Sit down and solve.'] }];
+  obstacles.push([-3.4, 2.6, .6]);
+  const tick = t => { bag.rotation.z = Math.sin(t * 1.3) * .06; bag.rotation.x = Math.sin(t * .9) * .04; };
+  return { stat: k.g, dyn, obstacles, spots, trees, tick, npcs, treeKinds: [['pine', 16], ['sakura', 3], ['oak', 4]] };
+}
+// Hush Hollow: a quiet wood under an orange-pink sky, full of cats, dogs and butterflies.
+function makeDog(fur = '#d9894a', belly = '#fff3e0', bandana = null) {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const furM = toonMat(fur), bellyM = toonMat(belly), ink = new THREE.MeshBasicMaterial({ color: '#2a1f1a' }), white = new THREE.MeshBasicMaterial({ color: '#ffffff' }), outline = new THREE.MeshBasicMaterial({ color: '#2b2420', side: THREE.BackSide });
+  const add = (parent, geo, mat, p, s, r, line = true) => { const m = new THREE.Mesh(geo, mat); m.position.set(...p); if (s) m.scale.set(...s); if (r) m.rotation.set(...r); m.castShadow = true; parent.add(m); if (line) { const o = new THREE.Mesh(geo, outline); o.position.copy(m.position); o.rotation.copy(m.rotation); o.scale.copy(m.scale).multiplyScalar(1.07); parent.add(o); } return m; };
+  add(body, capsule(.15, .3).rotateX(Math.PI / 2), furM, [0, .31, 0]); add(body, SPHERE, bellyM, [0, .25, .05], [.12, .09, .2], null, false);
+  const head = new THREE.Group(); head.position.set(0, .5, .3); body.add(head);
+  add(head, SPHERE, furM, [0, 0, 0], [.14, .13, .135]); add(head, SPHERE, bellyM, [0, -.04, .11], [.075, .058, .085]);
+  add(head, SPHERE, ink, [0, -.012, .195], [.028, .02, .018], null, false);
+  for (const s of [-1, 1]) { add(head, new THREE.ConeGeometry(.055, .11, 4), furM, [s * .078, .12, -.02], null, [0, 0, -s * .25]); add(head, SPHERE, ink, [s * .052, .03, .118], [.019, .024, .012], null, false); add(head, SPHERE, white, [s * .052 - .005, .04, .127], [.006, .006, .004], null, false); }
+  const tongue = add(head, SPHERE, toonMat('#f28a96'), [0, -.085, .15], [.03, .012, .04], null, false);
+  const eyes = head.children.filter(m => m.material === ink && m.scale.x < .025);
+  if (bandana) add(body, new THREE.ConeGeometry(.13, .14, 3).rotateX(Math.PI), toonMat(bandana), [0, .42, .24], null, [.4, 0, 0], false);
+  const legs = [[-.08, .14], [.08, .14], [-.08, -.14], [.08, -.14]].map(([x, z]) => { const g = new THREE.Group(); g.position.set(x, .22, z); body.add(g); add(g, capsule(.042, .13), furM, [0, -.1, 0]); add(g, SPHERE, bellyM, [0, -.19, .01], [.045, .028, .05], null, false); return g; });
+  const tail = []; let parent = new THREE.Group(); parent.position.set(0, .42, -.26); body.add(parent);
+  for (let i = 0; i < 3; i++) { const seg = new THREE.Group(); seg.position.set(0, i ? .07 : 0, 0); seg.rotation.x = -.7; parent.add(seg); add(seg, capsule(.035, .05), i === 2 ? bellyM : furM, [0, .04, 0]); tail.push(seg); parent = seg; }
+  root.scale.setScalar(1.2);
+  return { root, body, head, legs, tail, eyes, tongue, dog: true, phase: Math.random() * 6, sit: 0, lie: 0 };
+}
+function buildHollow(R, F) {
+  const k = kit(), dyn = new THREE.Group(), Y = R.base + 1.4, obstacles = [], spots = [], trees = [], hr = rng32(81);
+  // A great old tree with a picnic blanket in its shade.
+  const big = new THREE.Mesh(treeGeometry('sacred', rng32(14), 2), treeMaterial()); big.position.set(-1.5, Y - .1, -6.2); big.scale.setScalar(.95); big.castShadow = big.receiveShadow = true; dyn.add(big); obstacles.push([-1.5, -6.2, 2.3]);
+  const quilt = canvasTexture(128, (g, s) => { for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { g.fillStyle = (x + y) % 2 ? '#ffd2dc' : '#fff6ea'; g.fillRect(x * s / 8, y * s / 8, s / 8, s / 8); } g.strokeStyle = '#e88aa0'; g.lineWidth = 6; g.strokeRect(3, 3, s - 6, s - 6); });
+  const blanket = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.1).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: quilt, roughness: 1 })); blanket.position.set(0, Y + .03, -1.4); blanket.rotation.y = .2; blanket.receiveShadow = true; dyn.add(blanket);
+  for (const [x, z, c] of [[-.8, -2, '#f7b2c4'], [.9, -2.1, '#b9d8f2']]) k.add(new THREE.SphereGeometry(.28, 14, 10), solid(c, .9), x, Y + .12, z).scale.set(1.1, .45, .9);
+  k.cyl(.22, .18, .28, M.wood, 1.2, Y + .14, -.7, 12); k.torus(.18, .025, M.wood, 1.2, Y + .38, -.7, 0, 0, Math.PI);
+  // Fairy lights strung across the clearing.
+  for (let i = 0; i <= 26; i++) { const t = i / 26, x = -6 + t * 12, y = Y + 4.2 - Math.sin(t * Math.PI) * 1.1, b = new THREE.Mesh(new THREE.SphereGeometry(.06, 8, 6), M.lantern); b.position.set(x, y, -5 + Math.sin(t * 6) * .3); dyn.add(b); }
+  for (const s of [-1, 1]) { k.cyl(.08, .1, 4.4, M.woodDark, s * 6, Y + 2.2, -5, 8); obstacles.push([s * 6, -5, .3]); }
+  // A lily pond and a little bench.
+  k.add(new THREE.CylinderGeometry(2.3, 2.3, .08, 28), M.pond, 8.5, F.height(8.5, 4.5) + .02, 4.5); obstacles.push([8.5, 4.5, 2.4]);
+  for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; k.add(new THREE.CircleGeometry(.32, 10, .3, Math.PI * 1.8).rotateX(-Math.PI / 2), solid('#4e8a45', .7), 8.5 + Math.cos(a) * 1.4, F.height(8.5, 4.5) + .08, 4.5 + Math.sin(a) * 1.4, 0, a, 0, false); }
+  k.box(1.6, .1, .45, M.wood, 5, F.height(5, 8) + .45, 8, .4); for (const s of [-1, 1]) k.box(.12, .42, .4, M.woodDark, 5 + s * .65 * Math.cos(.4), F.height(5, 8) + .21, 8 - s * .65 * Math.sin(.4), .4);
+  spots.push({ u: 0, v: -1.2, face: .2, act: 'phone', label: 'Scroll your phone on the blanket' });
+  spots.push({ u: 4.6, v: 7.3, face: Math.PI - .4, act: 'sit', label: 'Sit by the pond' });
+  // Cats and dogs who wander, nap, and come over when she settles down.
+  const animals = [];
+  for (const [fur, patch, scarf] of [['#f6e7cc', '#e0935a', '#c0607a'], ['#9aa0a6', '#6b7075', null], ['#2b2b2e', '#2b2b2e', '#d6a03a'], ['#f3efe6', '#3a3335', '#5aa0d6'], ['#e8c39a', '#b07040', null]]) animals.push(makeCat(fur, patch, scarf));
+  for (const [fur, belly, band] of [['#d9894a', '#fff3e0', '#c0392b'], ['#e0a060', '#ffffff', null], ['#f4f1ea', '#f4f1ea', '#7fb2e0'], ['#2e2a28', '#4a403a', null]]) animals.push(makeDog(fur, belly, band));
+  for (const a of animals) { const ang = hr() * Math.PI * 2, rr = 3 + hr() * 8; a.u = Math.cos(ang) * rr; a.v = Math.sin(ang) * rr; a.tu = a.u; a.tv = a.v; a.yaw = hr() * 6; a.mode = 'sit'; a.timer = 1 + hr() * 5; a.root.position.set(a.u, F.height(a.u, a.v), a.v); a.proxy && (a.proxy.userData = {}); a.root.userData.noCollide = true; dyn.add(a.root); }
+  // Butterflies everywhere.
+  const flies = [...Array(36)].map((_, i) => { const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color: ['#ffd36b', '#ffffff', '#9fd0ff', '#ff9cc7', '#c9a6ff', '#ffb38a'][i % 6], side: THREE.DoubleSide }); const wing = new THREE.CircleGeometry(.1, 8).translate(.1, 0, 0).rotateX(-Math.PI / 2); const l = new THREE.Mesh(wing, m), r = new THREE.Mesh(wing, m); r.rotation.y = Math.PI; g.add(l, r); g.userData.noCollide = true; dyn.add(g); return { g, l, r, home: [(hr() - .5) * 26, (hr() - .5) * 20], seed: hr() * 10 }; });
+  dyn.add(particles(90, 2, { size: .12, speed: .06, origin: [0, Y, 0], box: [34, 10, 28], color: '#ffc4dc', boost: 1.1, additive: false, opacity: .9 }));
+  dyn.add(particles(70, 0, { size: .14, box: [34, 6, 28], color: '#ffd9a0', boost: 2, origin: [0, Y + 2.5, 0] }));
+  const tick = t => { for (const b of flies) { const tt = t * .5 + b.seed, x = b.home[0] + Math.sin(tt * 1.3) * 2.4, z = b.home[1] + Math.cos(tt) * 2.4; b.g.position.set(x, F.height(x, z) + .8 + Math.sin(tt * 2.3) * .4, z); b.g.rotation.y = tt * 1.3 + Math.PI / 2; const f = Math.sin(t * 22 + b.seed) * 1.1; b.l.rotation.z = f; b.r.rotation.z = f; } };
+  // Every frame: animals wander and nap, and gather round when she's on the blanket.
+  const frame = (dt, t, me) => {
+    const gather = me?.act === 'phone' || me?.act === 'sit';
+    animals.forEach((a, i) => {
+      a.timer -= dt;
+      if (gather && me) { const ang = i / animals.length * Math.PI * 2 + .3, rr = 1.3 + (i % 3) * .55; a.tu = me.u + Math.cos(ang) * rr; a.tv = me.v + Math.sin(ang) * rr; if (Math.hypot(a.tu - a.u, a.tv - a.v) < .3) a.mode = i % 3 ? 'sit' : 'lie'; else a.mode = 'walk'; }
+      else if (a.timer <= 0) { const r = hr(); if (r < .45) { const ang = hr() * Math.PI * 2, rr = 2 + hr() * 10; a.tu = Math.cos(ang) * rr; a.tv = Math.sin(ang) * rr; a.mode = 'walk'; a.timer = 6 + hr() * 6; } else { a.mode = r < .75 ? 'sit' : 'lie'; a.timer = 4 + hr() * 8; } }
+      let speed = 0;
+      if (a.mode === 'walk') { const dx = a.tu - a.u, dz = a.tv - a.v, d = Math.hypot(dx, dz); if (d > .2 && R.sdf(a.tu, a.tv) > 2.5 && obstacles.every(o => Math.hypot(a.tu - o[0], a.tv - o[1]) > o[2] + .3)) { speed = Math.min(1.6, d * 1.5); a.u += dx / d * speed * dt; a.v += dz / d * speed * dt; a.yaw = lerpAngle(a.yaw, Math.atan2(dx, dz), 1 - Math.exp(-dt * 6)); } else if (!gather) { a.mode = 'sit'; a.timer = 2 + hr() * 3; } }
+      else if (me && Math.hypot(me.u - a.u, me.v - a.v) < 5) a.yaw = lerpAngle(a.yaw, Math.atan2(me.u - a.u, me.v - a.v), 1 - Math.exp(-dt * 2));
+      a.root.position.set(a.u, F.height(a.u, a.v), a.v); a.root.rotation.y = a.yaw;
+      a.phase = (a.phase || 0) + dt * (2 + speed * 4);
+      const sw = Math.sin(a.phase) * .7 * Math.min(1, speed / 1.2), still = a.mode === 'walk' ? 0 : 1, lie = a.mode === 'lie' ? 1 : 0;
+      a.sit += (still - a.sit) * Math.min(1, dt * 4); a.lie += (lie - a.lie) * Math.min(1, dt * 2.5);
+      a.legs[0].rotation.x = sw + (.45 * a.sit - 1.4 * a.lie); a.legs[1].rotation.x = -sw + (.45 * a.sit - 1.4 * a.lie); a.legs[2].rotation.x = -sw - .9 * a.sit; a.legs[3].rotation.x = sw - .9 * a.sit;
+      a.body.rotation.x = -.45 * a.sit * (1 - a.lie); a.body.position.y = -.06 * a.sit - .12 * a.lie; a.head.rotation.x = .38 * a.sit * (1 - a.lie) + .2 * a.lie;
+      a.tail.forEach((s, j) => { if (a.dog) s.rotation.z = Math.sin(t * (gather ? 16 : 8) + j) * (.35 + .2 * (gather ? 1 : 0)); else { s.rotation.x = -.5 + a.sit * .3 + (j ? .12 : 0); s.rotation.z = Math.sin(t * 2.2 + j * .7 + i) * (.18 + j * .04); } });
+      for (const e of a.eyes) e.scale.y = a.lie > .6 ? (a.dog ? .004 : .004) : (a.dog ? .024 : .028);
+      if (a.tongue) a.tongue.visible = gather || speed > .5;
+    });
+  };
+  const sky = { zenith: '#e98bb0', horizon: '#ffb27a', sunColor: '#ffc690', hemiSky: '#ffc6b8', hemiGround: '#7d6a5c', cloudLight: '#ffe0cc', cloudShadow: '#d68aa6' };
+  R.sky = { c: Object.fromEntries(Object.entries(sky).map(([k, v]) => [k, C(v)])) };
+  return { stat: k.g, dyn, obstacles, spots, trees, tick, frame, treeKinds: [['oak', 34], ['sakura', 18], ['birch', 14]] };
+}
 // The painter's easel: the canvas fills with dabs of colour while Nivetha paints.
 function makeEasel() {
   const g = new THREE.Group(), wood = M.wood, c = document.createElement('canvas'); c.width = 192; c.height = 144;
@@ -1192,9 +1347,9 @@ function makeFerry() {
   return { g, body, wings, sail, proxy };
 }
 // Mochi, Nivetha's cat: cream fur, ginger patches, a red scarf and a little gold bell.
-function makeCat() {
+function makeCat(fur = '#f6e7cc', patch = '#e0935a', scarf = '#b4492f') {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
-  const cream = toonMat('#f6e7cc'), ginger = toonMat('#e0935a'), pink = toonMat('#f2a0a6'), ink = new THREE.MeshBasicMaterial({ color: '#2a1f1a' }), white = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+  const cream = toonMat(fur), ginger = toonMat(patch), pink = toonMat('#f2a0a6'), ink = new THREE.MeshBasicMaterial({ color: '#2a1f1a' }), white = new THREE.MeshBasicMaterial({ color: '#ffffff' });
   const outline = new THREE.MeshBasicMaterial({ color: '#2b2420', side: THREE.BackSide });
   const add = (parent, geo, mat, p, s, r, line = true) => { const m = new THREE.Mesh(geo, mat); m.position.set(...p); if (s) m.scale.set(...s); if (r) m.rotation.set(...r); m.castShadow = true; parent.add(m); if (line) { const o = new THREE.Mesh(geo, outline); o.position.copy(m.position); o.rotation.copy(m.rotation); o.scale.copy(m.scale).multiplyScalar(1.07); parent.add(o); } return m; };
   add(body, capsule(.12, .26).rotateX(Math.PI / 2), cream, [0, .27, 0], [1, .95, 1]);
@@ -1210,8 +1365,7 @@ function makeCat() {
   }
   add(head, SPHERE, pink, [0, -.02, .121], [.015, .011, .008], null, false);
   const eyes = head.children.filter(m => m.material === ink);
-  add(body, new THREE.TorusGeometry(.085, .022, 6, 18).rotateX(Math.PI / 2 - .5), toonMat('#b4492f'), [0, .38, .18], null, null, false);
-  add(body, new THREE.SphereGeometry(.024, 10, 8), glow('#f0c565', .4), [0, .32, .25], null, null, false);
+  if (scarf) { add(body, new THREE.TorusGeometry(.085, .022, 6, 18).rotateX(Math.PI / 2 - .5), toonMat(scarf), [0, .38, .18], null, null, false); add(body, new THREE.SphereGeometry(.024, 10, 8), glow('#f0c565', .4), [0, .32, .25], null, null, false); }
   const legs = [[-.065, .13], [.065, .13], [-.065, -.12], [.065, -.12]].map(([x, z]) => { const g = new THREE.Group(); g.position.set(x, .2, z); body.add(g); add(g, capsule(.034, .12), cream, [0, -.09, 0]); add(g, SPHERE, ginger, [0, -.17, .01], [.04, .025, .045], null, false); return g; });
   const tail = []; let parent = body; const base = new THREE.Group(); base.position.set(0, .32, -.2); body.add(base); parent = base;
   for (let i = 0; i < 5; i++) { const seg = new THREE.Group(); seg.position.set(0, i ? .075 : 0, i ? -.02 : 0); parent.add(seg); add(seg, capsule(.028 - i * .002, .06), i > 2 ? ginger : cream, [0, .04, 0]); tail.push(seg); parent = seg; }
@@ -1229,7 +1383,11 @@ function makeProps() {
   P.brush = new THREE.Group(); { const h = t(new THREE.CylinderGeometry(.01, .012, .3, 6), '#b4492f'); const tip = t(new THREE.ConeGeometry(.016, .06, 6), '#3f8fb3'); tip.position.y = .17; P.brush.add(h, tip); P.brush.rotation.x = 1.2; }
   P.wrench = new THREE.Group(); { const h = t(new THREE.BoxGeometry(.03, .26, .02), '#8a9096'); const hd = t(new THREE.TorusGeometry(.035, .012, 6, 12, Math.PI * 1.5), '#8a9096'); hd.position.y = .14; P.wrench.add(h, hd); P.wrench.rotation.x = 1.3; }
   P.anvil = new THREE.Group(); { const b = new THREE.Mesh(new THREE.BoxGeometry(.5, .3, .28), M.iron), top = new THREE.Mesh(new THREE.BoxGeometry(.7, .12, .3), M.iron), st = new THREE.Mesh(new THREE.CylinderGeometry(.22, .26, .42, 10), M.woodDark); st.position.y = .21; b.position.y = .57; top.position.y = .78; P.anvil.add(st, b, top); P.anvil.traverse(o => { o.castShadow = true; }); }
-  for (const p of Object.values(P)) p.visible = false;
+  P.phone = new THREE.Group(); { const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d'); g.fillStyle = '#fff6fa'; g.fillRect(0, 0, 64, 256);
+    for (let i = 0; i < 8; i++) { g.fillStyle = ['#ffd2dc', '#cfe6ff', '#ffe9b8', '#dff5d8'][i % 4]; g.fillRect(6, 6 + i * 32, 52, 26); g.fillStyle = '#f2a0a6'; g.beginPath(); g.arc(18, 19 + i * 32, 7, 0, Math.PI * 2); g.fill(); g.fillStyle = '#c9b8d6'; g.fillRect(30, 13 + i * 32, 22, 4); g.fillRect(30, 21 + i * 32, 16, 4); }
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(1, .45); P.phoneTex = tex;
+    const body = t(new THREE.BoxGeometry(.075, .15, .012), '#3b3240'); const scr = new THREE.Mesh(new THREE.PlaneGeometry(.066, .135), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false })); scr.position.z = .007; P.phone.add(body, scr); P.phone.rotation.set(1.9, 0, 0); }
+  for (const p of Object.values(P)) if (p.isObject3D) p.visible = false;
   return P;
 }
 
@@ -1292,7 +1450,7 @@ const SIZE_SCALE = { value: 400 };
 function start() {
   buildField(); makeTextures(); makeMaterials(); NOISE.value = noiseTexture();
   // Where Nivetha is: the home island (realm = null) or one of the realms beyond the sea.
-  let realm = null, voyage = null, pierInfo = null, groundAt = heightAt, mainMask = null, rescueTravel = null, dynObstacles = [];
+  let skyBlend = 0, skyRef = null, realm = null, voyage = null, pierInfo = null, groundAt = heightAt, mainMask = null, rescueTravel = null, dynObstacles = [];
   const realms = [], hooks = {};
   const posW = (lx, ly) => realm ? [realm.R.at[0] + (lx - 550) * SCALE, realm.R.at[1] + (ly - 360) * SCALE] : toW(lx, ly);
   const posL = (x, z) => realm ? [(x - realm.R.at[0]) / SCALE + 550, (z - realm.R.at[1]) / SCALE + 360] : toL(x, z);
@@ -1367,6 +1525,7 @@ function start() {
     const sy = sunVec.y, calm = state.mode === 'recovery';
     mixPreset(twilight, PRESETS.night, hours < 12 ? PRESETS.dawn : PRESETS.dusk, smooth(-.26, .02, sy));
     mixPreset(look, twilight, PRESETS.day, smooth(.06, .42, sy));
+    if (skyBlend > 0 && skyRef) { for (const [k, c] of Object.entries(skyRef.c)) look[k].lerp(c, skyBlend); look.hemiI += (.95 - look.hemiI) * skyBlend; look.exposure += (1.05 - look.exposure) * skyBlend; look.cover += (.42 - look.cover) * skyBlend; }
     const sunW = smooth(-.04, .1, sy), moonW = smooth(.02, -.16, sy), byMoon = moonW > sunW;
     look.sun.copy(byMoon ? moonVec : sunVec);
     U.sunDir.value.copy(look.sun); U.sunColor.value.copy(byMoon ? moonColor : look.sunColor);
@@ -1678,7 +1837,7 @@ function start() {
     const toLL = (u, v) => ({ x: u / SCALE + 550, y: v / SCALE + 360 });
     const parkU = su + dir.x * 5.2 - dir.y * 2.1, parkV = sv + dir.y * 5.2 + dir.x * 2.1;
     realms.push({
-      R, F, group, obstacles, board: toLL(bu, bv),
+      R, F, B, group, obstacles, board: toLL(bu, bv),
       park: { pos: new THREE.Vector3(R.at[0] + parkU, R.float ? R.base - .1 : 0, R.at[1] + parkV), yaw: Math.atan2(-dir.x, -dir.y) },
       labelPos: new THREE.Vector3(R.at[0], R.base + R.labelH, R.at[1]),
       spots: B.spots.map(s => ({ ...s, realmId: R.id, L: toLL(s.u, s.v), pos: new THREE.Vector3(R.at[0] + s.u, F.ground(s.u, s.v), R.at[1] + s.v) })),
@@ -1913,6 +2072,7 @@ function start() {
     try {
       if (t.ch) t.ch.wave = 1.8;
       await say(host, fill(pickLine(voice.hi)));
+      if (giver.id === 'gilfoyle' && kobra()) { const lc = await say(host, 'Anything to report?', [{ label: '⚔ I’m doing LeetCode', value: true }, { label: 'Career talk', value: false }]); if (lc) { await say(me, 'LeetCode time.'); await say(host, pickLine(GILFOYLE_LC)); endTalk(); sail(kobra(), { leetcode: true }); return; } }
       const live = liveLine(giver);
       if (live.live) await say(host, (live.sample ? 'From my sample check-in: ' : 'From today’s Party HQ check-in: ') + clip(live.text, 200));
       if (council) {
@@ -1935,7 +2095,7 @@ function start() {
         const from = t.ch ? handPos(t.ch) : t.pos.clone().setY(t.pos.y + 2.1);
         await flyScroll(from, handPos(player)); player.give = 1.2;
         const act = await showScroll(q, giver, voice);
-        if (act === 'accept') { await say(me, pickLine(['On it.', 'Accepted. I’ll bring proof.', 'Deal. Back soon.'])); toast('Quest accepted: ' + q.title); await say(host, pickLine(voice.ok)); break; }
+        if (act === 'accept') { await say(me, pickLine(['On it.', 'Accepted. I’ll bring proof.', 'Deal. Back soon.'])); toast('Quest accepted: ' + q.title); await say(host, pickLine(voice.ok)); if (isLeetCode(q) && kobra() && realm !== kobra()) { await say(host, 'Kobra Kai. Sensei Fletcher is waiting.'); endTalk(); sail(kobra(), { leetcode: true }); return; } break; }
         if (act === 'claim') { endTalk(); questDialog(q.id); return; }
         if (act === 'list') { endTalk(); (council ? cardCouncil : cardTalk)(giver); return; }
         if (act === 'another') {
@@ -1992,6 +2152,7 @@ function start() {
     if (hit?.kind === 'ferry') { ferryDialog(); return; }
     if (hit?.kind === 'cat') { doEmote('pet'); return; }
     if (hit?.kind === 'spot') { doSpot(hit.spot); return; }
+    if (hit?.kind === 'npc') { npcTalk(hit.npc); return; }
     if (hit?.kind === 'bot') { botTalk(hit.bot); return; }
     if (hit?.kind === 'council') { councilTalk(hit.council); return; }
     if (hit?.kind === 'area') { visit(hit.area.id); return; }
@@ -2024,7 +2185,7 @@ function start() {
     if (pointers.size || talk.on) { tip.hidden = true; return; }
     const hit = pick(e), box = canvas.getBoundingClientRect();
     if (hit) {
-      const level = E.level(E.total(state)), text = hit.kind === 'ferry' ? 'The Sky Ferry · Sail to other worlds' : hit.kind === 'cat' ? 'Mochi · Give her a pat' : hit.kind === 'spot' ? '✦ ' + hit.spot.label : hit.kind === 'bot' ? hit.bot.name + ' · ' + hit.bot.role : hit.kind === 'council' ? hit.council.name + ' · ' + hit.council.role : hit.area.name + (level < hit.area.unlock ? ' · Unlock at level ' + hit.area.unlock : ' · Visit');
+      const level = E.level(E.total(state)), text = hit.kind === 'npc' ? hit.npc.name + ' · Talk' : hit.kind === 'ferry' ? 'The Sky Ferry · Sail to other worlds' : hit.kind === 'cat' ? 'Mochi · Give her a pat' : hit.kind === 'spot' ? '✦ ' + hit.spot.label : hit.kind === 'bot' ? hit.bot.name + ' · ' + hit.bot.role : hit.kind === 'council' ? hit.council.name + ' · ' + hit.council.role : hit.area.name + (level < hit.area.unlock ? ' · Unlock at level ' + hit.area.unlock : ' · Visit');
       canvas.style.cursor = 'pointer'; tip.hidden = false; tip.textContent = text;
       tip.style.left = Math.min(e.clientX - box.left + 12, box.width - 200) + 'px'; tip.style.top = Math.max(45, e.clientY - box.top - 40) + 'px';
     } else { canvas.style.cursor = 'grab'; tip.hidden = true; }
@@ -2062,7 +2223,8 @@ function start() {
     const line = (p, q) => { const n = Math.ceil(Math.hypot(q.x - p.x, q.z - p.z) / (cell * .5)) + 1; for (let k = 0; k <= n; k++) mark(p.x + (q.x - p.x) * k / n, p.z + (q.z - p.z) * k / n); };
     for (const root of roots) {
       root.updateMatrixWorld(true);
-      root.traverse(o => {
+      const walk = (o, f) => { if (o.userData.noCollide) return; f(o); for (const c of o.children) walk(c, f); };
+      walk(root, o => {
         if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry?.attributes.position) return;
         const pos = o.geometry.attributes.position, idx = o.geometry.index, tris = (idx ? idx.count : pos.count) / 3;
         for (let t = 0; t < tris; t++) {
@@ -2143,7 +2305,7 @@ function start() {
 
   // ───────── Nivetha's day: actions, activities, Mochi the cat, the sky ferry and voyages ─────────
   const PR = makeProps(), tv = new THREE.Vector3();
-  for (const k of ['hammer', 'quill', 'brush', 'wrench']) { player.arms[1].add(PR[k]); PR[k].position.set(0, -.47, .06); }
+  for (const k of ['hammer', 'quill', 'brush', 'wrench', 'phone']) { player.arms[1].add(PR[k]); PR[k].position.set(0, -.47, .06); }
   player.body.add(PR.book, PR.ledger); PR.book.position.set(0, 1.12, .34); PR.book.rotation.x = -.95; PR.ledger.position.set(-.1, 1.02, .3); PR.ledger.rotation.set(-1, 0, .35);
   scene.add(PR.anvil);
   const laidStaff = player.staff.clone(true); laidStaff.visible = false; scene.add(laidStaff);
@@ -2204,8 +2366,14 @@ function start() {
     paint: { loop: true, say: 'Painting the view', prop: ['brush'], pose: t => ({ a1x: -1.4 + Math.sin(t * 2.1) * .18, a1z: -.12 + Math.cos(t * 1.7) * .22, hx: .05, hy: Math.sin(t * .35) * .15 }) },
     soak: { loop: true, expr: 'closed', emote: '♨', say: 'Soaking in the hot spring', pose: () => ({ by: -.98, l0x: -1.4, l1x: -1.4, l0z: -.2, l1z: .2, a0x: .3, a1x: .3, a0z: -1.15, a1z: 1.15, hx: -.3, cx: .5 }) },
     pray: { loop: true, expr: 'closed', say: 'Making a wish', aura: 1, pose: () => ({ a0x: -1.18, a1x: -1.18, a0z: .64, a1z: -.64, hx: .32, bx: .08 }) },
+    leetcode: { loop: true, emote: '⌨', say: 'Grinding LeetCode at Kobra Kai', pose: t => ({ by: -.6, bx: .14, l0x: 1.45, l1x: 1.45, a0x: -1.15 + Math.sin(t * 14) * .06, a1x: -1.15 + Math.sin(t * 14 + 1.6) * .06, a0z: .28, a1z: -.28, hx: .36 + Math.sin(t * .7) * .04 }) },
+    kata: { loop: true, emote: '!', say: 'Training kata with Sensei Fletcher', pose: t => { const k = (Math.sin(t * 6) + 1) / 2, kick = (t % 4) > 3.15 ? Math.sin(((t % 4) - 3.15) / .85 * Math.PI) : 0; return { by: -.1, l0z: -.3, l1z: .3, l1x: -1.4 * kick, a0x: -1.55 * k - .35 * (1 - k), a1x: -1.55 * (1 - k) - .35 * k, a0z: .12, a1z: -.12, hx: -.05 }; } },
+    phone: { loop: true, expr: 'happy', emote: '♡', say: 'Scrolling her phone in Hush Hollow', prop: ['phone'], pose: t => ({ ...SIT, a1x: -1.6, a1z: -.45, a0x: -.95, a0z: .3, hx: .45 + Math.sin(t * .4) * .04 }) },
   };
-  const STAFF_DOWN = new Set(['campfire', 'write', 'train', 'read', 'meditate', 'tinker', 'paint', 'soak', 'pray', 'sit', 'pet', 'dance']);
+  const STAFF_DOWN = new Set(['campfire', 'write', 'train', 'read', 'meditate', 'tinker', 'paint', 'soak', 'pray', 'sit', 'pet', 'dance', 'leetcode', 'kata', 'phone']);
+  const kobra = () => realms.find(r => r.R.id === 'kobra');
+  const isLeetCode = q => q.id === 'pattern' || /leetcode|\bLC\b|\bDSA\b/i.test(`${q.title} ${q.detail}`);
+  const GILFOYLE_LC = ['Then you don’t do it here. Kobra Kai. Fletcher is waiting.', 'Good. Kobra Kai. Pattern, complexity, edge case. No excuses.', 'LeetCode? Not on my island. Kobra Kai. Go.'];
   const EMOTES = [['wave', '〜', 'Wave'], ['cheer', '✦', 'Cheer'], ['dance', '♪', 'Dance'], ['sit', '⌒', 'Sit'], ['stretch', '❋', 'Stretch'], ['pet', '♥', 'Pet Mochi']];
   let lastRewards = null, spotLevel = -1, act = null, idle = 0, idleNext = 8, pendingCheer = 0, lastXP = null, lastCloak2 = null, nowT = 0, emoteUntil = 0, uiTimer = 0;
   function startAct(id, spot) {
@@ -2247,27 +2415,62 @@ function start() {
     if (!voyage) { tv.copy(ferry.g.position); tv.y += 4.9; place(ferryLabel, tv, 26, 2); } else fadeLabel(ferryLabel, 0);
     for (const r of realms) if (r === realm) fadeLabel(r.el, 0); else place(r.el, r.labelPos, 700, 1);
     if (realm) place(homeLabel, homeLabelPos, 700, 1); else fadeLabel(homeLabel, 0);
+    for (const n of npcs) if (n.realm === realm) { tv.copy(n.ch.root.position); tv.y += 2.55; place(n.el, tv, 34, 4); } else fadeLabel(n.el, 0);
   };
+  // People who live in the realms (Sensei Fletcher at Kobra Kai).
+  const npcs = realms.flatMap(r => (r.B.npcs || []).map((n, i) => { const ch = makeCharacter(n.look); const x = r.R.at[0] + n.u, z = r.R.at[1] + n.v; ch.root.position.set(x, r.F.ground(n.u, n.v), z); ch.yaw = n.face; ch.root.rotation.y = n.face; scene.add(ch.root);
+    const proxy = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 2.6, 8), new THREE.MeshBasicMaterial({ visible: false })); proxy.position.set(x, ch.root.position.y + 1.3, z); scene.add(proxy); const o = { ...n, ch, realm: r, seed: 3 + i, el: label('w3-bot') }; o.el.innerHTML = `<i>✦</i>${esc(n.name)}`; proxy.userData = { kind: 'npc', npc: o }; proxies.push(proxy); return o; }));
+  async function npcTalk(n) {
+    if (talk.on || voyage || realm !== n.realm) return;
+    const spot = posL(n.ch.root.position.x + Math.sin(n.ch.yaw) * 1.5, n.ch.root.position.z + Math.cos(n.ch.yaw) * 1.5);
+    if (Math.hypot(state.position.x - spot[0], state.position.y - spot[1]) > 26) await new Promise(res => goTo(spot[0], spot[1], res));
+    if (talk.on || voyage || $('#modal').open) return;
+    stopAct(); talk.on = true; talk.target = n; travel = null; keys.clear(); n.ch.wave = 1.8;
+    bars.classList.add('on'); frameEl.classList.add('talking'); $('#mapTooltip').hidden = true;
+    const host = { kind: 'bot', o: { ch: n.ch, b: {} }, name: n.name, color: n.color };
+    try {
+      await say(host, pickLine(n.lines));
+      const pick = await say(host, 'What will it be today?', [{ label: '⌨ Solve a problem', value: 'leetcode' }, { label: '⚔ Train kata', value: 'kata' }, { label: 'Show me today’s problem', value: 'quest' }, { label: 'Bow out', value: null }]);
+      endTalk();
+      if (pick === 'quest') { const q = quests().find(q => isLeetCode(q) && available(q) && !E.completed(state, q)) || quests().find(isLeetCode); if (q) questDialog(q.id); }
+      else if (pick) { const s = realm.spots.find(x => x.act === pick); if (s) doSpot(s); }
+    } catch (err) { if (err.message !== 'abort') console.error(err); endTalk(); }
+  }
+  // Gilfoyle calls her over and sends her to Kobra Kai.
+  async function leetcodeCall() {
+    const k = kobra(); if (!k || voyage || talk.on) return;
+    if (realm === k) { const s = k.spots.find(x => x.act === 'leetcode'); if (s) doSpot(s); return; }
+    const g = bots.find(o => o.b.id === 'gilfoyle');
+    if (realm || !g || !g.ch.root.visible) { toast('Gilfoyle: “LeetCode? Kobra Kai. Now.”'); sail(k, { leetcode: true }); return; }
+    g.ch.wave = 1.8; toast('Gilfoyle: “Nivetha. Over here.”'); stopAct();
+    await new Promise(res => goTo(g.b.x - 18, g.b.y + 10, res));
+    if (talk.on || voyage || $('#modal').open) return;
+    talk.on = true; talk.target = g; travel = null; keys.clear(); bars.classList.add('on'); frameEl.classList.add('talking');
+    try { await say({ kind: 'bot', o: g, name: g.b.name, color: g.b.color, id: g.b.id }, pickLine(GILFOYLE_LC)); } catch (err) { if (err.message !== 'abort') console.error(err); return; }
+    endTalk(); sail(k, { leetcode: true });
+  }
   // The ferry and voyages between realms.
   function parkFerry() { const p = realm ? realm.park : homePark; ferry.g.position.copy(p.pos); ferry.g.rotation.set(0, p.yaw, 0); ferry.body.rotation.set(0, 0, 0); for (const [i, w] of ferry.wings.entries()) w.scale.set((i ? 1 : -1) * .001, 1, 1); }
   parkFerry();
-  function sail(dest) {
+  function sail(dest, opts = {}) {
     if (voyage || talk.on || !active) return;
     if ((dest || null) === realm) { toast(dest ? `You’re already in ${dest.R.name}.` : 'You’re already home.'); return; }
     if (screen !== 'world') showScreen('world');
     stopAct(); act = null; travel = null; keys.clear(); $('#mapTooltip').hidden = true;
-    if (reduceMotion.matches) { arrive(dest); return; }
+    if (reduceMotion.matches) { arrive(dest, opts); return; }
     const from = ferry.g.position.clone(), to = (dest ? dest.park : homePark).pos.clone(), flat = new THREE.Vector3(to.x - from.x, 0, to.z - from.z), dist = flat.length(); flat.normalize();
     const H = 20 + dist * .08;
-    voyage = { t: 0, dur: 3.6 + dist / 32, dest, p: [from, from.clone().addScaledVector(flat, 16).setY(from.y + H), to.clone().addScaledVector(flat, -16).setY(to.y + H), to], deck: new THREE.Vector3(), fwd: flat.clone(), heading: Math.atan2(flat.x, flat.z) };
+    voyage = { t: 0, dur: 3.6 + dist / 32, dest, opts, p: [from, from.clone().addScaledVector(flat, 16).setY(from.y + H), to.clone().addScaledVector(flat, -16).setY(to.y + H), to], deck: new THREE.Vector3(), fwd: flat.clone(), heading: Math.atan2(flat.x, flat.z) };
     bars.classList.add('on'); frameEl.classList.add('voyaging'); emote('✦', 2); status(); renderRealmCards();
   }
-  function arrive(dest) {
+  function arrive(dest, opts = {}) {
     realm = dest || null; voyage = null; bars.classList.remove('on'); frameEl.classList.remove('voyaging'); talk.settle = 1.6;
     const b = realm ? realm.board : homeBoard; state.position = { x: b.x, y: b.y }; prev = null; save();
     parkFerry(); cat.placed = false; idle = 0; renderRealmCards(); status();
     const cap = frameEl.querySelector('.map-caption span'); if (cap) cap.textContent = realm ? `${realm.R.glyph} ${realm.R.name.toUpperCase()}` : '✦ THE INNER KINGDOM';
     toast(realm ? realm.R.arrive : 'Home again. The Inner Kingdom missed you.');
+    if (realm) skyRef = realm.R.sky || skyRef;
+    if (opts.leetcode && realm) { for (const n of npcs) if (n.realm === realm) n.ch.wave = 1.8; setTimeout(() => { const s = realm?.spots.find(x => x.act === 'leetcode'); if (s) doSpot(s); }, 900); }
   }
   async function ferryDialog() {
     if (talk.on || voyage || !active) return;
@@ -2309,9 +2512,10 @@ function start() {
   }, true);
   // The action bar under the map, and the "beyond the sea" cards under the area list.
   const bar = document.createElement('div'); bar.className = 'w3-actions'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Nivetha’s actions');
-  bar.innerHTML = `<div class="w3-who"><b>Nivetha <i>&amp; Mochi</i></b><small id="w3Doing" role="status">Exploring</small></div><div class="w3-emotes">${EMOTES.map(([id, ic, name], i) => `<button type="button" data-emote="${id}" title="${name} (${i + 1})"><i aria-hidden="true">${ic}</i><span>${name}</span></button>`).join('')}</div><button type="button" class="w3-ctx" hidden></button>`;
+  bar.innerHTML = `<div class="w3-who"><b>Nivetha <i>&amp; Mochi</i></b><small id="w3Doing" role="status">Exploring</small></div><div class="w3-emotes">${EMOTES.map(([id, ic, name], i) => `<button type="button" data-emote="${id}" title="${name} (${i + 1})"><i aria-hidden="true">${ic}</i><span>${name}</span></button>`).join('')}</div><button type="button" class="w3-lc" title="Tell Gilfoyle you’re doing LeetCode"><i aria-hidden="true">⚔</i>LeetCode</button><button type="button" class="w3-ctx" hidden></button>`;
   frameEl.after(bar);
   bar.querySelectorAll('[data-emote]').forEach(b => b.onclick = () => doEmote(b.dataset.emote));
+  bar.querySelector('.w3-lc').onclick = () => leetcodeCall();
   const ctxBtn = bar.querySelector('.w3-ctx'), doingEl = bar.querySelector('#w3Doing');
   ctxBtn.onclick = () => { const s = nearestSpot(7); if (s) doSpot(s); else ferryDialog(); };
   function status() {
@@ -2330,7 +2534,9 @@ function start() {
     bathhouse: '<rect x="0" y="48" width="120" height="12" fill="#3f7fa0"/><rect x="38" y="30" width="34" height="18" fill="#a8392b"/><path d="M32 31 L55 20 L78 31z" fill="#3f6f68"/><rect x="44" y="12" width="22" height="9" fill="#a8392b"/><path d="M40 13 L55 5 L70 13z" fill="#3f6f68"/><circle cx="46" cy="38" r="2" fill="#ffd27a"/><circle cx="64" cy="38" r="2" fill="#ffd27a"/><rect x="80" y="44" width="40" height="2" fill="#5a5048"/><rect x="96" y="38" width="14" height="7" fill="#3c6e6a"/>',
     starfall: '<path d="M0 50 Q40 40 120 50 V60 H0Z" fill="#4f8a52"/><path d="M52 50 L60 22 L68 50z" fill="#e2e4d8"/><circle cx="60" cy="18" r="5" fill="#e2e4d8"/><circle cx="60" cy="8" r="4" fill="#7fe3ff"/><circle cx="20" cy="12" r="1.5" fill="#fff"/><circle cx="96" cy="10" r="1.5" fill="#fff"/><circle cx="104" cy="22" r="1" fill="#fff"/>',
   };
-  const SKY = { home: ['#bfe0f2', '#fdf2d6'], florentia: ['#f6c98e', '#fde9c4'], skygarden: ['#8fc6ee', '#e3f3ff'], bathhouse: ['#2b3a6a', '#d9877a'], starfall: ['#141f3a', '#3b4f8a'] };
+  ART.kobra = '<path d="M0 50 Q50 42 120 50 V60 H0Z" fill="#4f6e3a"/><rect x="34" y="28" width="44" height="20" fill="#1b1918"/><path d="M28 29 L56 16 L84 29z" fill="#2b2725"/><rect x="34" y="28" width="44" height="2" fill="#e3c35c"/><circle cx="56" cy="38" r="6" fill="#121212" stroke="#e3c35c" stroke-width="1.5"/><ellipse cx="56" cy="37" rx="2.4" ry="3" fill="#e3c35c"/><rect x="88" y="34" width="3" height="16" fill="#7a1f1a"/><rect x="97" y="34" width="3" height="16" fill="#7a1f1a"/>';
+  ART.hollow = '<path d="M0 48 Q60 38 120 48 V60 H0Z" fill="#8cba5c"/><circle cx="22" cy="34" r="12" fill="#5f9a46"/><circle cx="100" cy="32" r="13" fill="#e79ab5"/><circle cx="60" cy="16" r="6" fill="#ffe0a0"/><rect x="48" y="47" width="18" height="5" fill="#ffd2dc"/><circle cx="40" cy="50" r="2.4" fill="#f6e7cc"/><circle cx="74" cy="50" r="2.6" fill="#d9894a"/><path d="M84 22 l3 -2 l0 4z M88 18 l3 -2 l0 4z" fill="#fff"/>';
+  const SKY = { kobra: ['#2a2a3a', '#d98a5a'], hollow: ['#e98bb0', '#ffc28a'], home: ['#bfe0f2', '#fdf2d6'], florentia: ['#f6c98e', '#fde9c4'], skygarden: ['#8fc6ee', '#e3f3ff'], bathhouse: ['#2b3a6a', '#d9877a'], starfall: ['#141f3a', '#3b4f8a'] };
   function renderRealmCards() {
     const list = [{ id: 'home', name: 'The Inner Kingdom', sub: 'Home island', r: null }, ...realms.map(r => ({ id: r.R.id, name: r.R.name, sub: r.R.sub, r }))];
     realmStrip.innerHTML = list.map(c => { const here = (c.r || null) === realm; return `<button type="button" class="realm-card${here ? ' here' : ''}" data-realm="${c.id}" aria-label="${esc(c.name)}${here ? ', you are here' : ', sail there'}"><svg viewBox="0 0 120 60" aria-hidden="true" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sky-${c.id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${SKY[c.id][0]}"/><stop offset="1" stop-color="${SKY[c.id][1]}"/></linearGradient></defs><rect width="120" height="60" fill="url(#sky-${c.id})"/>${ART[c.id]}</svg><span class="realm-text"><strong>${esc(c.name)}</strong><small>${here ? '✦ You are here' : esc(c.sub)}</small></span></button>`; }).join('');
@@ -2350,6 +2556,7 @@ function start() {
   const bv1 = new THREE.Vector3(), bv2 = new THREE.Vector3();
   hooks.frame = (dt, t) => {
     nowT = t;
+    const wantSky = realm?.R.sky && !voyage ? 1 : 0; if (Math.abs(wantSky - skyBlend) > .001) { skyBlend += (wantSky - skyBlend) * Math.min(1, dt * 1.2); if (Math.abs(wantSky - skyBlend) < .01) skyBlend = wantSky; envDirty = true; }
     if (voyage) {
       const v = voyage; v.t = Math.min(1, v.t + dt / v.dur); const e = v.t < .5 ? 2 * v.t * v.t : 1 - (-2 * v.t + 2) ** 2 / 2;
       bez(v.p, e, bv1); bez(v.p, Math.min(1, e + .01), bv2); bv2.sub(bv1); if (bv2.lengthSq() < 1e-8) bv2.copy(v.fwd);
@@ -2358,7 +2565,7 @@ function start() {
       const open = smooth(0, .12, v.t) * (1 - smooth(.88, 1, v.t));
       ferry.wings.forEach((w, i) => { const s = i ? 1 : -1; w.scale.set(s * Math.max(.001, open), 1, 1); w.rotation.z = s * Math.sin(t * 5) * .28 * open; });
       v.fwd.set(bv2.x, 0, bv2.z).normalize(); v.deck.copy(bv1).addScaledVector(v.fwd, .7); v.deck.y -= .02;
-      if (v.t >= 1) arrive(v.dest);
+      if (v.t >= 1) arrive(v.dest, v.opts);
     } else {
       const p = realm ? realm.park : homePark; ferry.g.position.y = p.pos.y + .1 + Math.sin(t * 1.1) * .06; ferry.body.rotation.z = Math.sin(t * .9) * .04; ferry.body.rotation.x = Math.sin(t * .7) * .03;
     }
@@ -2402,7 +2609,8 @@ function start() {
     player.expr = act && w > .3 ? (act.A.expr || 'normal') : voyage ? 'happy' : 'normal';
     // props and the staff she sets down
     const props = act && w > .25 ? act.A.prop || [] : [];
-    for (const k of ['book', 'ledger', 'hammer', 'quill', 'brush', 'wrench']) PR[k].visible = props.includes(k);
+    for (const k of ['book', 'ledger', 'hammer', 'quill', 'brush', 'wrench', 'phone']) PR[k].visible = props.includes(k);
+    if (PR.phone.visible) { PR.phoneTex.offset.y -= dt * .05; if (Math.floor(act.t / 4) !== Math.floor((act.t - dt) / 4)) emote(['♡', '☺', '✿', 'ᐢ.ᐢ', '♪'][Math.random() * 5 | 0], 2); }
     const down = !!(act && STAFF_DOWN.has(act.id) && w > .5);
     player.staff.visible = !down; laidStaff.visible = down;
     if (down) { const s = Math.sin(player.yaw), c = Math.cos(player.yaw); laidStaff.position.set(px + c * .65 - s * .2, py + .06, pz - s * .65 - c * .2); laidStaff.rotation.set(0, player.yaw, Math.PI / 2); }
@@ -2417,6 +2625,8 @@ function start() {
     if (pillar.visible) { const d = pillar.userData; d.t += dt; pillar.position.set(px, py + 20, pz); pillar.material.uniforms.uA.value = d.k * Math.sin(Math.min(1, d.t / 2.6) * Math.PI) * .55; pillar.scale.set(1 + d.t * .4, 1, 1 + d.t * .4); if (d.t > 2.6) pillar.visible = false; }
     if (player.orb) player.orb.material.emissiveIntensity = 3 + look.glow * 3 + (act?.A.glow ? act.A.glow * w : 0) + (voyage ? 2 : 0) + (pillar.visible ? 3 : 0);
     catFrame(dt, t, px, py, pz);
+    for (const n of npcs) { const near = n.realm === realm && Math.hypot(px - n.ch.root.position.x, pz - n.ch.root.position.z) < 7; n.ch.yaw = lerpAngle(n.ch.yaw, near ? Math.atan2(px - n.ch.root.position.x, pz - n.ch.root.position.z) : n.face, 1 - Math.exp(-dt * 3)); n.ch.root.rotation.y = n.ch.yaw; animateCharacter(n.ch, 0, dt, t, n.seed); }
+    for (const r of realms) if (r.B.frame) r.B.frame(dt, t, r === realm && !voyage ? { u: px - r.R.at[0], v: pz - r.R.at[1], act: act && act.end < 0 ? act.id : null } : null);
     if ((uiTimer -= dt) <= 0) { uiTimer = .3; status(); const s = !voyage && !talk.on ? nearestSpot(7) : null, nearFerry = !voyage && !talk.on && player.root.position.distanceTo(ferry.g.position) < 9; const label2 = s && act?.spot !== s ? `✦ ${s.label}` : nearFerry ? '⛵ Board the sky ferry' : ''; ctxBtn.hidden = !label2; if (label2 && ctxBtn.textContent !== label2) ctxBtn.textContent = label2; }
   };
   // Mochi follows a step behind her, sits when she stops, and purrs when petted.

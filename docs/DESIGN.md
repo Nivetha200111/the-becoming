@@ -65,6 +65,8 @@ Four realms sit across the Sea of Possibility, each built in `world3d.js` by its
 | The Sky Gardens | Floating ruins above the clouds, waterfalls, a mossy stone gardener | Meditate at the overlook, watch the clouds |
 | Lantern Bathhouse | Red lacquer bathhouse, koi pond and bridge, hot spring, sea train | Soak in the hot spring |
 | Starfall Shrine | A waypoint statue, floating crystal, glowing lilies | Make a wish, rest by the waypoint |
+| Kobra Kai | The LeetCode dojo: black-and-gold hall, cobra statues, training yard, Sensei Fletcher | Grind LeetCode at the laptop desk, train kata on the mat |
+| Hush Hollow | A quiet wood under an orange-pink sky, full of cats, dogs and butterflies | Scroll her phone on the picnic blanket (the animals gather round), sit by the pond |
 
 Realms reuse the logical 1100 × 720 coordinate space (550, 360 is a realm's centre), so app.js movement and saving work unchanged. Board the sky ferry at the pier, or use the "Beyond the sea" cards under the area list, and it flies her there. Areas, guides and "Return to camp" sail her home automatically. Realms are places to wander, not XP sources.
 
@@ -79,3 +81,7 @@ Walls, fences, statues and fountains are traced from the landmark geometry into 
 ## The Treasury
 
 Gold is the real-life reward currency, derived from claimed quests in `engine.js`: 40 gold per XP, boss battles ×1.5, +5% per day of an unbroken streak (up to +50%). Tiers: Common (any level), Rare (level 2), Epic (level 4), Legendary (level 6) and Mythic, which stays sealed until the `offer-40lpa` milestone quest is claimed (+1,500,000 gold). Redemptions are stored in `state.rewards`, an optional array that keeps save version 1 compatible. Catalogue prices live in `TIERS`, and changing one invalidates redemptions saved at the old price.
+
+Kobra Kai: tap ⚔ LeetCode in the action bar, choose "I'm doing LeetCode" when talking to Gilfoyle, or accept a LeetCode quest. Gilfoyle calls her over and the ferry takes her to the dojo, where she sits down at the desk. Sensei Fletcher offers a problem, kata or today's LeetCode quest. A realm can set its own sky (`R.sky`), which `applySky` blends in while she is there. Hush Hollow uses this for its permanent golden hour.
+
+Saves: Treasury redemptions are also packed into hidden `custom-reward-*` custom quests by `lib/save-store.mjs` on every write and unpacked on every read. They therefore survive even a save backend that drops unknown fields, which `tests/treasury.test.mjs` covers.

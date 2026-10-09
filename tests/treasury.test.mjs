@@ -16,3 +16,17 @@ test('older saves without rewards stay valid and merge across devices',()=>{cons
  const sb={module:{exports:{}},globalThis:{}};vm.runInNewContext(fs.readFileSync('public/game/sync-core.js','utf8'),sb);const {merge}=sb.module.exports;
  const base=E.fresh();E.award(base,q('a',250,{boss:true}),'n','2026-10-01');delete base.rewards;const a=copy(base);a.rewards=[];E.redeem(a,'monster','2026-10-01');const b=copy(base);b.rewards=[];E.redeem(b,'coffee','2026-10-01');
  const m=merge(base,a,b).state;assert.equal(m.rewards.length,2);E.validate(m);});
+test('redemptions survive a save backend that drops unknown fields',async()=>{
+ const { savedState }=await import('../lib/save-store.mjs');
+ const s=E.fresh();E.award(s,q('a',250,{boss:true}),'n','2026-10-01');E.redeem(s,'monster','2026-10-01');s.custom.push({id:'custom-mine',title:'Mine',detail:'d',region:'camp',stat:'FOCUS',xp:20,unlock:1,repeat:false});
+ let stored=null;
+ // A strict backend that keeps only the fields it knew about before the Treasury existed.
+ const strict=st=>({version:st.version,entries:st.entries,custom:st.custom.map(c=>({id:c.id,title:c.title,detail:c.detail,region:c.region,stat:c.stat,xp:c.xp,unlock:c.unlock,repeat:c.repeat})),purchases:st.purchases,equipped:st.equipped,mode:st.mode,position:st.position,seenIntro:st.seenIntro});
+ const fetcher=async(url,opts)=>{if(opts.method==='POST'){stored=strict(JSON.parse(opts.body).state);return Response.json({revision:1});}return Response.json({revision:1,state:stored});};
+ const env={SITES_SAVE_TOKEN:'test-only-token'};
+ await savedState('POST',{expectedRevision:0,state:copy(s)},env,fetcher);
+ assert(!('rewards' in stored),'the strict backend really dropped the field');
+ const back=(await savedState('GET',undefined,env,fetcher)).data.state;
+ assert.deepEqual(back.rewards,s.rewards);assert.deepEqual(back.custom.map(c=>c.id),['custom-mine'],'packed redemptions never show up as quests');
+ E.validate(back);assert.equal(E.gold(back),E.gold(s));
+});
