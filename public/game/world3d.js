@@ -1,3 +1,4 @@
+import { CharacterMotor, footprintClear, MOTOR } from './physics.js';
 // The Becoming · 3D world (three.js)
 // Progressive enhancement over app.js's 2D map. Quests, saves, travel, keyboard movement and dialogs stay in
 // app.js/party.js on the 1100×720 logical map; this module draws that map as a 3D island, maps pointer input
@@ -11,7 +12,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // ───────────────────────────── helpers ─────────────────────────────
-const SCALE = 0.08, SPEED = 0.62;                       // metres per logical unit; walk speed relative to app.js
+const SCALE = 0.08;                       // metres per logical unit; walk speed relative to app.js
 const toW = (lx, ly) => [(lx - 550) * SCALE, (ly - 360) * SCALE];
 const toL = (x, z) => [x / SCALE + 550, z / SCALE + 360];
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -685,10 +686,13 @@ function makeCharacter(look) {
   };
   const bone = (parent, x, y, z) => { const b = new THREE.Bone(); b.position.set(x, y, z); parent.add(b); return b; };
   const trunk = body;
+  const knees = [];
   const legs = [-1, 1].map(s => {
     const g = bone(body, s * .085, .86, 0);
-    part(g, capsule(.068, .56), look.legs, [0, -.4, 0]);
-    part(g, capsule(.078, .1), look.boots, [0, -.76, .03], { s: [1, 1, 1.25] });
+    part(g, capsule(.068, .22), look.legs, [0, -.18, 0]);
+    const knee = bone(g, 0, -.36, 0); knees.push(knee);
+    part(knee, capsule(.062, .22), look.legs, [0, -.18, 0]);
+    part(knee, capsule(.078, .1), look.boots, [0, -.4, .03], { s: [1, 1, 1.25] });
     return g;
   });
   part(trunk, capsule(.15, .3), look.top, [0, 1.1, 0], { s: [1, 1, .74] });
@@ -794,7 +798,7 @@ function makeCharacter(look) {
     root.add(mesh); mesh.bind(skeleton);
   }
   root.scale.setScalar(1.18);
-  return { root, body, legs, arms, head, eyes, mouth, cloak, cloakMesh, staff, orb, phase: Math.random() * 6, yaw: 0, wave: 0, give: 0, blinkT: 1 + Math.random() * 3, expr: 'normal' };
+  return { root, body, legs, knees, arms, head, eyes, mouth, cloak, cloakMesh, staff, orb, phase: Math.random() * 6, yaw: 0, wave: 0, give: 0, blinkT: 1 + Math.random() * 3, expr: 'normal' };
 }
 function hair(head, look, part) {
   const c = look.hair, style = look.hairStyle;
@@ -815,9 +819,10 @@ function hair(head, look, part) {
 }
 function animateCharacter(ch, speed, dt, t, idleSeed = 0) {
   const s = clamp(speed / 5.5, 0, 1), still = reduceMotion.matches ? .3 : 1;
-  ch.phase += dt * (3 + speed * 1.55);
+  ch.phase += speed * dt * Math.PI * 2 / 1.8; // cadence follows distance, so feet stop when movement stops
   const swing = Math.sin(ch.phase) * .75 * s;
   ch.legs[0].rotation.x = swing; ch.legs[1].rotation.x = -swing;
+  ch.knees.forEach((k, i) => { k.rotation.x = -Math.max(0, Math.sin(ch.phase + i * Math.PI + .55)) * .85 * s; });
   const breathe = Math.sin(t * 1.8 + idleSeed) * .012 * still;
   ch.arms[0].rotation.x = -swing * .7 * (ch.cloak && !ch.wave ? .5 : 1);
   ch.arms[1].rotation.x = swing * .85;
@@ -2193,28 +2198,56 @@ function start() {
     } else { canvas.style.cursor = 'grab'; tip.hidden = true; }
   }
 
-  // Movement: app.js moves state.position on the logical map; here it is rotated to the camera, slowed to a
-  // natural jog and kept out of buildings, trees and the sea.
-  let prev = null, prevState = null, wasTravelling = false, stuck = 0;
-  function constrainMovement(dt) {
-    const p = state.position;
-    if (state !== prevState || !prev) { prevState = state; Object.assign(p, nearestWalkable(p)); prev = { x: p.x, y: p.y }; wasTravelling = !!travel; return; }
-    if (talk.on || voyage) { travel = null; p.x = prev.x; p.y = prev.y; return; }
-    let dx = p.x - prev.x, dy = p.y - prev.y;
-    const arrived = wasTravelling && !travel;
-    if (Math.hypot(dx, dy) > 40) { Object.assign(p, nearestWalkable(p)); }
-    else if ((dx || dy) && !arrived) {
-      if (!travel && keys.size) { const c = Math.cos(cam.yaw), s = Math.sin(cam.yaw); [dx, dy] = [dx * c + dy * s, -dx * s + dy * c]; }
-      dx *= SPEED; dy *= SPEED;
-      let nx = prev.x + dx, ny = prev.y + dy;
-      if (!walkable(nx, ny)) { if (walkable(nx, prev.y)) ny = prev.y; else if (walkable(prev.x, ny)) nx = prev.x; else { nx = prev.x; ny = prev.y; } }
-      p.x = nx; p.y = ny;
+  // One authority owns movement and arrival callbacks. Rendering never rewrites the simulation.
+  let prev = null, prevState = null, stuck = 0;
+  const motor = new CharacterMotor({ clear: (x, z) => { const [lx, ly] = posL(x, z); return walkable(lx, ly); }, ground: (x, z) => groundAt(x, z) });
+  function safePosition(p, radius = MOTOR.radius) {
+    const clear = (lx, ly) => { const [x, z] = posW(lx, ly); return footprintClear(x, z, motor.clear, radius); };
+    if (clear(p.x, p.y)) return { ...p };
+    for (let r = 4; r < 260; r += 4) for (let a = 0; a < 32; a++) {
+      const x = p.x + Math.cos(a * Math.PI / 16) * r, y = p.y + Math.sin(a * Math.PI / 16) * r;
+      if (clear(x, y)) return { x, y };
     }
-    if (travel) { stuck = Math.hypot(p.x - prev.x, p.y - prev.y) < .4 ? stuck + dt : 0; if (stuck > .8) { stuck = 0; if (rescueTravel) rescueTravel(); else { const t = nearestWalkable({ x: travel.x, y: travel.y }); p.x = t.x; p.y = t.y; } } }
-    prev = { x: p.x, y: p.y }; wasTravelling = !!travel;
+    return nearestWalkable(p);
   }
-
-
+  movementDriver = dt => {
+    const p = state.position;
+    if (state !== prevState || !prev || Math.hypot(p.x - prev.x, p.y - prev.y) > 1) {
+      prevState = state; Object.assign(p, safePosition(p)); motor.reset(...posW(p.x, p.y)); prev = { ...p };
+    }
+    if (screen !== 'world' || $('#modal').open || talk.on || voyage || window.BotChat?.isOpen()) {
+      motor.vx = motor.vz = motor.accumulator = 0; return;
+    }
+    let x = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0);
+    let z = (keys.has('s') || keys.has('arrowdown') ? 1 : 0) - (keys.has('w') || keys.has('arrowup') ? 1 : 0);
+    const len = Math.hypot(x, z); if (len) { x /= len; z /= len; const c = Math.cos(cam.yaw), s = Math.sin(cam.yaw); [x, z] = [x * c + z * s, -x * s + z * c]; }
+    let distance, speed;
+    const journey = travel;
+    if (journey) {
+      const [tx, tz] = posW(journey.x, journey.y); x = tx - motor.x; z = tz - motor.z; distance = Math.hypot(x, z);
+      if (distance) { x /= distance; z /= distance; }
+      speed = Math.min(MOTOR.walk, Math.sqrt(2 * MOTOR.braking * distance));
+    }
+    motor.update(dt, { x, z, speed, distance, run: keys.has('shift'), jump: keys.has(' ') && !journey });
+    [p.x, p.y] = posL(motor.x, motor.z);
+    if (journey && travel === journey) {
+      const d = Math.hypot(p.x - journey.x, p.y - journey.y) * SCALE;
+      if (d < .08 && motor.grounded) {
+        const [tx, tz] = posW(journey.x, journey.y);
+        if (motor.fits(tx, tz)) { motor.x = tx; motor.z = tz; p.x = journey.x; p.y = journey.y; }
+        travel = null; stuck = 0; save(); journey.callback?.();
+      } else { stuck = motor.speed < .15 ? stuck + dt : 0; if (stuck > 1) { stuck = 0; rescueTravel?.(); } }
+    }
+    prev = { ...p };
+  };
+  canvas.addEventListener('keydown', e => {
+    if ($('#modal').open || talk.on || voyage || window.BotChat?.isOpen()) return;
+    if (e.key === ' ' || e.key === 'Shift') { e.preventDefault(); keys.add(e.key.toLowerCase()); }
+  });
+  const jumpButton = document.createElement('button'); jumpButton.type = 'button'; jumpButton.className = 'w3-jump'; jumpButton.textContent = 'Jump'; jumpButton.setAttribute('aria-label', 'Jump (Space)');
+  jumpButton.addEventListener('pointerdown', e => { e.preventDefault(); jumpButton.setPointerCapture(e.pointerId); keys.add(' '); });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) jumpButton.addEventListener(type, () => keys.delete(' '));
+  frameEl.querySelector('.touch-controls').append(jumpButton);
 
   // ───────── Solid ground: a collision mask traced from the real buildings, and paths around them ─────────
   // Every landmark triangle that reaches between knee and head height is rasterised onto a 25 cm grid, so walls,
@@ -2264,12 +2297,12 @@ function start() {
   }
   // Click-to-travel follows an A* path on an 8-unit grid, smoothed into straight runs, instead of
   // walking into walls and giving up.
-  function lineClear(a, b) { const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 3); for (let k = 1; k <= n; k++) if (!walkable(a.x + (b.x - a.x) * k / n, a.y + (b.y - a.y) * k / n)) return false; return true; }
+  function lineClear(a, b) { const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 1.5); for (let k = 1; k <= n; k++) if (!motor.fits(...posW(a.x + (b.x - a.x) * k / n, a.y + (b.y - a.y) * k / n))) return false; return true; }
   function findPath(from, to) {
-    const goal = walkable(to.x, to.y) ? { x: to.x, y: to.y } : nearestWalkable(to);
+    const goal = safePosition(to);
     if (lineClear(from, goal)) return [goal];
     const ST = 8, W = Math.ceil(1100 / ST) + 1, H = Math.ceil(720 / ST) + 1, free = new Int8Array(W * H), g = new Float32Array(W * H).fill(Infinity), came = new Int32Array(W * H).fill(-1), closed = new Uint8Array(W * H);
-    const ok = k => { if (!free[k]) free[k] = walkable((k % W) * ST, Math.floor(k / W) * ST) ? 1 : -1; return free[k] === 1; };
+    const ok = k => { if (!free[k]) free[k] = motor.fits(...posW((k % W) * ST, Math.floor(k / W) * ST)) ? 1 : -1; return free[k] === 1; };
     const near = (x, y) => { const i0 = Math.round(x / ST), j0 = Math.round(y / ST); for (let r = 0; r < 4; r++) for (let j = j0 - r; j <= j0 + r; j++) for (let i = i0 - r; i <= i0 + r; i++) { if (i < 0 || j < 0 || i >= W || j >= H) continue; const k = j * W + i; if (ok(k)) return k; } return -1; };
     const s = near(from.x, from.y), e = near(goal.x, goal.y); if (s < 0 || e < 0) return null;
     const ex = e % W, ey = Math.floor(e / W), hf = k => { const dx = Math.abs(k % W - ex), dy = Math.abs(Math.floor(k / W) - ey); return (dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy)) * ST; };
@@ -2293,9 +2326,10 @@ function start() {
   }
   const goToDirect = goTo; let stuckCount = 0;
   goTo = (x, y, cb) => {
-    if (!active || reduceMotion.matches) return goToDirect(x, y, cb);
+    if (!active) return goToDirect(x, y, cb);
+    if (reduceMotion.matches) { const p = safePosition({ x, y }); return goToDirect(p.x, p.y, cb); }
     const path = findPath({ x: state.position.x, y: state.position.y }, { x, y });
-    if (!path) return goToDirect(x, y, cb);
+    if (!path) { toast('That spot is out of reach. Choose a clear spot nearby.'); return; }
     let i = -1; const next = () => { i++; if (i >= path.length - 1) { stuckCount = 0; goToDirect(path[path.length - 1].x, path[path.length - 1].y, cb); } else goToDirect(path[i].x, path[i].y, next); };
     next();
   };
@@ -2317,7 +2351,7 @@ function start() {
   veer.yaw = 0; scene.add(veer.root); veer.tail.forEach(s => { s.rotation.x = -1.05; });
   const veerProxy = new THREE.Mesh(new THREE.SphereGeometry(.55, 8, 6), new THREE.MeshBasicMaterial({ visible: false })); veerProxy.position.y = .35; veerProxy.userData = { kind: 'veer' }; veer.root.add(veerProxy); proxies.push(veerProxy);
   let petTarget = 'veer';
-  const LAP = new Set(['sit', 'campfire', 'phone', 'meditate', 'leetcode']);
+  const LAP = new Set(['sit', 'campfire', 'phone']);
   const ferry = makeFerry(); scene.add(ferry.g); proxies.push(ferry.proxy);
   const homePark = { pos: new THREE.Vector3(pierInfo.sx - 2.4, 0, pierInfo.sz + 4.4), yaw: Math.PI };
   const homeBoard = nearestWalkable((([x, y]) => ({ x, y }))(toL(pierInfo.sx, pierInfo.sz - 2.2)));
@@ -2475,7 +2509,7 @@ function start() {
   function arrive(dest, opts = {}) {
     realm = dest || null; voyage = null; bars.classList.remove('on'); frameEl.classList.remove('voyaging'); talk.settle = 1.6;
     const b = realm ? realm.board : homeBoard; state.position = { x: b.x, y: b.y }; prev = null; save();
-    parkFerry(); cat.placed = false; idle = 0; renderRealmCards(); status();
+    parkFerry(); cat.placed = veer.placed = false; idle = 0; renderRealmCards(); status();
     const cap = frameEl.querySelector('.map-caption span'); if (cap) cap.textContent = realm ? `${realm.R.glyph} ${realm.R.name.toUpperCase()}` : '✦ THE INNER KINGDOM';
     toast(realm ? realm.R.arrive : 'Home again. The Inner Kingdom missed you.');
     if (realm) skyRef = realm.R.sky || skyRef;
@@ -2585,6 +2619,7 @@ function start() {
     const L = (o, k, v) => { if (v !== undefined) o[k] += (v - o[k]) * w; }, b = player;
     L(b.body.position, 'y', p.by); L(b.body.rotation, 'x', p.bx); L(b.body.rotation, 'y', p.bry); L(b.body.rotation, 'z', p.bz);
     for (const i of [0, 1]) for (const ax of ['x', 'y', 'z']) { L(b.legs[i].rotation, ax, p[`l${i}${ax}`]); L(b.arms[i].rotation, ax, p[`a${i}${ax}`]); }
+    if (p.l0x !== undefined || p.l1x !== undefined) for (const knee of b.knees) L(knee.rotation, 'x', -1.25);
     L(b.head.rotation, 'x', p.hx); L(b.head.rotation, 'y', p.hy); L(b.head.rotation, 'z', p.hz); if (b.cloak) L(b.cloak.rotation, 'x', p.cx);
   }
   hooks.pose = (dt, t, speed, px, py, pz) => {
@@ -2639,21 +2674,54 @@ function start() {
     for (const r of realms) if (r.B.frame) r.B.frame(dt, t, r === realm && !voyage ? { u: px - r.R.at[0], v: pz - r.R.at[1], act: act && act.end < 0 ? act.id : null } : null);
     if ((uiTimer -= dt) <= 0) { uiTimer = .3; status(); const s = !voyage && !talk.on ? nearestSpot(7) : null, nearFerry = !voyage && !talk.on && player.root.position.distanceTo(ferry.g.position) < 9; const label2 = s && act?.spot !== s ? `✦ ${s.label}` : nearFerry ? '⛵ Board the sky ferry' : ''; ctxBtn.hidden = !label2; if (label2 && ctxBtn.textContent !== label2) ctxBtn.textContent = label2; }
   };
-  // Veer keeps to her right side, sits and looks up at her when she stops, and lies with his head on her lap
-  // whenever she sits down. He rides the ferry at her feet.
+  // Pets share the world's collision rules and route around furniture. Choose a clear resting
+  // footprint beside the player; work surfaces and the laptop are never lap targets.
+  function companionTarget(px, pz, yaw, side, behind, radius, extraClear) {
+    const clear = (x, z) => footprintClear(x, z, motor.clear, radius) && (!extraClear || extraClear(x, z));
+    const s = Math.sin(yaw), c = Math.cos(yaw);
+    for (const [right, back] of [[side, behind], [-side, behind], [side * 1.5, behind + .6], [-side * 1.5, behind + .6], [side, behind + 1.3]]) {
+      const x = px + c * right - s * back, z = pz - s * right - c * back;
+      if (clear(x, z)) return { x, z };
+    }
+    for (let r = 1; r <= 4; r += .4) for (let i = 0; i < 24; i++) {
+      const a = yaw + i * Math.PI / 12, x = px + Math.sin(a) * r, z = pz + Math.cos(a) * r;
+      if (clear(x, z)) return { x, z };
+    }
+    return null;
+  }
+  function followCompanion(pet, target, dt, radius) {
+    if (!target) return 0;
+    if (!pet.motor) pet.motor = new CharacterMotor({ clear: motor.clear, ground: (x, z) => groundAt(x, z), radius, slope: 1.25 });
+    const m = pet.motor;
+    if (!pet.placed || Math.hypot(m.x - target.x, m.z - target.z) > 14) {
+      m.reset(target.x, target.z); pet.placed = true; pet.route = null;
+    }
+    const from = { x: m.x, y: m.z }, to = { x: target.x, y: target.z };
+    const clearLine = (a, b) => { const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / .1)); for (let i = 0; i <= n; i++) if (!m.fits(a.x + (b.x - a.x) * i / n, a.y + (b.y - a.y) * i / n)) return false; return true; };
+    pet.routeTimer = (pet.routeTimer || 0) - dt;
+    let waypoint = target;
+    if (!clearLine(from, to)) {
+      if (pet.routeTimer <= 0) { pet.routeTimer = .65; const [fx, fy] = posL(m.x, m.z), [tx, ty] = posL(target.x, target.z); pet.route = findPath({ x: fx, y: fy }, { x: tx, y: ty }); }
+      while (pet.route?.length) { const [x, z] = posW(pet.route[0].x, pet.route[0].y); if (Math.hypot(x - m.x, z - m.z) < .25) pet.route.shift(); else { waypoint = { x, z }; break; } }
+      if (!pet.route?.length) waypoint = { x: m.x, z: m.z };
+    } else pet.route = null;
+    const dx = waypoint.x - m.x, dz = waypoint.z - m.z, distance = Math.hypot(dx, dz), speed = distance > .12 ? Math.min(8, distance * 3.2) : 0;
+    m.update(dt, { x: distance ? dx / distance : 0, z: distance ? dz / distance : 0, speed, distance });
+    pet.root.position.set(m.x, m.y, m.z);
+    if (m.speed > .1) pet.yaw = lerpAngle(pet.yaw, Math.atan2(m.vx, m.vz), 1 - Math.exp(-dt * 10));
+    return m.speed;
+  }
   function veerFrame(dt, t, px, py, pz) {
-    const v = veer, s = Math.sin(player.yaw), c = Math.cos(player.yaw), live = act && act.end < 0;
+    const v = veer, live = act && act.end < 0;
     const lap = live && LAP.has(act.id) && act.t > .5, cuddle = live && act.id === 'pet' && petTarget === 'veer';
-    let speed = 0, mode = 'sit', want = player.yaw;
-    if (voyage) { v.root.position.set(px + voyage.fwd.x * .9, py, pz + voyage.fwd.z * .9); v.yaw = voyage.heading + Math.PI; }
+    let speed = 0, mode = 'sit';
+    if (voyage) { const f = voyage.fwd; v.root.position.set(px + f.z * .52 - f.x * .85, py, pz - f.x * .52 - f.z * .85); v.yaw = voyage.heading; v.placed = false; }
     else {
-      const tx = lap || cuddle ? px + s * (lap ? 1.0 : .9) : px - c * .85 - s * .45, tz = lap || cuddle ? pz + c * (lap ? 1.0 : .9) : pz + s * .85 - c * .45;
-      const dx = tx - v.root.position.x, dz = tz - v.root.position.z, d = Math.hypot(dx, dz);
-      if (d > 14 || !v.placed) { v.root.position.set(tx, groundAt(tx, tz), tz); v.placed = true; }
-      else if (d > .3) { speed = Math.min(d * 3.2, 9); const k = Math.min(1, speed * dt / d); v.root.position.x += dx * k; v.root.position.z += dz * k; v.yaw = lerpAngle(v.yaw, Math.atan2(dx, dz), 1 - Math.exp(-dt * 10)); mode = 'walk'; }
-      if (mode !== 'walk') { want = lap || cuddle ? player.yaw + Math.PI : Math.atan2(px - v.root.position.x, pz - v.root.position.z); v.yaw = lerpAngle(v.yaw, want, 1 - Math.exp(-dt * 4)); if (lap) mode = 'lie'; }
-      let gy = groundAt(v.root.position.x, v.root.position.z); if (gy < -50) { v.root.position.set(px, py, pz); gy = py; }
-      v.hop = Math.max(0, (v.hop || 0) - dt); v.root.position.y = gy + (v.hop > 0 ? Math.sin((1 - v.hop / .7) * Math.PI) * .45 : 0);
+      const target = companionTarget(px, pz, player.yaw, 1.15, .25, .42);
+      speed = followCompanion(v, target, dt, .42);
+      mode = speed > .15 ? 'walk' : lap ? 'lie' : 'sit';
+      if (mode !== 'walk') v.yaw = lerpAngle(v.yaw, Math.atan2(px - v.root.position.x, pz - v.root.position.z), 1 - Math.exp(-dt * 4));
+      v.hop = Math.max(0, (v.hop || 0) - dt); v.root.position.y += v.hop > 0 ? Math.sin((1 - v.hop / .7) * Math.PI) * .45 : 0;
     }
     v.root.rotation.y = v.yaw;
     const happy = lap || cuddle || pillar.visible || (act?.id === 'cheer' && live);
@@ -2670,16 +2738,12 @@ function start() {
   // Mochi follows a step behind her, sits when she stops, and purrs when petted.
   function catFrame(dt, t, px, py, pz) {
     const c = cat, petting = act?.id === 'pet' && petTarget === 'mochi';
-    if (voyage) { const f = voyage.fwd; c.root.position.set(px - f.x * 1.5, py, pz - f.z * 1.5); c.yaw = voyage.heading; c.still = 2; }
+    if (voyage) { const f = voyage.fwd; c.root.position.set(px - f.x * 1.5, py, pz - f.z * 1.5); c.yaw = voyage.heading; c.still = 2; c.placed = false; }
     else {
-      const s = Math.sin(player.yaw), co = Math.cos(player.yaw), tx = px - s * 1.05 + co * .7, tz = pz - co * 1.05 - s * .7;
-      let dx = tx - c.root.position.x, dz = tz - c.root.position.z, d = Math.hypot(dx, dz);
-      if (d > 14 || !c.placed) { c.root.position.set(tx, groundAt(tx, tz), tz); c.placed = true; d = 0; }
-      c.speed = 0;
-      if (d > .4 && !petting) { c.speed = Math.min(d * 2.6, 8); const k = Math.min(1, c.speed * dt / d); c.root.position.x += dx * k; c.root.position.z += dz * k; c.yaw = lerpAngle(c.yaw, Math.atan2(dx, dz), 1 - Math.exp(-dt * 10)); c.still = 0; }
-      else { c.still += dt; c.yaw = lerpAngle(c.yaw, Math.atan2(px - c.root.position.x, pz - c.root.position.z), 1 - Math.exp(-dt * 3)); }
-      let gy = groundAt(c.root.position.x, c.root.position.z); if (gy < -50) { c.root.position.set(px, py, pz); gy = py; }
-      c.hop = Math.max(0, c.hop - dt); c.root.position.y = gy + (c.hop > 0 ? Math.sin((1 - c.hop / .7) * Math.PI) * .4 : 0);
+      const target = companionTarget(px, pz, player.yaw, -.9, 1.2, .25, (x, z) => Math.hypot(x - veer.root.position.x, z - veer.root.position.z) > .85);
+      c.speed = followCompanion(c, petting ? null : target, dt, .25);
+      if (c.speed > .1) c.still = 0; else { c.still += dt; c.yaw = lerpAngle(c.yaw, Math.atan2(px - c.root.position.x, pz - c.root.position.z), 1 - Math.exp(-dt * 3)); }
+      c.hop = Math.max(0, c.hop - dt); c.root.position.y += c.hop > 0 ? Math.sin((1 - c.hop / .7) * Math.PI) * .4 : 0;
     }
     c.root.rotation.y = c.yaw;
     const sp = c.speed || 0; c.phase += dt * (2 + sp * 3.2);
@@ -2699,9 +2763,8 @@ function start() {
   function render(t) {
     const dt = clamp(t - lastT, .001, .05); lastT = t;
     U.time.value = t;
-    constrainMovement(dt);
     hooks.frame?.(dt, t);
-    let [px, pz] = posW(state.position.x, state.position.y), py = groundAt(px, pz);
+    let [px, pz] = posW(state.position.x, state.position.y), py = prev ? motor.y : groundAt(px, pz);
     if (voyage) ({ x: px, y: py, z: pz } = voyage.deck);
     const moved = Math.hypot(px - player.root.position.x, pz - player.root.position.z);
     if (moved > .002 && moved < 5) player.yaw = lerpAngle(player.yaw, Math.atan2(px - player.root.position.x, pz - player.root.position.z), 1 - Math.exp(-dt * 14));
@@ -2789,7 +2852,7 @@ function start() {
   }
 
   sync();
-  if (window.LOCAL_DESIGN_MODE) window.world3d = { THREE, scene, camera, renderer, cam, look, talk, converse, bots, councils, setHour: h => { hourOverride = h; envDirty = true; }, bloom, walkable, nearestWalkable, obstacles: () => obstacles, heightAt, sdfAt, pathDistAt, toW, toL };
+  if (window.LOCAL_DESIGN_MODE) window.world3d = { THREE, scene, camera, renderer, cam, look, talk, converse, bots, councils, setHour: h => { hourOverride = h; envDirty = true; }, bloom, player, motor, veer, cat, realms, sail, doSpot, doEmote, activity: () => act, currentRealm: () => realm, walkable, nearestWalkable, obstacles: () => obstacles, heightAt, sdfAt, pathDistAt, toW, toL };
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
   const draw2d = draw;
   // If the GPU drops the context or a frame throws, hand the map back to the original 2D renderer
@@ -2797,7 +2860,7 @@ function start() {
   function fallback2d(err) {
     if (!active) return;
     if (err) console.error('3D world stopped; showing the 2D map.', err);
-    active = false; draw = draw2d;
+    active = false; movementDriver = null; draw = draw2d;
     endTalk(); glCanvas.remove(); layer.remove(); compass.remove(); clock.remove(); bubble.remove(); bars.remove();
     botTalk = cardTalk; councilTalk = cardCouncil; regionDialog = cardRegion; frameEl.classList.remove('is-3d');
     canvas.setAttribute('aria-label', label2d); if (hint) hint.textContent = hint2d; resize();

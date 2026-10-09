@@ -93,3 +93,9 @@ Veer is Nivetha's Kombai: a tan-red coat, black muzzle, folded rose ears, a curl
 ## Full screen
 
 The ⛶ button on the map (or F with the map focused) puts the world in full screen. It uses the browser Fullscreen API on `.world-frame` and falls back to a fixed overlay (`.immersive`) where that API is missing, such as on iPhones. While full screen is on, the action bar and toasts move inside the frame as a compact overlay, and quest scrolls mount inside it. Esc or the button exits. The Next.js iframe allows `fullscreen`.
+
+## Character motor and companion placement
+
+`physics.js` owns movement at 120 fixed steps per second: acceleration, braking, swept body footprints, wall sliding, terrain slope limits and gravity. Shift runs, Space jumps, and touch players have a Jump button. `app.js` hands movement to the 3D motor while WebGL is active; the renderer never corrects a second movement simulation. Travel callbacks run only on actual arrival. Paths use the same body footprint as movement.
+
+Veer and Mochi use collision-aware follower motors and choose clear resting footprints. Veer rests beside Nivetha during LeetCode rather than targeting the desk or laptop. Both pets re-anchor at realm arrival and board the ferry in distinct positions.
