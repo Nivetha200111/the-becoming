@@ -71,7 +71,7 @@ test('a Quest ID never double-counts a quest you already claimed in the game',as
 
 test('invalid bot entries are sent back with a reason and change nothing',async()=>{
  const n=fakeNotion(),store=fakeStore();
- const rows=[n.row({name:'x',bot:'Nobody',details:'e',date:TODAY}),n.row({name:'No proof',bot:'Fletcher',date:TODAY}),n.row({name:'Tomorrow',bot:'Fletcher',details:'e',date:'2026-10-10'}),n.row({name:'Old',bot:'Fletcher',details:'e',date:'2026-09-01'}),n.row({name:'Locked',bot:'Beth Harmon',quest:'spm',details:'e',date:TODAY}),n.row({name:'Typo',bot:'Beth Harmon',quest:'spm-typo',details:'e',date:TODAY})];
+ const rows=[n.row({name:'x',bot:'Nobody',details:'e',date:TODAY}),n.row({name:'No proof',bot:'Fletcher',date:TODAY}),n.row({name:'Tomorrow',bot:'Fletcher',details:'e',date:'2026-10-10'}),n.row({name:'Old',bot:'Fletcher',details:'e',date:'2026-09-01'}),n.row({name:'Locked',bot:'Dexter',quest:'automation',details:'e',date:TODAY}),n.row({name:'Typo',bot:'Beth Harmon',quest:'spm-typo',details:'e',date:TODAY})];
  const out=await syncParty(env,opts(n),store);
  assert.equal(out.imported,0);assert.equal(out.rejected,6);assert.equal(store.saves,0);
  assert.deepEqual(rows.map(r=>n.get(r,'status')),Array(6).fill('Rejected'));
@@ -116,7 +116,7 @@ test('check-ins arrive newest first and only from the last week',async()=>{
  n.row({name:'Weekly plan',bot:'The War Room',type:'Check-in',details:'Moderated by Patrick Jane.',created:`${TODAY}T10:00:00.000Z`});
  const out=await syncParty(env,opts(n),store);
  assert.deepEqual(out.checkins.map(c=>c.title),['21:02 closeout','Weekly plan','06:58 lineup']);assert.equal(out.checkins[1].bot,'war-room');
- assert.equal(n.writes().length,0,'reading check-ins writes nothing');
+ assert.deepEqual(n.writes().map(w=>w.body.properties?.Type?.select?.name),['Scoreboard'],'reading check-ins writes nothing but the scoreboard');
 });
 
 test('large backlogs are processed in batches',async()=>{
@@ -141,9 +141,29 @@ test('local design mode and missing configuration never contact Notion or the sa
 test('roster: shared copy, ownership, councils and bot field validation',()=>{
  assert.equal(fs.readFileSync('public/game/roster.js','utf8'),fs.readFileSync('lib/roster.cjs','utf8'));
  assert.equal(Roster.BOTS.length+Roster.COUNCILS.length,15);
- for(const [name,id] of [['Grok Bot','grok'],['bossman','bossman'],['Patrick Jane','jane'],['The War Room','war-room'],['War Room','war-room'],['DR EGGBOT','eggbot'],['Beth Harmon','beth']])assert.equal(Roster.find(name).id,id);
+ for(const [name,id] of [['Grok Bot','grok'],['bossman','bossman'],['Patrick Jane','jane'],['The War Room','war-room'],['War Room','war-room'],['DR EGGBOT','eggbot'],['Beth Harmon','beth'],['Beth','beth'],['Carmy','carmen'],['Jane','jane']])assert.equal(Roster.find(name).id,id);
  const s=Engine.fresh();claim(s,'pattern');claim(s,'build');claim(s,'human');
- const st=Roster.stats(s);assert.equal(st.fletcher.xp,40);assert.equal(st.gilfoyle.xp,60);assert.equal(st.grok.xp,20);assert.equal(st.bossman.xp,120);assert.equal(st['career-council'].xp,100);
+ const st=Roster.stats(s);assert.equal(st.fletcher.xp,40);assert.equal(st.gilfoyle.xp,60);assert.equal(st.jane.xp,20,'life claims belong to the Life OS');assert.equal(st.grok.xp,0,'Grok Bot levels from what the party logs');assert.equal(st.bossman.xp,120);assert.equal(st['career-council'].xp,100);
  const bad=Engine.fresh();bad.entries.push({...s.entries[0],bot:{}});assert.throws(()=>Engine.validate(bad),/invalid quest entry/);
  const pure=applyCompletions(Engine.fresh(),[],builtInQuests(),TODAY);assert.equal(pure.added,0);
+});
+
+test('one scoreboard row tells the bots your level, XP and the next threshold',async()=>{
+ const n=fakeNotion(),store=fakeStore(claim(claim(Engine.fresh(),'pattern','LC 20 Valid Parentheses'),'train','NORMAL day, 45 min'));
+ await syncParty(env,opts(n),store);
+ let boards=n.pages.filter(p=>!p.in_trash&&rowRecord(p).type==='Scoreboard');assert.equal(boards.length,1);
+ const text=rowRecord(boards[0]).details;assert.match(text,/^Level 1 · 80 XP · next level at 500 XP \(420 to go\)/);assert.match(text,/Today 2026-10-09: 2 claims, 80 XP/);assert.match(text,/Fletcher L1/);assert.equal(rowRecord(boards[0]).bot,'Bossman');
+ const before=n.writes().length;await syncParty(env,opts(n),store);assert.equal(n.writes().length,before,'unchanged numbers are not rewritten');
+ claim(store.state,'ccdf-mock','Mock 2: 86%');store.revision++;n.row({name:'dup',bot:'Bossman',type:'Scoreboard'});
+ await syncParty(env,opts(n),store);boards=n.pages.filter(p=>!p.in_trash&&rowRecord(p).type==='Scoreboard');
+ assert.equal(boards.length,1);assert.match(rowRecord(boards[0]).details,/180 XP/);
+});
+
+test('new campaign quests resolve by Quest ID and the old IDs are unchanged',async()=>{
+ const n=fakeNotion(),store=fakeStore();
+ n.row({name:'Mock',bot:'Bea',quest:'ccdf-mock',details:'Mock 2: 84%, misses reviewed',date:TODAY});n.row({name:'Bed 23:20',bot:'Control Room',quest:'lights-out',details:'Lights out 23:20',date:TODAY});n.row({name:'SPM',bot:'Beth',quest:'spm',details:'Drill 15/20 cold, reread 2.5',date:TODAY});
+ const out=await syncParty(env,opts(n),store);assert.equal(out.imported,3);
+ assert.deepEqual(store.state.entries.map(e=>[e.key,e.xp,e.bot]),[['ccdf-mock:'+TODAY,100,'beatrix'],['lights-out:'+TODAY,20,'control-room'],['spm:'+TODAY,40,'beth']]);
+ const ids=builtInQuests().map(q=>q.id);for(const id of ['focus','loop','human','pattern','build','forge-boss','client','case','citadel-boss','recover','train','spm','spm-errors','spm-boss','claude','claude-boss','automation','signal','interview'])assert(ids.includes(id),id);
+ assert.equal(Roster.owner({questId:'lights-out',region:'camp'}),'control-room');
 });

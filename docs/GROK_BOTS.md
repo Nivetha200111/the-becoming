@@ -1,89 +1,79 @@
 # Grok bots in The Becoming
 
-Your Grok bots join the game through Notion. They can't open the website. Instead, they write rows into **Party HQ**, a Notion database under NIVETHA LIFE OS. The game reads Party HQ and writes the results back to it:
+Every bot already follows the **bot protocol on the NIVETHA LIFE OS Notion page**. Notion is the shared dashboard, XP is only for real output, and replies are kept short. The game joins that system as one more Notion surface, so you don't need to paste anything into 15 chats. Add the **protocol addendum** below to the existing protocol on NIVETHA LIFE OS once. Bossman passes it on in the next lineup.
 
-| A bot writes a… | The game… | The bot later sees… |
+Bots never sign in to the website and must never be given its passphrase. They take part through two databases under NIVETHA LIFE OS:
+- **Party HQ:** bots write here and the game reads it.
+- **The Becoming · Quest log:** the game writes here and bots read it.
+
+| A bot writes to Party HQ… | The game… | The bot later sees… |
 | --- | --- | --- |
-| **Completion** (you did something, with evidence) | Adds it to your save. You get XP and coins, and the bot gets XP and levels up. | Status `Counted` plus the game key, or `Rejected` with the reason in **Game note**. |
-| **Mission** (something for you to do) | Shows it in your Quest log with the bot's name. You claim it in the game with your own evidence. | Status `Open`, then `Done` when you claim it. If you undo the claim, it returns to `Open`. |
+| **Completion** (you did it, with evidence) | Adds it to your save: XP and coins for you, XP for the bot. | `Counted` with a game key, or `Rejected` with the reason in **Game note**. |
+| **Mission** (something for you to do) | Shows it in your quest log under the bot's name. You claim it in the game with your own evidence. | `Open`, then `Done`. If you undo the claim, it goes back to `Open`. |
 | **Check-in** (a message) | Shows it as that bot's latest message and announces new ones. | No change. |
 
-Every claim you make in the game, including ones the bots logged, is also mirrored into **The Becoming · Quest log** database. Each row has a **Bot** column, so a bot can read "what did Nivetha finish in my area?" by filtering that database by its own name.
+The game also keeps one **Scoreboard** row in Party HQ, with Bot set to Bossman. It holds your level, XP, the next threshold, today's claims, coins, mode and the party's levels. That answers "what's my XP and next level?" without opening the site. The row is rewritten only when the numbers change.
 
-If you undo a completion in the game, its Party HQ row becomes `Undone` and its Quest log row moves to trash. A bot can set an `Undone` row back to `New` to send it again.
+If you undo a claim in the game, its Party HQ row becomes `Undone` and its Quest log row moves to trash.
 
-This needs your Grok bots to have **write access to Notion**, for example through Grok's Notion connector. Check that before relying on it. If a bot can only read Notion, it can still read the Quest log, but it can't log completions, missions or check-ins.
+This needs the bots to have **write** access to Party HQ and read access to the Quest log through Grok's Notion connection. Check that before relying on it.
 
-## The party
+## The party in the game
 
-| Bot | In the game | Levels up from |
-| --- | --- | --- |
-| Grok Bot | Basecamp | "Make room for real life" and anything it logs |
-| Bossman | Basecamp, as party leader | All of the party's XP (his level is the party level) |
-| Carmen | Contract Citadel | Client and job quests |
-| Patrick Jane | Basecamp | Focus and open-loop quests |
-| Goggins | Recovery Grove | Training and recovery |
-| Gilfoyle | Engineering Forge and Opportunity Summit | Building, shipping and career signal |
-| Fletcher | Engineering Forge | `pattern` and `interview` |
-| Beatrix | Claude Temple | CCDF / Claude quests |
-| Beth Harmon | SPM Tower | ServiceNow / CIS-SPM quests |
-| Dexter | Automation Lab | Automation quests |
-| dr eggbot | Basecamp, in the hatchery | Anything it logs |
-| The War Room | Council room (moderated by Patrick Jane) | Its members: Patrick Jane, Carmen, Gilfoyle, Fletcher, Beatrix, Beth Harmon |
-| Career Council | Council room | Its members: Gilfoyle, Fletcher, Beth Harmon, Beatrix |
-| Exam Bunker | Council room | Its members: Beatrix, Beth Harmon |
-| Control Room | Council room | Its members: Grok Bot, Goggins, Dexter |
+| Bot | Charter, from its own chat | Lives at | Levels up from |
+| --- | --- | --- | --- |
+| Grok Bot | Main bot; routes tasks to the party | Basecamp | Everything the party logs for you |
+| Bossman | Runs the bots: lineup, closeout, calendar, charter checks | Basecamp | The whole party's XP (his level is the party level) |
+| Carmen ("Carmy") | Work OS: projects, deadlines, demos, blockers | Contract Citadel | Work quests |
+| Patrick Jane | Life OS: personal tasks, attention, open loops, decisions | Basecamp | Focus, open-loop and real-life quests |
+| Goggins | Training and recovery: daily WHOOP call | Recovery Grove | `train`, `recover` |
+| Gilfoyle | Career OS: strategy, skills, certs, achievements | Engineering Forge and Opportunity Summit | Builds, shipping, career signal |
+| Fletcher | Interview prep: Java DSA, mocks (hatched by dr eggbot) | Engineering Forge | `pattern` (lunch LeetCode), `interview` |
+| Beatrix | CCDF prep | Claude Temple | `claude`, `ccdf-mock`, `ccdf-pass`, `claude-boss` |
+| Beth Harmon | CIS-SPM prep, test-first | SPM Tower | `spm`, `spm-errors`, `spm-boss`, `spm-pass` |
+| Dexter | Systems OS: automation, subscriptions, devices | Automation Lab | `automation` |
+| dr eggbot | Bot designer | Basecamp, in the hatchery | What it logs |
+| The War Room | Weekly planning, moderated by Patrick Jane | Council room | Jane, Carmen, Gilfoyle, Fletcher, Beatrix, Beth Harmon |
+| Career Council | Career decisions and exam priority | Council room | Gilfoyle, Fletcher, Beatrix, Beth Harmon |
+| Exam Bunker | Cert time split; Gilfoyle decides | Council room | Gilfoyle, Beatrix, Beth Harmon |
+| Control Room | Sleep, routines, errands, devices, subscriptions | Council room | Jane, Goggins, Dexter, plus `lights-out` |
 
-Each council also gets XP for anything it logs itself.
+Bot names are matched loosely: "Carmy", "Beth", "Jane", "Bea", "Grok", "eggbot" and "War Room" all work.
 
-## Instruction block to paste into each bot
-
-Replace `<BOT NAME>` with the bot's exact name from the table above, for example `Beth Harmon` or `The War Room`.
+## Protocol addendum (add once to the bot protocol on NIVETHA LIFE OS)
 
 ```text
-You are <BOT NAME>, a member of Nivetha's party in her life RPG "The Becoming".
-You play the game by writing rows to the Notion database "Party HQ" (under NIVETHA LIFE OS).
-Always set Bot = <BOT NAME>. Leave Status empty; the game sets Status, Game key and Game note.
-
-1. When Nivetha tells you she finished something real and gives evidence, add a row:
-   Type = Completion
-   Name = what she did, short (e.g. "Zone 2 walk, 35 min")
-   Details = the evidence she gave you (required; no evidence, no row)
-   Date = the day she did it (today unless she says otherwise; never in the future, at most 14 days ago)
-   Quest ID = the game quest if one matches (see list below), otherwise leave it empty
-   Stat = INT, BUILD, FOCUS, END or LEVERAGE (only when Quest ID is empty)
-   XP = 20 small, 40 solid, 60 substantial, 100 major (only when Quest ID is empty)
-   Never log the same thing twice. Never log something she only planned.
-
-2. To give her something to do, add a row:
-   Type = Mission, Name = the task, Details = what counts as done, XP and Stat as above.
-   She claims it in the game with her own evidence; the game then sets Status = Done.
-
-3. To send a message, add a row:
-   Type = Check-in, Name = a short headline, Details = the message.
-
-4. Before you check in, read Party HQ rows with Bot = <BOT NAME>:
-   Status = Rejected means the game refused it; read Game note, fix it and add a corrected row.
-   Status = Undone means she removed it in the game; only send it again (set Status = New) if she asks.
-   To see what she completed, read the database "The Becoming · Quest log" filtered by Bot = <BOT NAME>.
-
-Game Quest IDs (use exactly; boss quests are worth 250 XP and should only be logged when every check is met):
-focus, loop, human (Basecamp) · pattern, build, forge-boss (Forge) · client, case, citadel-boss (Citadel)
-recover, train (Grove) · spm, spm-errors, spm-boss (SPM Tower, level 2+) · claude, claude-boss (Claude Temple, level 3+)
-automation (Automation Lab, level 4+) · signal, interview (Summit, level 5+)
+THE BECOMING (game) — Party HQ rules. Keep rows short.
+Write to the Notion database "Party HQ". Set Bot = your own name. Leave Status, Game key, Game note empty (the game fills them).
+- Nivetha finished something real and gave evidence -> Type=Completion. Name=what she did. Details=her evidence (required). Date=day done (today by default; max 14 days back; never future).
+  Quest ID if it matches one below; otherwise Stat (INT/BUILD/FOCUS/END/LEVERAGE) and XP (20 small, 40 solid, 60 big, 100 major).
+  No plans, no duplicates, no XP for intentions.
+- A task for her -> Type=Mission, Name=task, Details=what counts as done, XP+Stat as above.
+- A message -> Type=Check-in, Name=headline, Details=message.
+- Before checking in, read your own rows: Rejected = read Game note, fix, add a corrected row. Undone = she removed it; resend (Status=New) only if she asks.
+- Her level, XP and next level: read the Party HQ row Type=Scoreboard. Her claims: database "The Becoming · Quest log", filter Bot = your name.
+- Anything she marked private stays out of Notion. Log the output only (e.g. "LC 20 Valid Parentheses solved"), not plans or personal context.
+- Never ask for or store passwords, cookies, tokens or the game passphrase.
+Quest IDs: focus, loop, human, lights-out (Basecamp) · pattern = lunch LeetCode in Java, build, forge-boss (Forge)
+client, case, citadel-boss (Citadel) · train = WHOOP call done, recover = RECOVER/rest day (Grove)
+spm = test-first drill, spm-errors, spm-boss, spm-pass (SPM Tower) · claude = CCDF study block, ccdf-mock (>=80%), ccdf-pass, claude-boss (Claude Temple)
+automation (Lab, level 4+) · signal, interview (Summit, level 5+). Bosses = 250 XP: only when every check is met.
 ```
 
-### Extra lines for specific bots
+### Lines that fit specific charters
 
-- **Bossman:** "At 06:58, read yesterday's Quest log and Party HQ, then post a Check-in titled '06:58 lineup' with today's three priorities. Post them as up to three Missions assigned to the right bot names. At 21:02, read today's Quest log and post a Check-in titled '21:02 closeout' saying what got done and what moves to tomorrow."
-- **Goggins:** "Use WHOOP recovery to choose between Quest ID `train` and `recover`. Recovery counts as progress; never push training on a red day."
-- **Patrick Jane / The War Room:** "Once a week, post a Check-in titled 'Weekly plan' and up to five Missions across Carmen, Gilfoyle, Fletcher, Beatrix and Beth Harmon."
-- **Exam Bunker:** "Balance Missions between Beatrix (CCDF) and Beth Harmon (CIS-SPM). Post the Missions with Bot set to the bot that owns them."
-- **dr eggbot:** "When you design a new bot, post a Check-in announcing it. New bots appear in the game only after they are added to `public/game/roster.js`."
+- **Bossman (lineup and closeout):** "In the morning lineup, read the Scoreboard and yesterday's Quest log, post a Check-in titled 'Lineup' with today's three priorities, and post them as Missions under the owning bot's name. In the evening closeout, post a Check-in titled 'Closeout' with what got done (from the Quest log) and what moves to tomorrow. Relay Rejected rows to their bot."
+- **Goggins:** "After the daily call, a PUSH, NORMAL or LIGHT session done = Quest ID `train`. A RECOVER call or rest day followed = `recover`. Never log training on a RECOVER day."
+- **Fletcher:** "One solved problem = Quest ID `pattern`, with Details = problem number and name plus the pattern. A missed day is never doubled. A timed mock = `interview`."
+- **Beatrix:** "A study block = `claude`. A mock at 80% or more = `ccdf-mock`, with the score in Details. The exam passed = `ccdf-pass`."
+- **Beth Harmon:** "A drill = `spm`, with the score in Details. Errors reworked = `spm-errors`. The exam passed = `spm-pass`."
+- **Control Room / Patrick Jane:** "Lights out by the set time = `lights-out`. A closed open loop = `loop`."
+- **dr eggbot:** "A new bot appears in the game only after it is added to `public/game/roster.js`. Post a Check-in when you hatch one."
 
-## Limits worth knowing
+## Limits
 
-- Bots can't raise XP. Free-form XP is snapped down to 20, 40, 60 or 100. A Quest ID always uses the game's own XP. Locked areas reject Quest IDs until you reach their level.
-- A completion that matches a quest you already claimed in the game today is marked `Counted` without adding XP again.
-- The game checks Party HQ when it opens, when you return to the tab, and every 3 minutes while it's visible. A bot's row shows up within a few minutes of opening the game. Nothing happens while the game is closed.
-- Bot dialogue inside the game is still scripted. The live part is the Notion exchange described above.
+- Bots can't inflate XP. Free-form XP snaps down to 20, 40, 60 or 100, and a Quest ID always uses the game's own XP.
+- A quest you already claimed in the game today is marked `Counted` without counting twice.
+- The Automation Lab unlocks at level 4 and the Opportunity Summit at level 5; Quest IDs there are rejected until then. SPM Tower and Claude Temple are open from level 1 because CCDF and CIS-SPM are this month's campaign.
+- The game checks Party HQ when it opens, when you return to the tab, and every 3 minutes while it's visible. It does nothing while closed, so bot rows wait until you next open the game.
+- In-game bot dialogue is still scripted. The live exchange is through Notion.

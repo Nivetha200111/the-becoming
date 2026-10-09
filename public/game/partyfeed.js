@@ -31,8 +31,8 @@ window.PartyFeed=(function(){
   if(again)timer=setTimeout(()=>poll(true),again);
  }
  // Local design mode never contacts Notion; it shows a labelled sample so the party can be designed.
- const SAMPLE={missions:[{key:'party:sample-fletcher',bot:'fletcher',title:'Two LeetCode mediums, explained aloud',detail:'Sample mission (local design only). Solve two medium problems and record the pattern each one used.',xp:40,stat:'INT',sample:true},{key:'party:sample-goggins',bot:'goggins',title:'Zone 2 walk if recovery is green',detail:'Sample mission (local design only). Check WHOOP recovery first. Green means 30 minutes, red means rest.',xp:20,stat:'END',sample:true}],
-  checkins:[{id:'sample-bossman',bot:'bossman',title:'06:58 lineup',message:'Sample check-in. Three priorities: Carmen\'s client milestone, one Beth study block, and a Goggins walk.',date:'',at:''},{id:'sample-jane',bot:'jane',title:'Keep it clear',message:'Sample check-in. One open loop to close before lunch.',date:'',at:''}]};
+ const SAMPLE={missions:[{key:'party:sample-fletcher',bot:'fletcher',title:'LC 20 Valid Parentheses in Java',detail:'Sample mission (local design only). Lunch slot, stacks first. Record the pattern and one edge case.',xp:40,stat:'INT',sample:true},{key:'party:sample-beatrix',bot:'beatrix',title:'CCDF mock under exam conditions',detail:'Sample mission (local design only). Timed, without notes; review every miss against the docs.',xp:60,stat:'INT',sample:true}],
+  checkins:[{id:'sample-bossman',bot:'bossman',title:'Lineup',message:'Sample check-in. Three priorities: one CCDF block with Beatrix, lunch LeetCode with Fletcher, and today\'s WHOOP call with Goggins.',date:'',at:''},{id:'sample-goggins',bot:'goggins',title:'NORMAL',message:'Sample check-in. Recovery is fine: one hour of cardio, one hour of strength.',date:'',at:''}]};
  function init(){
   if(window.LOCAL_DESIGN_MODE){say('Party HQ sample · local design');apply(SAMPLE);return;}
   poll(true);setInterval(()=>{if(document.visibilityState==='visible')poll();},POLL_MS);

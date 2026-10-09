@@ -97,7 +97,7 @@ The Quest log also has a **Bot** (select) property. It records which bot each cl
 
 ## Party HQ (Grok bots → game)
 
-Your Grok bots write Completions, Missions and Check-ins into a second Notion database, **Party HQ**. The bot-facing guide and the instruction block to paste into each bot are in [GROK_BOTS.md](GROK_BOTS.md).
+Your Grok bots write Completions, Missions and Check-ins into a second Notion database, **Party HQ**. They already follow the bot protocol on NIVETHA LIFE OS, so the game's rules are one short protocol addendum added there once. The addendum and the bot-facing guide are in [GROK_BOTS.md](GROK_BOTS.md). Bots never sign in to the site and must never be given its passphrase.
 
 ### How it works
 
@@ -110,6 +110,7 @@ Your Grok bots write Completions, Missions and Check-ins into a second Notion da
   - Completions counted in the last 30 days whose key is no longer in the save are marked `Undone`.
 - **Missions** (`Status` empty, `New` or `Open`, plus `Done` edited in the last 14 days) come back to the browser and appear as quests with the id `party:<row id>`. When the key appears in the save, the row is set to `Done`; when it disappears, it goes back to `Open`. `Cancelled` missions are hidden.
 - **Check-ins** from the last 7 days come back newest first.
+- **Scoreboard:** the game keeps exactly one `Type = Scoreboard` row, with Bot = Bossman. It holds level, XP, the next threshold, today's claims, coins, mode and party levels. It is rewritten only when the text changes, and extra rows go to trash. Bots read it to answer "what's my XP and next level?".
 - When completions are imported, the Quest log mirror runs in the same request, as a best effort. The browser's normal `/api/notion` trigger covers anything this misses.
 - Entries carry an optional `bot` field, a roster id. The field is optional and validated by `engine.js`, so the save stays version 1. Per-bot XP and levels come from `public/game/roster.js` (`GameRoster.stats`). That file is copied exactly to `lib/roster.cjs` for the server, and a test enforces that the copies match.
 
@@ -119,7 +120,7 @@ Your Grok bots write Completions, Missions and Check-ins into a second Notion da
 | --- | --- | --- |
 | Name | Title | bot |
 | Bot | Select (the 15 roster names) | bot |
-| Type | Select: Completion, Mission, Check-in | bot |
+| Type | Select: Completion, Mission, Check-in, Scoreboard | bot (Scoreboard: game) |
 | Status | Select: New, Open, Counted, Done, Rejected, Undone, Cancelled | game (bots leave it empty, or set `New`/`Cancelled`) |
 | Quest ID | Text | bot (optional) |
 | Stat | Select: INT, BUILD, FOCUS, END, LEVERAGE | bot |
@@ -141,7 +142,7 @@ Your Grok bots write Completions, Missions and Check-ins into a second Notion da
    It prints `NOTION_PARTY_DATABASE_ID=…`. To check an existing database instead, run `check-party <database-id>`.
 3. Connect your Grok bots' Notion access to Party HQ and to the Quest log, so they can write the first and read both.
 4. Add `NOTION_PARTY_DATABASE_ID` to Vercel as an encrypted, server-side variable, then redeploy. Add `NOTION_PARTY_DATA_SOURCE_ID` only if the database has several data sources.
-5. Paste the instruction block from [GROK_BOTS.md](GROK_BOTS.md) into each bot. Ask one bot to log a small completion with evidence, then open the game. The footer should show `Party HQ synced`, and you should get a toast and the XP.
+5. Add the protocol addendum from [GROK_BOTS.md](GROK_BOTS.md) to the bot protocol on NIVETHA LIFE OS, and let Bossman relay it. Ask one bot to log a small completion with evidence, then open the game. The footer should show `Party HQ synced`, and you should get a toast and the XP.
 
 `GET /api/health` reports `partySync: "configured"` once the variables are present. That is configuration only, not proof of a live exchange.
 
