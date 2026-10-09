@@ -6,7 +6,23 @@ A peaceful little world worth returning to each day: sage greens, warm parchment
 
 ## Current art
 
-The map uses a 1100 × 720 logical canvas. app.js scales pointer coordinates to that space; retain this transform when changing the viewport. Island, trees, buildings and player art are canvas drawing helpers, while bot portraits and wardrobe details use inline SVG. Sprites are drawn in party.js after the base map. There are no separate raster assets to recover.
+The world is rendered in 3D by `public/game/world3d.js` (three.js, vendored under `public/game/vendor/three`). Game logic still lives on the 1100 × 720 logical map: app.js moves `state.position` in logical units and the save format is unchanged. world3d.js maps that map to metres (`toW`/`toL`, 0.08 m per unit), turns keyboard movement relative to the camera, keeps the avatar out of buildings, trees and the sea, and raycasts clicks back to logical coordinates. The 2D canvas helpers in app.js/party.js remain as the fallback when WebGL2 is unavailable.
+
+Everything is generated in code: a heightfield island with flattened pads under each landmark and dirt paths from camp, a depth-tinted water shader with shoreline foam, a sky shader with clouds that also lights the scene through an environment map, instanced grass, flowers, trees, bushes and rocks with wind, eight landmarks built from primitives with procedural stone, roof and wood textures, and cel-shaded characters with ink outlines built as skinned meshes. Normal mode is a clear afternoon; Recovery mode turns the world to dusk with lanterns and fireflies. Locked areas sit behind a shimmering barrier until their level.
+
+Where to tune things in world3d.js:
+
+| Change | Look for |
+| --- | --- |
+| Time-of-day colours, sun, fog, bloom | `PRESETS` |
+| Landmark placement, pad size, label height | `SITES` |
+| A landmark's model | `buildSite()` |
+| Terrain shape and colours | `rawHeight()` and the terrain colour block in `start()` |
+| Tree, bush and rock shapes | `treeGeometry()`, `rockGeometry()` |
+| Character outfits and hair | `lookFor()`, `PLAYER_LOOK`, `hair()` |
+| Density per device | `Q` quality tiers (phone, tablet, desktop); resolution also adapts to the frame rate |
+
+When the local design server runs, `window.world3d` exposes the scene, camera and presets in the browser console for inspection.
 
 ## Characters
 
