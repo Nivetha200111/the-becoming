@@ -17,11 +17,13 @@ Use Node 22.13+ and npm. Run `npm ci`, then `npm run dev:local`, and open http:/
 | public/game/data.js | World areas and quest definitions |
 | public/game/engine.js | Pure state, XP, levels, coins, validation |
 | public/game/sync-core.js | Three-way save merge |
-| public/game/cloud.js | Polling, offline queue, revision conflict handling |
+| public/game/cloud.js | Polling, offline queue, revision conflict handling, Notion sync trigger and footer status |
 | app/page.jsx and app/api/game/route.js | Next.js shell and authenticated game HTML |
 | app/api/state/route.js | Authenticated save API |
 | lib/auth.mjs | Passphrase sessions and development-only design mode |
 | lib/save-store.mjs | Server-only bridge to existing save backend |
+| app/api/notion/route.js and lib/notion-sync.mjs | Authenticated one-way mirror of saved quest entries into a Notion database |
+| scripts/notion-setup.mjs | Creates or checks the Notion quest-log database |
 
 ## Design work
 
@@ -37,7 +39,7 @@ If you change engine.js, copy it exactly to lib/engine.cjs so server validation 
 
 ## Integration state — do not overclaim
 
-Bot dialogue is scripted, not connected to live Grok/Claude sessions. Live Notion sync is not implemented. The production save API currently bridges to the existing owner-private Site, so it still needs `SITES_SAVE_TOKEN` supplied securely server-side. For complete hosting independence, replace savedState() with a durable database adapter preserving the GET/POST revision contract; never use Vercel's local filesystem for persistent saves. See docs/DEPLOYMENT.md.
+Bot dialogue is scripted, not connected to live Grok/Claude sessions. Notion sync is one way only (game → Notion): after a confirmed cloud save, the browser calls POST /api/notion, and the server re-reads the saved state and reconciles it against the database by entry `key`. It creates missing records, updates changed ones, moves undone ones to trash, and removes duplicates. Nothing is read back into the game. It needs `NOTION_TOKEN` and `NOTION_DATABASE_ID` server-side, does nothing in local design mode, and is covered only by mocked-API tests (tests/notion.test.mjs) until someone runs it against the real workspace. Keep the Notion property names in lib/notion-sync.mjs (`PROPS`) aligned with the database. The production save API currently bridges to the existing owner-private Site, so it still needs `SITES_SAVE_TOKEN` supplied securely server-side. For complete hosting independence, replace savedState() with a durable database adapter preserving the GET/POST revision contract; never use Vercel's local filesystem for persistent saves. See docs/DEPLOYMENT.md.
 
 ## Suggested first task
 
