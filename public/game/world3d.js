@@ -2041,7 +2041,7 @@ function start() {
         ${done ? '<div class="qs-stamp">Completed today</div>' : ''}
         <div class="qs-actions">${done ? '<button type="button" class="primary" data-act="close">Close the scroll</button>' : '<button type="button" class="primary" data-act="accept">Accept quest ✦</button><button type="button" class="secondary" data-act="claim">I’ve done it · claim XP</button>'}<button type="button" class="secondary" data-act="another">Another quest</button><button type="button" class="qs-link" data-act="list">All of ${esc(shortName(giver))}’s quests</button></div>
       </div></div><div class="qs-rod"></div></div><button type="button" class="qs-close" aria-label="Close the scroll">×</button>`;
-      document.body.append(el);
+      (document.fullscreenElement || document.webkitFullscreenElement || document.querySelector('.world-frame.immersive') || document.body).append(el);
       setTimeout(() => el.classList.add('open'), 30);
       const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close('close'); } };
       const close = v => { if (!el.isConnected || el.classList.contains('closing')) return; el.classList.remove('open'); el.classList.add('closing'); document.removeEventListener('keydown', onKey, true); talk.closeScroll = null; setTimeout(() => el.remove(), reduceMotion.matches ? 0 : 360); resolve(v); };

@@ -89,3 +89,7 @@ Saves: Treasury redemptions are also packed into hidden `custom-reward-*` custom
 ## Veer
 
 Veer is Nivetha's Kombai: a tan-red coat, black muzzle, folded rose ears, a curled tail, and a red collar with a gold tag. He is built with `makeDog(..., { muzzle, ears: 'rose', collar, scale })` and driven by `veerFrame()`. He follows on her right everywhere, including the realms and the ferry. When she stops he sits and looks up at her, and when she sits down (rest, campfire, phone, meditation, LeetCode) he lies down with his head on her lap. "Pet Veer" (key 6) gives him a cuddle, and Mochi can still be petted by clicking her. He also appears in her portrait.
+
+## Full screen
+
+The ⛶ button on the map (or F with the map focused) puts the world in full screen. It uses the browser Fullscreen API on `.world-frame` and falls back to a fixed overlay (`.immersive`) where that API is missing, such as on iPhones. While full screen is on, the action bar and toasts move inside the frame as a compact overlay, and quest scrolls mount inside it. Esc or the button exits. The Next.js iframe allows `fullscreen`.
