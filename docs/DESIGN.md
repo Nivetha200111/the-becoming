@@ -2,7 +2,15 @@
 
 ## Direction
 
-A peaceful little world worth returning to each day: sage greens, warm parchment, muted gold, rounded surfaces, serif headings and compact sans-serif controls. The design should encourage one meaningful action without overwhelming the player. Keep the canvas world as the visual center and let progress be visible in the landscape and character.
+A peaceful little world worth returning to each day, styled as Renaissance × Genshin × Studio Ghibli:
+
+- **Renaissance:** illuminated-manuscript parchment, gold-leaf frames with corner ornaments, lapis-ultramarine panels, Cinzel inscriptional caps and Cormorant Garamond prose, Tuscan cypress trees and a warm varnish vignette on the 3D scene.
+- **Genshin:** gilded pill buttons, waypoint-style area tiles, character cards with a coloured banner and stars, rarity stars on quests, and the dark notice band for toasts.
+- **Ghibli:** soft painted skies, lush meadows, warm lantern light and calm pacing.
+
+The tokens live at the top of `style.css` (`--paper`, `--lapis`, `--gold`, `--display`, `--serif`, `--ui`). Fonts come from Google Fonts and fall back to Georgia and the system sans-serif. The design should encourage one meaningful action without overwhelming the player. Keep the world as the visual center and let progress be visible in the landscape and character.
+
+3D labels are laid out each frame in `layoutLabels()` in world3d.js: the most important and nearest labels go first. Any label that would cover another label or the map controls lifts or slides aside, and fades out only when there is no room.
 
 ## Current art
 

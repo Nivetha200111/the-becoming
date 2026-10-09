@@ -1,1 +1,15 @@
-html,body{margin:0;padding:0;width:100%;min-height:100%;background:#eeeee5;color:#293c35;font:14px 'Segoe UI',sans-serif}*{box-sizing:border-box}.login{max-width:420px;margin:12vh auto;padding:35px;background:#f6f4ea;border:1px solid #d4dbc7;border-radius:12px}.login h1{font:normal 34px Georgia,serif}.login p{color:#7c8874;line-height:1.8}.login label{display:block;margin:20px 0 8px}.login input{width:100%;padding:12px;border:1px solid #d3dcc7;border-radius:4px;background:#fffdf4;font:inherit}.login button{margin-top:20px;background:#365e4b;color:#f7f3df;padding:12px 20px;border:0;border-radius:5px;cursor:pointer}.sigil{font-size:40px;color:#a3915f}.error{color:#a35744!important}@media(max-width:500px){.login{margin:10vh 16px;padding:25px}}
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:ital,wght@0,600;1,500&family=Nunito:wght@600;700&display=swap');
+html,body{margin:0;padding:0;width:100%;min-height:100%;color:#2f2418;font:15px/1.5 'Nunito','Segoe UI',system-ui,sans-serif;background:radial-gradient(1000px 500px at 80% -10%,#cfe6ef,transparent 70%),radial-gradient(ellipse at 50% 40%,#fbf3e1,#f3e6c9 70%,#ead7ae);background-attachment:fixed}
+*{box-sizing:border-box}
+.login{position:relative;max-width:440px;margin:12vh auto;padding:40px 36px 34px;text-align:center;border-radius:20px;background:linear-gradient(180deg,#fdf8ea,#f3e4c1);box-shadow:0 0 0 1px #c49a45,0 0 0 6px #fbf3df,0 0 0 7px #c49a4573,0 30px 60px -24px #3b2a1288}
+.login h1{font:600 42px/1.1 'Cormorant Garamond',Georgia,serif;margin:16px 0 4px}
+.login p{font:italic 500 18px/1.6 'Cormorant Garamond',Georgia,serif;color:#5f4f39;margin:0 0 6px}
+.login form{text-align:left;margin-top:18px}
+.login label{display:block;margin:18px 0 8px;font:700 10px 'Cinzel',Georgia,serif;letter-spacing:1.6px;color:#8a6424;text-transform:uppercase}
+.login input{width:100%;padding:13px 14px;border:0;border-radius:10px;background:#fffdf6;box-shadow:inset 0 0 0 1px #d6c293;font:inherit}
+.login input:focus{outline:none;box-shadow:inset 0 0 0 1.5px #c49a45,0 0 0 4px #f2d68c44}
+.login button{width:100%;margin-top:20px;min-height:46px;padding:12px 20px;border:0;border-radius:999px;cursor:pointer;color:#fbf1d6;font:700 12px 'Cinzel',Georgia,serif;letter-spacing:1.6px;background:linear-gradient(180deg,#3b5895,#22355e 60%,#1b2b4f);box-shadow:0 0 0 1px #c49a45,0 8px 18px -8px #141f3aaa}
+.login button:focus-visible{outline:3px solid #c49a45;outline-offset:3px}
+.sigil{display:inline-grid;place-items:center;width:58px;height:58px;font-size:28px;color:#f2d68c;border-radius:50%;background:radial-gradient(circle at 35% 30%,#3d5994,#172443);box-shadow:0 0 0 1px #c49a45,0 0 0 5px #f2d68c22,0 0 22px #f2d68c55}
+.error{color:#b4492f!important;font-style:normal!important;font-size:14px!important}
+@media(max-width:500px){.login{margin:8vh 16px;padding:30px 22px}}

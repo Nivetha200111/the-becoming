@@ -568,6 +568,13 @@ function treeGeometry(kind, rng, detail) {
       for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), yy = p.getY(i), w = 1 + .14 * noise2(x * 3 + k, z * 3); p.setXYZ(i, x * w, yy, z * w); }
       g.translate(0, y + h / 2, 0); g.computeVertexNormals(); parts.push(finishPart(g, (c, x, yy) => c.copy(lo).lerp(hi, clamp((yy - y) / h * .8 + k * .08, 0, 1))));
     }
+  } else if (kind === 'cypress') {
+    // Tuscan cypress: the tall flame-shaped tree of Renaissance landscapes.
+    trunk(.16, .1, .9);
+    const lo = C('#1d4a2c'), hi = C('#6a9a4c'), prof = [[0, .5], [.46, .95], [.6, 1.8], [.58, 2.8], [.46, 3.8], [.28, 4.7], [.1, 5.3], [0, 5.55]].map(([r, y]) => new THREE.Vector2(r, y));
+    const g = new THREE.LatheGeometry(prof, 10), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), w = 1 + .16 * noise2(x * 4 + y * 1.7, z * 4 - y); p.setXYZ(i, x * w, y, z * w); }
+    g.computeVertexNormals(); parts.push(finishPart(g, (c, x, y, z) => c.copy(lo).lerp(hi, clamp(y / 5.5 * .7 + Math.max(0, x + z) * .18, 0, 1))));
   } else if (kind === 'bush') {
     const centre = new THREE.Vector3(0, .45, 0), lo = C('#3a7330'), hi = C('#98c653');
     for (let k = 0; k < 3; k++) parts.push(blob(.45 + rng() * .25, (rng() - .5) * .8, .4 + rng() * .2, (rng() - .5) * .8, lo, hi, rng, 1, centre));
@@ -906,7 +913,7 @@ function start() {
   const PRESETS = {
     night: { sunColor: '#b9c9ff', sunI: 0, zenith: '#081230', horizon: '#1d2c58', hemiSky: '#4a5f9c', hemiGround: '#1f2534', hemiI: .62, cloudLight: '#4f5e8c', cloudShadow: '#1a2444', cover: .42, env: .38, exposure: 1.28, shallow: '#1d5878', deep: '#0a1d3b', light: .34, glow: 1, fog: .0046, flies: 1, motes: .15, bloom: .55, stars: 1 },
     dawn: { sunColor: '#ffc59a', sunI: 2.3, zenith: '#5a7fc6', horizon: '#f6c2a6', hemiSky: '#c4bce6', hemiGround: '#6b6a58', hemiI: .82, cloudLight: '#ffdcc6', cloudShadow: '#9a8bb2', cover: .46, env: .5, exposure: 1.06, shallow: '#4cb6bc', deep: '#1c4f86', light: .74, glow: .45, fog: .0046, flies: 0, motes: .7, bloom: .4, stars: 0 },
-    day: { sunColor: '#fff0d6', sunI: 3.1, zenith: '#2f7ad8', horizon: '#b9d9ef', hemiSky: '#cfe4ff', hemiGround: '#7d9556', hemiI: 1.05, cloudLight: '#ffffff', cloudShadow: '#b3c3da', cover: .5, env: .62, exposure: 1, shallow: '#45d2c5', deep: '#11709e', light: 1, glow: .12, fog: .0042, flies: 0, motes: 1, bloom: .32, stars: 0 },
+    day: { sunColor: '#ffedcf', sunI: 3.1, zenith: '#3a80d6', horizon: '#c4def0', hemiSky: '#cfe4ff', hemiGround: '#7d9556', hemiI: 1.05, cloudLight: '#ffffff', cloudShadow: '#b3c3da', cover: .5, env: .62, exposure: 1, shallow: '#45d2c5', deep: '#11709e', light: 1, glow: .12, fog: .0042, flies: 0, motes: 1, bloom: .32, stars: 0 },
     dusk: { sunColor: '#ffb27c', sunI: 2.4, zenith: '#2c3b78', horizon: '#f4b38c', hemiSky: '#9aa2dc', hemiGround: '#514654', hemiI: .72, cloudLight: '#ffcfae', cloudShadow: '#7a6a98', cover: .52, env: .45, exposure: 1.08, shallow: '#3aa0a6', deep: '#1a3e6d', light: .62, glow: 1, fog: .0048, flies: .6, motes: .35, bloom: .48, stars: 0 },
   };
   const COLOR_KEYS = ['sunColor', 'zenith', 'horizon', 'hemiSky', 'hemiGround', 'cloudLight', 'cloudShadow', 'shallow', 'deep'], NUM_KEYS = ['sunI', 'hemiI', 'cover', 'env', 'exposure', 'light', 'glow', 'fog', 'flies', 'motes', 'bloom', 'stars'];
@@ -1116,7 +1123,7 @@ function start() {
   const landmarkClear = (x, z, pad) => PADS.every(p => Math.hypot(x - p.x, z - p.z) > p.r + pad) && staticObstacles.every(o => { const [ox, oz] = toW(o.x, o.y); return Math.hypot(x - ox, z - oz) > o.r * SCALE + pad * .5; });
   const keepClear = [...WORLD.map(r => [...toW(r.x, r.y + 32), 6.5]), ...PARTY.map(b => [...toW(b.x, b.y), 2.6]), ...PARTY_COUNCILS.map(c => [...toW(c.x, c.y), 3.6]), [...toW(555, 395), 5], [gx, gz, 4]];
   const nearKeep = (x, z, scale) => keepClear.some(([kx, kz, r]) => Math.hypot(x - kx, z - kz) < r * scale);
-  const kinds = ['oak', 'birch', 'pine', 'sakura'], placed = { oak: [], birch: [], pine: [], sakura: [] }, grovePos = toW(...SITES.grove.at);
+  const kinds = ['oak', 'birch', 'pine', 'sakura', 'cypress'], placed = { oak: [], birch: [], pine: [], sakura: [], cypress: [] }, grovePos = toW(...SITES.grove.at);
   for (let tries = 0, n = 0; n < Q.trees && tries < Q.trees * 60; tries++) {
     const x = bx0 + vr() * (bx1 - bx0), z = bz0 + vr() * (bz1 - bz0), d = sdfAt(x, z), h = heightAt(x, z);
     if (d < 3.4 || h > 10.5 || slopeAt(x, z) > .5 || pathDistAt(x, z) < 2.8 || !landmarkClear(x, z, 3.2) || nearKeep(x, z, 1)) continue;
@@ -1124,7 +1131,7 @@ function start() {
     if (vr() > smooth(-.25, .45, fbm(x * .06 + 100, z * .06, 2)) * .85 + .1) continue;
     if ([...Object.values(placed)].some(list => list.some(t => Math.hypot(t[0] - x, t[1] - z) < 2.4 * t[3]))) continue;
     const nearGrove = Math.hypot(x - grovePos[0], z - grovePos[1]) < 14;
-    const kind = h > 5.5 ? 'pine' : nearGrove && vr() < .55 ? 'sakura' : kinds[[0, 0, 0, 1, 2, 2, 0, 1][vr() * 8 | 0]];
+    const kind = h > 5.5 ? 'pine' : nearGrove && vr() < .55 ? 'sakura' : kinds[[0, 0, 4, 1, 2, 4, 0, 1][vr() * 8 | 0]];
     const s = .8 + vr() * .55; placed[kind].push([x, z, vr() * 6.28, s]); n++;
     const [lx, ly] = toL(x, z); treeObstacles.push({ x: lx, y: ly, r: .42 * s / SCALE });
   }
@@ -1214,7 +1221,7 @@ function start() {
   composer.addPass(new ShaderPass({
     uniforms: { tDiffuse: { value: null } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
-    fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ vec4 c=texture2D(tDiffuse,vUv); float l=dot(c.rgb,vec3(.2126,.7152,.0722)); c.rgb=mix(vec3(l),c.rgb,1.12); float v=smoothstep(.95,.3,length((vUv-.5)*vec2(1.25,1.))); c.rgb*=mix(.8,1.,v); gl_FragColor=c; }',
+    fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ vec4 c=texture2D(tDiffuse,vUv); float l=dot(c.rgb,vec3(.2126,.7152,.0722)); c.rgb=mix(vec3(l),c.rgb,1.12); float v=smoothstep(.95,.3,length((vUv-.5)*vec2(1.25,1.))); c.rgb*=mix(vec3(.80,.72,.60),vec3(1.),v); gl_FragColor=c; }',
   }));
   composer.addPass(new OutputPass());
 
@@ -1228,6 +1235,34 @@ function start() {
   const seaLabel = label('w3-sea'); seaLabel.textContent = 'THE SEA OF POSSIBILITY'; const seaPos = new THREE.Vector3(...(([x, z]) => [x, .3, z])(toW(200, 690)));
   const compass = document.createElement('div'); compass.className = 'w3-compass'; compass.setAttribute('aria-hidden', 'true'); compass.innerHTML = '<span>N</span>'; layer.after(compass);
   const clock = document.createElement('div'); clock.className = 'w3-clock'; clock.setAttribute('role', 'status'); clock.title = 'Time in India: the sky follows the real clock'; compass.after(clock);
+  const labelQueue = [], taken = [];
+  let hudRects = [], hudAge = 1e9;
+  const sizeOf = el => el._size ??= [el.offsetWidth, el.offsetHeight];
+  const resetLabelSizes = () => { for (const el of layer.children) el._size = null; hudAge = 1e9; };
+  document.fonts?.ready.then(resetLabelSizes);
+  const fadeLabel = (el, target) => { const o = el._op ?? 0, next = o + (target - o) * .22; el._op = Math.abs(next - target) < .01 ? target : next; el.style.opacity = el._op.toFixed(3); };
+  const overlaps = (r, list) => list.some(q => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1]);
+  function measureHud() {
+    const box = canvas.getBoundingClientRect();
+    hudRects = [...frameEl.querySelectorAll('.map-caption span,.map-caption button,.w3-compass,.w3-clock,.map-hint,.touch-controls')].map(e => e.getBoundingClientRect()).filter(r => r.width && r.height)
+      .map(r => [r.left - box.left - 6, r.top - box.top - 6, r.right - box.left + 6, r.bottom - box.top + 6]);
+  }
+  function layoutLabels() {
+    if (++hudAge > 45) { hudAge = 0; measureHud(); }
+    labelQueue.sort((a, b) => b.pri - a.pri || a.d - b.d);
+    taken.length = 0;
+    for (const L of labelQueue) {
+      const [w, h] = sizeOf(L.el), step = h + 6; let spot = null;
+      for (const [dx, dy] of [[0, 0], [0, step], [0, -step], [0, 2 * step], [w * .6, 0], [-w * .6, 0], [w * .6, step], [-w * .6, step]]) {
+        const cx = clamp(L.x + dx, w / 2 + 4, viewW - w / 2 - 4), r = [cx - w / 2 - 3, L.y - h - dy - 3, cx + w / 2 + 3, L.y - dy + 3];
+        if (!overlaps(r, taken) && !overlaps(r, hudRects)) { spot = [cx - L.x, dy]; taken.push(r); break; }
+      }
+      const ease = (k, v) => L.el[k] = L.el[k] === undefined ? v : L.el[k] + (v - L.el[k]) * .3;
+      if (spot) { ease('_dx', spot[0]); ease('_lift', spot[1]); }
+      fadeLabel(L.el, spot ? L.op : 0);
+      L.el.style.transform = `translate3d(${L.x + (L.el._dx ?? 0)}px,${L.y - (L.el._lift ?? 0)}px,0) translate(-50%,-100%)`;
+    }
+  }
   frameEl.classList.add('is-3d');
   const hint = frameEl.querySelector('.map-hint'), hint2d = hint?.textContent; if (hint) hint.textContent = touch ? 'Tap to travel · Drag to look · Pinch to zoom' : 'Click to travel · Drag or Q / R to look around · Scroll to zoom · WASD to walk · E to enter';
   const label2d = canvas.getAttribute('aria-label');
@@ -1239,6 +1274,7 @@ function start() {
   let viewW = 1, viewH = 1, pixelRatio = Math.min(window.devicePixelRatio || 1, Q.pr), maxRatio = pixelRatio;
   function resize3d() {
     const r = canvas.getBoundingClientRect(); if (!r.width || !r.height) return;
+    hudAge = 1e9;
     viewW = r.width; viewH = r.height;
     renderer.setPixelRatio(pixelRatio); renderer.setSize(viewW, viewH, false);
     composer.setPixelRatio(pixelRatio); composer.setSize(viewW, viewH);
@@ -1266,14 +1302,14 @@ function start() {
       lastLevel = level; paintPaths(level);
       for (const r of WORLD) { const locked = level < r.unlock; sites[r.id].dome.visible = sites[r.id].rune.visible = locked; }
       for (const o of bots) { const open = level >= WORLD.find(r => r.id === o.b.region).unlock; o.ch.root.visible = open; o.proxy.visible = open; }
-      areaLabels.forEach(a => { const locked = level < a.r.unlock; a.el.classList.toggle('locked', locked); a.el.innerHTML = `<b>${esc(a.r.name)}</b><small>${locked ? '◇ LEVEL ' + a.r.unlock : esc(a.r.bot.toUpperCase())}</small>`; });
+      areaLabels.forEach(a => { const locked = level < a.r.unlock; a.el.classList.toggle('locked', locked); a.el._size = null; a.el.innerHTML = `<b>${esc(a.r.name)}</b><small>${locked ? '◇ LEVEL ' + a.r.unlock : esc(a.r.bot.toUpperCase())}</small>`; });
       gate.visible = level >= 7; refreshObstacles(level);
       for (const o of councils) { const open = partyUnlocked(o.c); o.group.visible = open; o.proxy.visible = open; }
     }
     // Name tags show each bot's level; a gold ! means the bot has a quest for you (Genshin-style).
     const st = partyStats();
-    for (const { o, el } of botLabels) { const has = !!nextQuestFor(o.b), html = `<i class="${has ? 'quest' : ''}">${has ? '!' : '…'}</i>${esc(o.b.name)}${st[o.b.id] ? ` <em>Lv ${st[o.b.id].level}</em>` : ''}`; if (el.innerHTML !== html) el.innerHTML = html; }
-    for (const { o, el } of councilLabels) { const open = partyUnlocked(o.c), html = `<b>${esc(o.c.name)}</b><small>${open ? 'COUNCIL · LV ' + (st[o.c.id]?.level ?? 1) + (nextQuestFor(o.c) ? ' · !' : '') : '◇ LEVEL ' + WORLD.find(r => r.id === o.c.region).unlock}</small>`; el.classList.toggle('locked', !open); if (el.innerHTML !== html) el.innerHTML = html; }
+    for (const { o, el } of botLabels) { const has = !!nextQuestFor(o.b), html = `<i class="${has ? 'quest' : ''}">${has ? '!' : '…'}</i>${esc(o.b.name)}${st[o.b.id] ? ` <em>Lv ${st[o.b.id].level}</em>` : ''}`; if (el.innerHTML !== html) { el.innerHTML = html; el._size = null; } }
+    for (const { o, el } of councilLabels) { const open = partyUnlocked(o.c), html = `<b>${esc(o.c.name)}</b><small>${open ? 'COUNCIL · LV ' + (st[o.c.id]?.level ?? 1) + (nextQuestFor(o.c) ? ' · !' : '') : '◇ LEVEL ' + WORLD.find(r => r.id === o.c.region).unlock}</small>`; el.classList.toggle('locked', !open); if (el.innerHTML !== html) { el.innerHTML = html; el._size = null; } }
     if (state.equipped !== lastCloak && player.cloakMesh) { lastCloak = state.equipped; player.cloakMesh.material = toonMat(palettes[state.equipped] || palettes.sage); }
   }
   let active = true;
@@ -1570,17 +1606,21 @@ function start() {
     marker.visible = !!travel;
     if (travel) { const [mx, mz] = toW(travel.x, travel.y); marker.position.set(mx, Math.max(heightAt(mx, mz), 0) + .06, mz); const k = (t * 1.5) % 1; marker.scale.setScalar(.8 + k * .6); marker.material.opacity = .9 * (1 - k); }
     // labels and compass
-    const placeLabel = (el, pos, far) => {
+    // Labels are queued, then laid out nearest-and-most-important first. A label that would cover another
+    // (or the map's own controls) lifts above it, or fades out if there is no room.
+    labelQueue.length = 0;
+    const placeLabel = (el, pos, far, pri) => {
       projV.copy(pos).project(camera);
       const d = camera.position.distanceTo(pos), show = projV.z < 1 && Math.abs(projV.x) < 1.15 && Math.abs(projV.y) < 1.15 && d < far;
-      el.style.opacity = show ? String(clamp((far - d) / (far * .25), 0, 1)) : '0';
-      if (show) el.style.transform = `translate3d(${(projV.x * .5 + .5) * viewW}px,${(-projV.y * .5 + .5) * viewH}px,0) translate(-50%,-100%)`;
+      if (!show) { fadeLabel(el, 0); return; }
+      labelQueue.push({ el, x: (projV.x * .5 + .5) * viewW, y: (-projV.y * .5 + .5) * viewH, op: clamp((far - d) / (far * .25), 0, 1), pri, d });
     };
-    areaLabels.forEach(a => placeLabel(a.el, a.pos, 140));
-    botLabels.forEach(({ o, el }) => { if (!o.ch.root.visible) { el.style.opacity = '0'; return; } worldPos.copy(o.ch.root.position); worldPos.y += 2.55; placeLabel(el, worldPos, 34); });
-    worldPos.set(gate.position.x, gate.position.y + 7.4, gate.position.z); if (gate.visible) placeLabel(gateLabel, worldPos, 140); else gateLabel.style.opacity = '0';
-    placeLabel(seaLabel, seaPos, 160);
-    councilLabels.forEach(({ o, el }) => { worldPos.copy(o.pos); worldPos.y += 3.2; placeLabel(el, worldPos, 32); });
+    areaLabels.forEach(a => placeLabel(a.el, a.pos, 140, 3));
+    botLabels.forEach(({ o, el }) => { if (!o.ch.root.visible) { fadeLabel(el, 0); return; } worldPos.copy(o.ch.root.position); worldPos.y += 2.55; placeLabel(el, worldPos, 34, 4); });
+    worldPos.set(gate.position.x, gate.position.y + 7.4, gate.position.z); if (gate.visible) placeLabel(gateLabel, worldPos, 140, 3); else fadeLabel(gateLabel, 0);
+    placeLabel(seaLabel, seaPos, 160, 0);
+    councilLabels.forEach(({ o, el }) => { worldPos.copy(o.pos); worldPos.y += 3.2; placeLabel(el, worldPos, 32, 2); });
+    layoutLabels();
     if (talk.on && talk.anchor && !bubble.hidden) {
       projV.copy(anchorOf(talk.anchor, worldPos)).project(camera);
       const bw = bubble.offsetWidth, bx = clamp((projV.x * .5 + .5) * viewW, bw / 2 + 8, viewW - bw / 2 - 8), by = clamp((-projV.y * .5 + .5) * viewH, bubble.offsetHeight + 46, viewH - 40);
