@@ -1,0 +1,18 @@
+import test from 'node:test';import assert from 'node:assert/strict';import { createRequire } from 'node:module';import vm from 'node:vm';import fs from 'node:fs';
+const E=createRequire(import.meta.url)('../lib/engine.cjs');
+const q=(id,xp,o={})=>({id,title:id,xp,stat:'BUILD',region:'forge',repeat:false,unlock:1,...o});
+const copy=s=>JSON.parse(JSON.stringify(s));
+test('gold is derived from claims with boss and streak bonuses',()=>{const s=E.fresh();E.award(s,q('a',40),'n','2026-10-07');E.award(s,q('b',40),'n','2026-10-08');E.award(s,q('c',250,{boss:true}),'n','2026-10-09');
+ assert.equal(E.gold(s),1600+1680+16500);assert.equal(E.streak(s,'2026-10-09'),3);assert.equal(E.streak(s,'2026-10-10'),3,'a streak survives until the day is over');assert.equal(E.streak(s,'2026-10-11'),0);});
+test('the streak bonus caps at +50%',()=>{const s=E.fresh();for(let i=1;i<=20;i++)E.award(s,q('d'+i,20),'n',`2026-09-${String(i).padStart(2,'0')}`);assert.equal(E.questGold(q('x',20),20),1200);});
+test('tiers open with levels; Mythic only with the 40 LPA offer',()=>{const s=E.fresh();E.award(s,q('big',250,{boss:true}),'n','2026-10-01');
+ assert(E.tierOpen(s,'common'));assert(!E.tierOpen(s,'rare'));assert.throws(()=>E.redeem(s,'iem'),/locked/);
+ for(let i=0;i<30;i++)E.award(s,q('b'+i,250,{boss:true}),'n','2026-10-01');assert(E.tierOpen(s,'legendary'));assert(!E.tierOpen(s,'mythic'));assert.throws(()=>E.redeem(s,'macbook'),/40 LPA/);
+ E.award(s,q(E.MILESTONE,250,{boss:true,stat:'LEVERAGE'}),'offer letter','2026-10-02');assert(E.tierOpen(s,'mythic'));assert(E.gold(s)>E.MILESTONE_GOLD);});
+test('redeeming spends gold, cannot overspend and survives validation',()=>{const s=E.fresh();E.award(s,q('a',250,{boss:true}),'n','2026-10-01');
+ assert.equal(E.gold(s),15000);assert.throws(()=>E.redeem(s,'kdrama'),/Not enough/);E.redeem(s,'monster','2026-10-01');assert.equal(E.gold(s),0);
+ const v=E.validate(copy(s));assert.equal(v.rewards.length,1);const bad=copy(s);bad.rewards[0].cost=1;assert.throws(()=>E.validate(bad),/reward/);});
+test('older saves without rewards stay valid and merge across devices',()=>{const old=E.fresh();delete old.rewards;assert.deepEqual(E.validate(copy(old)).rewards,[]);
+ const sb={module:{exports:{}},globalThis:{}};vm.runInNewContext(fs.readFileSync('public/game/sync-core.js','utf8'),sb);const {merge}=sb.module.exports;
+ const base=E.fresh();E.award(base,q('a',250,{boss:true}),'n','2026-10-01');delete base.rewards;const a=copy(base);a.rewards=[];E.redeem(a,'monster','2026-10-01');const b=copy(base);b.rewards=[];E.redeem(b,'coffee','2026-10-01');
+ const m=merge(base,a,b).state;assert.equal(m.rewards.length,2);E.validate(m);});

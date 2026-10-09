@@ -54,3 +54,28 @@ Inspect approximately 360px, 768px and 1440px widths. Check navigation wrapping,
 ## Safe places to begin
 
 Adjust colors, spacing and typography in style.css; improve map buildings and player art in app.js; customize each bot's sprite/portrait in party.js; revise titles and descriptions in data.js without changing IDs. The current implementation is intentionally small and mostly vanilla JavaScript inside a Next.js shell.
+
+## Beyond the sea
+
+Four realms sit across the Sea of Possibility, each built in `world3d.js` by its own builder (`buildFlorentia`, `buildSkyGarden`, `buildBathhouse`, `buildStarfall`) and listed in `REALMS`:
+
+| Realm | Mood | Things to do |
+| --- | --- | --- |
+| Florentia | Renaissance city: duomo, bell tower, loggia, fountain, cypress avenue, vineyard | Paint at the easel (the canvas fills in as she paints), rest by the fountain |
+| The Sky Gardens | Floating ruins above the clouds, waterfalls, a mossy stone gardener | Meditate at the overlook, watch the clouds |
+| Lantern Bathhouse | Red lacquer bathhouse, koi pond and bridge, hot spring, sea train | Soak in the hot spring |
+| Starfall Shrine | A waypoint statue, floating crystal, glowing lilies | Make a wish, rest by the waypoint |
+
+Realms reuse the logical 1100 × 720 coordinate space (550, 360 is a realm's centre), so app.js movement and saving work unchanged. Board the sky ferry at the pier, or use the "Beyond the sea" cards under the area list, and it flies her there. Areas, guides and "Return to camp" sail her home automatically. Realms are places to wander, not XP sources.
+
+## Nivetha and Mochi
+
+Nivetha has a gold flower hairpin, earrings, a side braid, a sash and satchel, and gold trim on her cloak. Every character blinks, and expressions (`happy`, `closed`, `wide`) shape the eyes and mouth. Her activities live in `ACTS`: each one is a pose blended over the walk cycle, plus optional props, effects and an emote. Every unlocked landmark and every realm has a ✦ spot, and she does the matching activity there (anvil, ledger, book, training, meditation and so on). When left idle she stretches, hums, looks around, pets Mochi, yawns at night and eventually sits down. She cheers when a quest is claimed or a treasure is redeemed, gets a light pillar on level-up, and twirls in a new cloak. The action bar under the map has Wave, Cheer, Dance, Sit, Stretch and Pet Mochi (keys 1–6). Mochi, her cat, follows her, sits when she stops and closes her eyes when petted.
+
+## Movement
+
+Walls, fences, statues and fountains are traced from the landmark geometry into a 25 cm collision grid (`collisionMask`). Click-to-travel uses A* on that grid (`findPath`) and never teleports through things. Conversations end with the Leave button, Esc, or by walking away.
+
+## The Treasury
+
+Gold is the real-life reward currency, derived from claimed quests in `engine.js`: 40 gold per XP, boss battles ×1.5, +5% per day of an unbroken streak (up to +50%). Tiers: Common (any level), Rare (level 2), Epic (level 4), Legendary (level 6) and Mythic, which stays sealed until the `offer-40lpa` milestone quest is claimed (+1,500,000 gold). Redemptions are stored in `state.rewards`, an optional array that keeps save version 1 compatible. Catalogue prices live in `TIERS`, and changing one invalidates redemptions saved at the old price.

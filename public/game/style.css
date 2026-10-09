@@ -395,3 +395,108 @@ textarea{min-height:100px;resize:vertical}
 @media(prefers-reduced-motion:reduce){.qs-paper,.qs-sheet,.quest-scroll,.w3-cine:before,.w3-cine:after{transition:none}}
 /* Small screens: keep the D-pad, clock and compass out of each other's way */
 @media(max-width:760px){.world-frame.is-3d .w3-clock{top:40px;left:16px;right:auto}.touch-controls{bottom:34px;right:10px}.touch-controls button{width:40px;height:40px;margin:1px}}
+
+/* ── More detail: paper grain, filigree corners, illuminated initials ── */
+body:before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.32;mix-blend-mode:multiply;
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .34 0 0 0 0 .18 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E")}
+.topbar,main{position:relative;z-index:1}
+.topbar{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cpath d='M14 2 26 14 14 26 2 14Z' fill='none' stroke='%23f2d68c' stroke-opacity='.09'/%3E%3Ccircle cx='14' cy='14' r='1.3' fill='%23f2d68c' fill-opacity='.18'/%3E%3C/svg%3E"),linear-gradient(180deg,#2a4070 0,var(--lapis) 55%,#1b2b4f 100%)}
+.stage h2::first-letter{font-family:var(--display);font-weight:700;color:var(--gold-deep);text-shadow:0 1px 0 #fff8,0 0 14px #f2d68c88}
+#screenSubtitle:after{content:'';display:block;width:220px;height:14px;margin-top:10px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 14'%3E%3Cpath d='M0 7H92M128 7H220' stroke='%23c49a45' stroke-width='1'/%3E%3Cpath d='M110 1 116 7 110 13 104 7Z' fill='%23c49a45'/%3E%3Ccircle cx='97' cy='7' r='2' fill='%23c49a45'/%3E%3Ccircle cx='123' cy='7' r='2' fill='%23c49a45'/%3E%3C/svg%3E") no-repeat}
+.player:after,dialog:after,.quest-card:after,.skill-card:after,.reward-card:after,.today-strip:after{content:'';position:absolute;inset:5px;pointer-events:none;
+ background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cpath d='M2 28V12Q2 2 12 2H28' fill='none' stroke='%23c49a45' stroke-width='1.4'/%3E%3Cpath d='M6 24V13Q6 6 13 6H24' fill='none' stroke='%23c49a45' stroke-width='.7' stroke-opacity='.6'/%3E%3Ccircle cx='9' cy='9' r='2.2' fill='%23c49a45'/%3E%3C/svg%3E") top left/26px no-repeat,
+ url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cpath d='M28 28V12Q28 2 18 2H2' fill='none' stroke='%23c49a45' stroke-width='1.4'/%3E%3Cpath d='M24 24V13Q24 6 17 6H6' fill='none' stroke='%23c49a45' stroke-width='.7' stroke-opacity='.6'/%3E%3Ccircle cx='21' cy='9' r='2.2' fill='%23c49a45'/%3E%3C/svg%3E") top right/26px no-repeat,
+ url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cpath d='M2 2V18Q2 28 12 28H28' fill='none' stroke='%23c49a45' stroke-width='1.4'/%3E%3Ccircle cx='9' cy='21' r='2.2' fill='%23c49a45'/%3E%3C/svg%3E") bottom left/26px no-repeat,
+ url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cpath d='M28 2V18Q28 28 18 28H2' fill='none' stroke='%23c49a45' stroke-width='1.4'/%3E%3Ccircle cx='21' cy='21' r='2.2' fill='%23c49a45'/%3E%3C/svg%3E") bottom right/26px no-repeat;opacity:.85}
+dialog:after{position:fixed;inset:auto}
+dialog{background-image:radial-gradient(400px 200px at 50% 0,#ffffff,transparent),linear-gradient(180deg,#fdf7e8,#f3e4c1)}
+.quest-card,.skill-card,.reward-card,.today-strip{isolation:isolate}
+
+/* ── Nivetha's action bar (Genshin skill buttons) ── */
+.w3-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:14px 2px 0;padding:10px 14px;border-radius:18px;color:#f6ecd2;
+ background:linear-gradient(160deg,#2b4373,#182746);box-shadow:0 0 0 1px var(--gold),0 0 0 4px #fbf3df,0 0 0 5px var(--gold-line),var(--lift)}
+.w3-who{min-width:150px;flex:1}
+.w3-who b{display:block;font:600 19px/1.1 var(--serif);color:var(--gold-hi)}
+.w3-who b i{font-style:italic;font-weight:500;color:#d9c9a3}
+.w3-who small{display:block;margin-top:2px;font:700 9px var(--display);letter-spacing:1.3px;color:#d9c9a3;text-transform:uppercase}
+.w3-emotes{display:flex;gap:6px;flex-wrap:wrap}
+.w3-emotes button{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:52px;padding:2px 2px 0;background:none;color:#e6dcc4}
+.w3-emotes i{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;font-style:normal;font-size:17px;color:var(--gold-hi);background:radial-gradient(circle at 35% 30%,#3d5994,#141f3a);box-shadow:0 0 0 1.5px var(--gold),inset 0 1px 0 #ffffff22;transition:box-shadow .2s,transform .15s}
+.w3-emotes span{font:700 8.5px var(--display);letter-spacing:.8px}
+.w3-emotes button:hover i,.w3-emotes button.on i{box-shadow:0 0 0 1.5px var(--gold-hi),0 0 16px #f2d68caa;transform:translateY(-1px)}
+.w3-emotes button.on i{background:radial-gradient(circle at 35% 30%,#fff5da,#e6c47a);color:var(--lapis-deep)}
+.w3-ctx{min-height:40px;padding:9px 16px;border-radius:999px;font:700 11px var(--display);letter-spacing:1.1px;color:var(--lapis-deep);background:linear-gradient(180deg,#fff5da,#f0dca8);box-shadow:0 0 0 1px var(--gold),0 0 16px #f2d68c66}
+@media(prefers-reduced-motion:no-preference){.w3-ctx:not([hidden]){animation:w3glow 2.4s ease-in-out infinite}}
+@keyframes w3glow{50%{box-shadow:0 0 0 1px var(--gold-hi),0 0 24px #f2d68ccc}}
+
+/* ── Spots, realms and emotes in the world ── */
+.w3-spot{background:linear-gradient(180deg,#fffaf0f2,#f6e7c0f2)}
+.w3-spot i{color:var(--gold-deep)}
+.w3-realm{background:linear-gradient(180deg,#3a2a5ed6,#1b1838d6);border-color:#f2d68ccc}
+.w3-realm b{font-size:17px}
+.w3-emote{font:700 20px var(--serif);color:var(--gold-hi);text-shadow:0 0 10px #f2d68c,0 2px 4px #0008;padding:2px 8px}
+@media(prefers-reduced-motion:no-preference){.w3-emote.pop{animation:w3pop .5s cubic-bezier(.2,1.6,.4,1)}}
+@keyframes w3pop{0%{scale:.3}100%{scale:1}}
+.world-frame.voyaging .map-hint,.world-frame.voyaging .touch-controls,.world-frame.voyaging .w3-compass{opacity:0;transition:opacity .3s}
+.world-frame.voyaging .map-caption span:after{content:' · Click to skip';opacity:.8}
+
+/* ── Beyond the sea ── */
+.realms-head{margin-top:30px}
+.realm-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.realm-card{position:relative;overflow:hidden;display:flex;flex-direction:column;text-align:left;padding:0;border-radius:14px;background:#fffaf0;box-shadow:var(--frame),var(--lift);transition:transform .2s,box-shadow .2s}
+.realm-card svg{display:block;width:100%;height:auto;aspect-ratio:2/1}
+.realm-text{padding:10px 12px 12px}
+.realm-card strong{display:block;font:600 18px/1.1 var(--serif)}
+.realm-card small{display:block;margin-top:3px;font:700 8.5px var(--display);letter-spacing:1.1px;color:var(--gold-deep);text-transform:uppercase}
+.realm-card:hover{transform:translateY(-2px);box-shadow:var(--frame),0 0 18px #f2d68c88,var(--lift)}
+.realm-card.here{box-shadow:0 0 0 2px var(--gold-hi),0 0 0 5px #fbf3df,0 0 0 6px var(--gold),0 0 22px #f2d68c88}
+@media(max-width:1100px){.realm-strip{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.realm-strip{grid-template-columns:repeat(2,1fr);gap:8px}.w3-actions{gap:10px;padding:10px}.w3-emotes{width:100%;justify-content:space-between}.w3-emotes button{min-width:0;flex:1}.w3-emotes i{width:36px;height:36px}.w3-ctx{width:100%}}
+/* Leaving a conversation */
+.w3-leave{position:absolute;z-index:6;top:14px;right:14px;display:none;align-items:center;gap:6px;min-height:40px;padding:9px 16px;border-radius:999px;font:700 11px var(--display);letter-spacing:1.2px;color:var(--lapis-deep);background:linear-gradient(180deg,#fff5da,#f0dca8);box-shadow:0 0 0 1px var(--gold),0 6px 16px #0b122655}
+.world-frame.talking .w3-leave{display:inline-flex}
+.w3-leave:hover{box-shadow:0 0 0 1px var(--gold-hi),0 0 16px #f2d68c99}
+
+/* ── The Treasury: real-life rewards bought with gold ── */
+.gold-purse{margin-top:20px;background:linear-gradient(180deg,#2b4373,#182746);color:#d9c9a3;box-shadow:0 0 0 1px var(--gold),inset 0 1px 0 #ffffff22}
+.gold-purse strong{color:var(--gold-hi);text-shadow:0 0 10px #f2d68c88}
+.gold-purse+.purse{margin-top:8px}
+.vault{position:relative;display:grid;grid-template-columns:1.2fr 1.5fr;gap:18px 26px;align-items:center;padding:24px 28px;border-radius:18px;color:#f6ecd2;
+ background:radial-gradient(420px 200px at 0 0,#f2d68c2e,transparent),linear-gradient(160deg,#2b4373,#141f3a);box-shadow:0 0 0 1px var(--gold),0 0 0 5px #fbf3df,0 0 0 6px var(--gold-line),var(--lift)}
+.vault-gold{display:block;margin:6px 0 2px;font:600 46px/1 var(--display);color:var(--gold-hi);text-shadow:0 0 22px #f2d68c77}
+.vault small{font:700 10px var(--display);letter-spacing:1.2px;color:#d9c9a3}
+.vault-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.vault-stats div{padding:12px;border-radius:12px;text-align:center;background:#ffffff10;box-shadow:inset 0 0 0 1px #f2d68c44}
+.vault-stats b{display:block;font:600 24px var(--display);color:var(--gold-hi)}
+.vault-stats span{font:700 8.5px var(--display);letter-spacing:1px;color:#d9c9a3;text-transform:uppercase}
+.vault-next{grid-column:1/-1;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;font:500 17px var(--serif)}
+.vault-next .progress{margin:0;background:#ffffff1c}
+.tier{--t:#6aa56a;margin-top:26px}
+.tier-rare{--t:#4a8fd6}.tier-epic{--t:#9b6ad6}.tier-legendary{--t:#d6a03a}.tier-mythic{--t:#d0503c}
+.tier header{display:flex;align-items:center;gap:12px;margin:0 4px 12px}
+.tier header .secondary{margin-left:auto}
+.gem{width:20px;height:20px;transform:rotate(45deg);border-radius:4px;background:linear-gradient(135deg,#fff8,var(--t) 45%,color-mix(in srgb,var(--t) 60%,#000));box-shadow:0 0 0 1.5px var(--gold),0 0 14px var(--t)}
+.tier h3{margin:0;color:color-mix(in srgb,var(--t) 70%,var(--ink))}
+.tier header small{font:700 9px var(--display);letter-spacing:1.3px;color:var(--muted)}
+.treasure-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.treasure{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:18px 14px 14px;text-align:center;border-radius:16px;overflow:hidden;
+ background:linear-gradient(180deg,color-mix(in srgb,var(--t) 22%,#fffaf0),#fffaf0 55%,#f4e6c3);box-shadow:0 0 0 1px color-mix(in srgb,var(--t) 55%,var(--gold)),0 0 0 4px #fbf3df,0 0 0 5px var(--gold-line),var(--lift)}
+.treasure:before{content:'';position:absolute;left:0;right:0;top:0;height:4px;background:var(--t)}
+.t-icon{display:grid;place-items:center;width:58px;height:58px;font-size:30px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff,color-mix(in srgb,var(--t) 35%,#fff7e0));box-shadow:0 0 0 1.5px var(--gold),0 0 16px color-mix(in srgb,var(--t) 50%,transparent)}
+.treasure h4{margin:4px 0 0;font:600 18px/1.15 var(--serif);min-height:2.3em;display:flex;align-items:center}
+.t-cost{font:700 12px var(--display);letter-spacing:.6px;color:var(--gold-deep)}
+.treasure .progress{width:100%;margin:2px 0 4px}
+.treasure .progress i{background:linear-gradient(90deg,color-mix(in srgb,var(--t) 70%,#fff),var(--t))}
+.treasure button{width:100%;min-height:38px;padding:8px 12px;font-size:10.5px}
+.tier.locked .treasure{filter:saturate(.35);opacity:.78}
+.tier-mythic.locked{position:relative;padding:16px;border-radius:18px;background:repeating-linear-gradient(135deg,#d0503c0d 0 12px,transparent 12px 24px);box-shadow:inset 0 0 0 1.5px #d0503c55}
+.tier-mythic.locked header small{color:#a8392b}
+.tier-history{margin-top:30px}
+.claimed{display:flex;align-items:center;gap:14px;padding:12px 4px;border-bottom:1px solid var(--gold-line)}
+.claimed>span{font-size:26px}
+.claimed b{display:block;font:600 18px var(--serif)}
+.claimed small{font:700 9px var(--display);letter-spacing:1px;color:var(--gold-deep)}
+.claimed .danger{margin-left:auto}
+@media(max-width:760px){.vault{grid-template-columns:1fr;padding:20px}.vault-gold{font-size:36px}.vault-next{grid-template-columns:1fr}.treasure-grid{grid-template-columns:repeat(2,1fr);gap:8px}.tier header{flex-wrap:wrap}.tier header .secondary{margin-left:0}}
+.vault .eyebrow{color:var(--gold-hi)}
+.vault-next{grid-template-columns:1fr;gap:8px}

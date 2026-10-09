@@ -583,7 +583,7 @@ function treeGeometry(kind, rng, detail) {
     trunk(giant ? 1.25 : .27, giant ? .7 : .16, h);
     for (let k = 0; k < (giant ? 5 : 2); k++) branch(giant ? 2.4 : 1.0, k * 2.4 + rng(), h * .75, giant ? .35 : .09);
     if (giant) for (let k = 0; k < 6; k++) { const g = new THREE.ConeGeometry(.5, 2.0, 6); g.rotateZ(Math.PI / 2 - .25); g.translate(1.2, .25, 0); g.rotateY(k / 6 * Math.PI * 2 + .3); parts.push(finishPart(g, c => c.copy(trunkLo))); }
-    const leafColors = { oak: ['#2a6424', '#86b842'], birch: ['#477f2b', '#b3cf55'], sakura: ['#d97ba2', '#ffd6e6'], sacred: ['#2f6d2e', '#9ccd5e'] };
+    const leafColors = { oak: ['#2a6424', '#86b842'], birch: ['#477f2b', '#b3cf55'], sakura: ['#d97ba2', '#ffd6e6'], olive: ['#4f6b45', '#a9b98c'], sacred: ['#2f6d2e', '#9ccd5e'] };
     const blossom = [C('#f3a6c4'), C('#fff0f5')];
     const n = giant ? 14 : 5, centre = new THREE.Vector3(0, h + (kind === 'birch' ? 1.5 : 1.2) * s, 0);
     for (let k = 0; k < n; k++) {
@@ -672,7 +672,7 @@ function lookFor(b) {
     default: return { ...base, hairStyle: 'neat', legs: '#3d4a5a', eyes: '#3d2c22' };
   }
 }
-const PLAYER_LOOK = { skin: '#c58c65', hair: '#2a2321', hairStyle: 'long', eyes: '#6b4430', top: '#efe4c8', sleeve: '#efe4c8', legs: '#4a4843', boots: '#5b4636', skirt: '#efe4c8', belt: '#d5b76e', cloak: true, staff: true, blush: true };
+const PLAYER_LOOK = { skin: '#c58c65', hair: '#2a2321', hairStyle: 'long', eyes: '#6b4430', top: '#efe4c8', sleeve: '#efe4c8', legs: '#4a4843', boots: '#5b4636', skirt: '#efe4c8', belt: '#d5b76e', cloak: true, staff: true, blush: true, flair: true };
 
 function makeCharacter(look) {
   const root = new THREE.Group(), body = new THREE.Bone(), parts = [];
@@ -712,8 +712,9 @@ function makeCharacter(look) {
   const head = bone(body, 0, look.egg ? 1.7 : 1.63, 0); if (look.egg) head.scale.set(1.28, 1.6, 1.28); else head.scale.setScalar(1.14);
   part(head, new THREE.SphereGeometry(.165, 28, 20), look.skin, [0, 0, 0], { s: [1, 1.04, 1] });
   for (const s of [-1, 1]) part(head, SPHERE, look.skin, [s * .162, -.015, -.005], { s: [.025, .042, .032], outline: false });
+  const eyes = [];
   for (const s of [-1, 1]) {
-    const e = new THREE.Group(); e.position.set(s * .06, -.012, .149); e.rotation.y = s * .36; head.add(e);
+    const e = bone(head, s * .06, -.012, .149); e.rotation.y = s * .36; eyes.push(e);
     part(e, SPHERE, '#ffffff', [0, 0, 0], { s: [.031, .041, .012], basic: true });
     part(e, SPHERE, look.eyes, [0, -.004, .006], { s: [.023, .032, .01], basic: true });
     part(e, SPHERE, '#1a1210', [0, -.003, .011], { s: [.011, .017, .008], basic: true });
@@ -722,24 +723,51 @@ function makeCharacter(look) {
     part(head, new THREE.BoxGeometry(.05, .01, .012), look.hair === '#c6a574' ? '#9b7a4c' : '#2b211d', [s * .062, .072, .152], { r: [0, s * .3, s * .1], basic: true });
     if (look.blush) part(head, SPHERE, '#f0a093', [s * .096, -.052, .136], { s: [.026, .013, .006], r: [0, s * .55, 0], basic: true });
   }
-  part(head, SPHERE, '#8a4a42', [0, -.084, .158], { s: [.022, .008, .008], basic: true });
+  const mouth = bone(head, 0, -.084, .158);
+  part(mouth, SPHERE, '#8a4a42', [0, 0, 0], { s: [.022, .008, .008], basic: true });
   if (look.visor) part(head, new THREE.BoxGeometry(.21, .048, .03), look.visor, [0, -.008, .158], { basic: true });
   if (look.glasses) { for (const s of [-1, 1]) part(head, new THREE.TorusGeometry(.034, .006, 6, 18), '#1e2420', [s * .062, -.012, .168], { basic: true }); part(head, new THREE.BoxGeometry(.04, .006, .006), '#1e2420', [0, -.006, .172], { basic: true }); }
   hair(head, look, part);
+  if (look.flair) {
+    // Nivetha's details: a gold flower hairpin, earrings, a side braid, a collar, a satchel and gold trims.
+    const pin = new THREE.Group(); pin.position.set(.152, .085, .045); pin.rotation.y = .9; head.add(pin);
+    for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; part(pin, SPHERE, '#f0c565', [Math.cos(a) * .026, Math.sin(a) * .026, 0], { s: [.021, .021, .011], outline: false }); }
+    part(pin, SPHERE, '#fff6e6', [0, 0, .008], { s: [.015, .015, .015], outline: false });
+    part(pin, SPHERE, '#b4492f', [-.026, -.042, 0], { s: [.011, .011, .011], outline: false });
+    for (const s of [-1, 1]) part(head, SPHERE, '#f0c565', [s * .166, -.068, .006], { s: [.011, .017, .011], outline: false });
+    for (let i = 0; i < 7; i++) part(head, SPHERE, look.hair, [-.148 - i * .003, -.07 - i * .05, .075 - i * .004], { s: [.034 - i * .0016, .036, .032 - i * .0016] });
+    part(head, new THREE.TorusGeometry(.024, .008, 6, 14).rotateX(Math.PI / 2), '#f0c565', [-.17, -.41, .05], { outline: false });
+    part(trunk, new THREE.TorusGeometry(.108, .017, 6, 24).rotateX(Math.PI / 2 + .3), '#f0c565', [0, 1.385, .012], { outline: false });
+    part(trunk, new THREE.TorusGeometry(.172, .013, 6, 30).rotateX(Math.PI / 2).rotateZ(.62), '#7a5236', [0, 1.06, 0], { s: [1, 1, .82], outline: false });
+    part(trunk, new THREE.BoxGeometry(.15, .13, .07), '#8a5a38', [.205, .8, .07], { r: [0, -.35, 0] });
+    part(trunk, new THREE.BoxGeometry(.152, .06, .074), '#6e4529', [.205, .845, .073], { r: [0, -.35, 0], outline: false });
+    part(trunk, SPHERE, '#f0c565', [.222, .82, .115], { s: [.014, .014, .01], outline: false });
+    part(trunk, new THREE.TorusGeometry(.25, .012, 6, 34).rotateX(Math.PI / 2), '#d5b76e', [0, .5, 0], { outline: false });
+    for (const g of legs) part(g, new THREE.TorusGeometry(.078, .013, 6, 18).rotateX(Math.PI / 2), '#d5b76e', [0, -.66, .01], { outline: false });
+  }
   let cloak = null, cloakMesh = null;
   if (look.cloak || look.cape) {
     // The cloak keeps its own material so the wardrobe can recolour it; it hangs from its own bone and sways.
     const geo = new THREE.CylinderGeometry(.21, look.cape ? .36 : .42, look.cape ? 1.08 : 1.02, 26, 1, true, Math.PI * .42, Math.PI * 1.16); geo.translate(0, -.5, 0);
     cloak = bone(body, 0, 1.42, -.01);
     cloakMesh = new THREE.Mesh(geo, toonMat(look.cape || palettes[state.equipped])); cloakMesh.castShadow = true; cloak.add(cloakMesh);
+    if (look.flair) {
+      // gold beads along the cloak's hem, and a brooch at the clasp
+      const bead = new THREE.SphereGeometry(.022, 8, 6), beadMat = toonMat('#f0c565');
+      for (let i = 0; i <= 22; i++) { const th = Math.PI * .42 + Math.PI * 1.16 * i / 22, b = new THREE.Mesh(bead, beadMat); b.position.set(Math.sin(th) * .425, -1.01, Math.cos(th) * .425); cloak.add(b); }
+      const brooch = new THREE.Mesh(new THREE.OctahedronGeometry(.04), glow('#f0c565', .6)); brooch.position.set(0, .0, .13); cloak.add(brooch);
+    }
     if (look.cloak) part(trunk, new THREE.TorusGeometry(.14, .05, 8, 20, Math.PI), look.top, [0, 1.42, -.03], { r: [Math.PI / 2 + .3, 0, Math.PI], outline: false });
     if (look.cape) part(trunk, new THREE.CylinderGeometry(.12, .17, .2, 18, 1, true, Math.PI * .7, Math.PI * 1.6), look.cape, [0, 1.47, 0], { double: true });
   }
+  let staff = null, orb = null;
   if (look.staff) {
-    const staff = new THREE.Group(); staff.position.set(0, -.45, .05); arms[0].add(staff);
-    part(staff, new THREE.CylinderGeometry(.018, .024, 1.55, 8), '#8d6b45', [0, .35, 0]);
-    part(staff, new THREE.TorusGeometry(.07, .014, 8, 20), '#d5b76e', [0, 1.12, 0], { outline: false });
-    const orb = new THREE.Mesh(new THREE.SphereGeometry(.062, 18, 12), glow('#ffd979', 4)); orb.position.set(0, -.45 + 1.14, .05); arms[0].add(orb);
+    // The staff stays a separate mesh (not baked) so she can set it aside for two-handed activities.
+    staff = new THREE.Group(); staff.position.set(0, -.45, .05); arms[0].add(staff);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(.018, .024, 1.55, 8), toonMat('#8d6b45')); shaft.position.y = .35; shaft.castShadow = true;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.07, .014, 8, 20), toonMat('#d5b76e')); ring.position.y = 1.12;
+    orb = new THREE.Mesh(new THREE.SphereGeometry(.062, 18, 12), new THREE.MeshStandardMaterial({ color: '#ffd979', emissive: '#ffd979', emissiveIntensity: 4 })); orb.position.y = 1.14;
+    staff.add(shaft, ring, orb);
   }
   // Bake: every part becomes vertices weighted to its nearest bone.
   root.updateMatrixWorld(true);
@@ -766,7 +794,7 @@ function makeCharacter(look) {
     root.add(mesh); mesh.bind(skeleton);
   }
   root.scale.setScalar(1.18);
-  return { root, body, legs, arms, head, cloak, cloakMesh, phase: Math.random() * 6, yaw: 0, wave: 0, give: 0 };
+  return { root, body, legs, arms, head, eyes, mouth, cloak, cloakMesh, staff, orb, phase: Math.random() * 6, yaw: 0, wave: 0, give: 0, blinkT: 1 + Math.random() * 3, expr: 'normal' };
 }
 function hair(head, look, part) {
   const c = look.hair, style = look.hairStyle;
@@ -801,6 +829,408 @@ function animateCharacter(ch, speed, dt, t, idleSeed = 0) {
   ch.body.rotation.x = .1 * s;
   ch.head.rotation.y = Math.sin(t * .4 + idleSeed) * .18 * (1 - s) * still;
   if (ch.cloak) ch.cloak.rotation.x = .08 + .32 * s + Math.sin(t * 2.2 + idleSeed) * .03 * still;
+  // Faces: everyone blinks every few seconds; expressions squint the eyes and shape the mouth.
+  ch.blinkT -= dt;
+  let lid = 1; if (ch.blinkT < 0) { lid = Math.min(1, Math.abs(ch.blinkT + .07) / .07); if (ch.blinkT < -.14) ch.blinkT = 2 + Math.random() * 3.5; }
+  const ex = ch.expr, open = ex === 'closed' ? .1 : ex === 'happy' ? .45 : ex === 'wide' ? 1.15 : 1;
+  for (const e of ch.eyes) e.scale.set(1, Math.max(.08, Math.min(lid, 1) * open), 1);
+  if (ex === 'happy') ch.mouth.scale.set(1.5, 3.2, 1.2); else if (ex === 'wide') ch.mouth.scale.set(1.1, 4, 1.3); else if (ex === 'closed') ch.mouth.scale.set(1.15, 1.6, 1); else ch.mouth.scale.set(1, 1, 1);
+}
+
+// ───────────────────────────── beyond the sea ─────────────────────────────
+// Four realms sit across the Sea of Possibility. They are places to wander and to do things in, not quest areas:
+// XP still only comes from real-world quests. Each realm lives at a world offset and reuses the logical map's
+// coordinate space (550, 360 is its centre), so app.js movement, travel and saving work unchanged.
+const NIGHT_GLOW = [];
+const nightGlow = (c, k = 1) => { const m = std('nglow' + c + k, { color: c, emissive: c, emissiveIntensity: 1 }); if (!NIGHT_GLOW.includes(m)) { m.userData.k = k; NIGHT_GLOW.push(m); } return m; };
+const REALMS = [
+  { id: 'florentia', name: 'Florentia', sub: 'City of the Renaissance', glyph: '⛫', at: [40, -205], rx: 31, rz: 23, H: 1.3, base: 0, seed: 11, labelH: 21,
+    palette: { g1: '#93b25c', g2: '#6f9a48', g3: '#c6c972', sand: '#ead5a3', seabed: '#a99a72', rock: '#9a8f7e', pave: '#dccaa6' },
+    pads: [[0, 2, 10, 1.3, 1], [0, -10, 7.6, 1.3, 1], [8.5, -9, 2.6, 1.3, 1], [-12, 3, 5, 1.3, 1], [15, 8.5, 3, 1.35, 1]], paths: [[0, 11, -3, 21, 2.2], [3, 4, 15, 8.5, 1.4]],
+    arrive: 'Welcome to Florentia. Domes, cypress shade and an easel waiting by the sea.', build: buildFlorentia },
+  { id: 'skygarden', name: 'The Sky Gardens', sub: 'Ruins above the clouds', glyph: '☁', at: [205, -95], rx: 19, rz: 16, H: 2.2, base: 30, float: true, seed: 23, labelH: 17,
+    palette: { g1: '#7fb55a', g2: '#5d9a47', g3: '#b4d06a', sand: '#b9b096', seabed: '#8a8170', rock: '#8c8578', pave: '#cfc6a8' },
+    pads: [[0, 0, 6.5, 2.2, 1], [10.5, 5, 2.6, 1.6, 1]], paths: [],
+    arrive: 'The Sky Gardens. The wind is soft up here, and the gardener is still tending the flowers.', build: buildSkyGarden },
+  { id: 'bathhouse', name: 'Lantern Bathhouse', sub: 'Where weary spirits rest', glyph: '♨', at: [-215, -55], rx: 25, rz: 19, H: 1.1, base: 0, seed: 37, labelH: 23,
+    palette: { g1: '#86aa5e', g2: '#5f8a4a', g3: '#a9c26a', sand: '#e2cfa0', seabed: '#9b8f6c', rock: '#857c70', pave: '#b9a98c' },
+    pads: [[-6, 0, 8.6, 1.1, 1], [7, -8, 3.8, 1.0, 1], [5, 4, 3.2, .95, 0]], paths: [[2, 1, 18, 3, 1.6]],
+    arrive: 'The Lantern Bathhouse. The hot spring is warm, and the sea train is running.', build: buildBathhouse },
+  { id: 'starfall', name: 'Starfall Shrine', sub: 'A waypoint among the stars', glyph: '✧', at: [-120, -215], rx: 15, rz: 13, H: 2.6, base: 0, seed: 51, labelH: 19,
+    palette: { g1: '#7aa860', g2: '#4f8a52', g3: '#9fc77a', sand: '#dccfa6', seabed: '#8e8a74', rock: '#8a8a86', pave: '#d0cfc4' },
+    pads: [[0, -2, 5.6, 2.6, 1], [5, 3, 1.8, 2.3, 1]], paths: [[0, 3, 5, 8, 1.4]],
+    arrive: 'Starfall Shrine. Make a wish; the statue has been listening for a long time.', build: buildStarfall },
+];
+function realmField(R) {
+  const S0 = Math.min(R.rx, R.rz);
+  const sdf = (u, v) => { const a = Math.atan2(v / R.rz, u / R.rx); return (1 - Math.hypot(u / R.rx, v / R.rz) + noise2(Math.cos(a) * 1.4 + R.seed, Math.sin(a) * 1.4) * .07 + noise2(Math.cos(a) * 4 + R.seed, Math.sin(a) * 4) * .025) * S0; };
+  const segD = (u, v, [x0, z0, x1, z1]) => { const dx = x1 - x0, dz = z1 - z0, t = clamp(((u - x0) * dx + (v - z0) * dz) / (dx * dx + dz * dz), 0, 1); return Math.hypot(u - x0 - dx * t, v - z0 - dz * t); };
+  const height = (u, v) => {
+    const d = sdf(u, v);
+    if (d < 0) return R.float ? -1000 : Math.max(-4.5, d * .8);
+    let h = R.base + smooth(0, 4.5, d) * R.H + fbm(u * .09 + R.seed, v * .09, 3) * R.H * .6 * smooth(1.5, 7, d);
+    if (R.hill) h += R.hill(u, v, d);
+    for (const P of R.pads) { const w = 1 - smooth(P[2] * .8, P[2] + 2.2, Math.hypot(u - P[0], v - P[1])); if (w > 0) h += (R.base + P[3] - h) * w; }
+    return h;
+  };
+  const paved = (u, v) => {
+    let w = 0;
+    for (const P of R.pads) if (P[4]) w = Math.max(w, 1 - smooth(P[2] * .82, P[2] * .82 + .7, Math.hypot(u - P[0], v - P[1])));
+    for (const L of R.paths) w = Math.max(w, 1 - smooth(L[4] * .5, L[4] * .5 + .5, segD(u, v, L)));
+    return w;
+  };
+  return { sdf, height, paved };
+}
+function realmTerrain(R, F) {
+  const W = R.rx * 2 + (R.float ? 6 : 26), D = R.rz * 2 + (R.float ? 6 : 26), nx = 120, nz = Math.round(120 * D / W);
+  const g = new THREE.PlaneGeometry(W, D, nx, nz).rotateX(-Math.PI / 2), p = g.attributes.position, uv = g.attributes.uv, col = new Float32Array(p.count * 3), c = new THREE.Color(), pal = {};
+  for (const [k, v] of Object.entries(R.palette)) pal[k] = C(v);
+  for (let i = 0; i < p.count; i++) {
+    const u = p.getX(i), v = p.getZ(i), d = R.sdf(u, v), h = R.float && d < 0 ? R.base - 1.4 - Math.min(2, -d) : F.height(u, v);
+    p.setY(i, h); uv.setXY(i, u / 5, v / 5);
+    c.copy(pal.g1).lerp(pal.g2, smooth(-.3, .5, fbm(u * .07 + R.seed, v * .07, 3))).lerp(pal.g3, smooth(.1, .6, noise2(u * .15, v * .15 + R.seed)) * .5);
+    const pv = F.paved(u, v); if (pv > 0) c.lerp(tmpCol.copy(pal.pave).multiplyScalar(.92 + noise2(u * 2.1, v * 2.1) * .08), pv);
+    if (d < 2.6) c.lerp(R.float ? pal.rock : pal.sand, 1 - smooth(.6, 2.6, d + noise2(u * .3, v * .3) * .5));
+    if (!R.float && h < -.05) c.copy(pal.seabed).multiplyScalar(1 - smooth(0, 4, -h) * .35);
+    if (R.float && d < 0) c.copy(pal.rock);
+    col.set([c.r, c.g, c.b], i * 3);
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+  const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, map: TEX.ground, roughness: .95 }));
+  mesh.receiveShadow = true; return mesh;
+}
+const tmpCol = new THREE.Color();
+// Soft shallows and lapping foam around a realm's beach, baked from its shape.
+function shoreMesh(R) {
+  const W = R.rx * 2 + 30, D = R.rz * 2 + 30, N = 160, data = new Uint8Array(N * N * 4);
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const u = (i / (N - 1) - .5) * W, v = (j / (N - 1) - .5) * D, d = R.sdf(u, v), k = (j * N + i) * 4;
+    data[k] = clamp(1 - Math.abs(d + .5) / 1.6, 0, 1) * 255; data[k + 1] = clamp(1 + d / 9, 0, 1) * 255 * (d < .4 ? 1 : 0); data[k + 3] = 255;
+  }
+  const tex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat); tex.magFilter = tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true;
+  const m = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, uniforms: { uTex: { value: tex }, uTime: U.time, uShallow: U.shallow, uLight: U.light, uNoise: NOISE },
+    vertexShader: 'varying vec2 vUv; varying vec3 vW; void main(){ vUv=uv; vW=(modelMatrix*vec4(position,1.)).xyz; gl_Position=projectionMatrix*viewMatrix*vec4(vW,1.); }',
+    fragmentShader: `uniform sampler2D uTex,uNoise; uniform float uTime,uLight; uniform vec3 uShallow; varying vec2 vUv; varying vec3 vW;
+      void main(){ vec4 s=texture2D(uTex,vec2(vUv.x,1.-vUv.y)); float n=texture2D(uNoise,vW.xz*.05+uTime*.01).a;
+        float band=s.r, wave=.5+.5*sin(uTime*1.3-s.g*14.+n*6.), foam=smoothstep(.45,.95,band*(.55+.45*wave)+n*.15);
+        vec3 c=mix(uShallow*1.15,vec3(1.),foam)*max(uLight,.3); float a=max(s.g*s.g*.6,foam*.85);
+        gl_FragColor=vec4(c,a);
+        #include <colorspace_fragment>
+      }`,
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(W, D).rotateX(-Math.PI / 2), m); mesh.position.y = .07; mesh.renderOrder = 2; return mesh;
+}
+const marbleM = () => std('marble', { color: '#f1ece0', map: TEX.plaster, roughness: .62 }, .35);
+const stucco = c => std('stucco' + c, { color: c, map: TEX.plaster, roughness: .95 }, .35);
+const solid = (c, r = .7, extra = {}) => std('solid' + c + r, { color: c, roughness: r, ...extra });
+// A little house with a hip roof, shutters and a door; its front (+z) faces the given direction.
+function house(k, u, y, v, ry, w, d, h, wall, roof, seed) {
+  const hk = kit(), r = rng32(seed);
+  hk.box(w, h, d, wall, 0, h / 2, 0);
+  const rad = Math.hypot(w, d) / 2 * 1.04, rg = new THREE.ConeGeometry(rad, 1.25, 4).rotateY(Math.PI / 4); rg.scale((w + .5) / (rad * Math.SQRT2), 1, (d + .5) / (rad * Math.SQRT2));
+  hk.add(rg, roof, 0, h + .62, 0);
+  const shutter = solid('#3f6b4f', .8), cols = Math.max(2, Math.round(w / 1.3)), rows = Math.max(1, Math.floor((h - 1.4) / 1.25));
+  for (let ry2 = 0; ry2 < rows; ry2++) for (let cx = 0; cx < cols; cx++) {
+    const x = (cx - (cols - 1) / 2) * (w / cols), yy = 2.1 + ry2 * 1.25; if (ry2 === 0 && cx === (cols >> 1) && r() < .8) continue;
+    hk.box(.42, .62, .05, M.window, x, yy, d / 2 + .02); for (const s of [-1, 1]) hk.box(.17, .64, .05, shutter, x + s * .31, yy, d / 2 + .03);
+  }
+  hk.box(.72, 1.35, .06, M.woodDark, 0, .68, d / 2 + .03);
+  if (r() < .5) { hk.box(1.3, .08, .5, M.stoneDark, 0, 2.1 + 1.25 - .45, d / 2 + .25); hk.box(1.3, .32, .04, M.iron, 0, 2.1 + 1.25 - .27, d / 2 + .5); }
+  if (r() < .6) hk.box(.35, .9, .35, wall, w * .3, h + 1, -d * .2);
+  hk.g.position.set(u, y, v); hk.g.rotation.y = ry; k.g.add(hk.g);
+}
+// Lathe a pointed, eight-sided Renaissance dome with white ribs.
+function domeParts(k, r, hgt, y, z, terra, rib) {
+  const prof = []; for (let i = 0; i <= 14; i++) { const yy = i / 14 * hgt; prof.push(new THREE.Vector2(r * Math.max(0, 1 - (yy / hgt) ** 1.55) ** .58, yy)); }
+  k.add(new THREE.LatheGeometry(prof, 8), terra, 0, y, z);
+  for (let s = 0; s < 8; s++) { const ph = s / 8 * Math.PI * 2, pts = prof.map(p => new THREE.Vector3(Math.sin(ph) * p.x * 1.012, p.y, Math.cos(ph) * p.x * 1.012)); k.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 18, .085, 5), rib, 0, y, z); }
+}
+function buildFlorentia(R, F) {
+  const k = kit(), dyn = new THREE.Group(), Y = R.base + 1.3, marble = marbleM(), green = solid('#4f7a62', .45), rose = solid('#d6a19a', .5), terra = roofMat('#c0623e');
+  const obstacles = [], spots = [], trees = [];
+  // The duomo: striped nave, facade with rose window, octagonal drum, ribbed dome and lantern.
+  const dz = -10;
+  k.box(6.2, 4.4, 9, marble, 0, Y + 2.2, dz + 1.5);
+  for (const s of [-1, 1]) { for (const yy of [1.2, 2.7, 4]) k.box(.07, .16, 9.02, green, s * 3.11, Y + yy, dz + 1.5); for (let i = 0; i < 6; i++) k.box(.09, 4.4, .22, green, s * 3.12, Y + 2.2, dz - 2.8 + i * 1.72); }
+  k.prism(6.6, 1.6, 9.2, terra, 0, Y + 4.4, dz + 1.5);
+  k.box(6.9, 5.9, .5, marble, 0, Y + 2.95, dz + 6.1); k.prism(6.9, 1.9, .52, marble, 0, Y + 5.9, dz + 6.1);
+  for (const x of [-3.2, -1.6, 1.6, 3.2]) k.box(.2, 5.7, .1, green, x, Y + 2.9, dz + 6.38);
+  for (const yy of [1.9, 4.9]) k.box(6.9, .14, .1, rose, 0, Y + yy, dz + 6.39);
+  for (const s of [-1, 0, 1]) k.box(s ? .9 : 1.3, s ? 1.8 : 2.5, .1, M.dark, s * 2.3, Y + (s ? .9 : 1.25), dz + 6.38);
+  k.torus(.78, .11, green, 0, Y + 3.7, dz + 6.4, 0); k.add(new THREE.CircleGeometry(.7, 24), M.window, 0, Y + 3.7, dz + 6.39);
+  k.ball(.2, M.gold, 0, Y + 7.9, dz + 6.1, 12);
+  k.add(new THREE.CylinderGeometry(3.4, 3.5, 2.6, 8), marble, 0, Y + 5.6, dz - 4.5);
+  k.add(new THREE.CylinderGeometry(3.47, 3.47, .2, 8), green, 0, Y + 6.5, dz - 4.5);
+  for (let s = 0; s < 8; s++) { const a = (s + .5) / 8 * Math.PI * 2; k.add(new THREE.CircleGeometry(.36, 16), M.window, Math.sin(a) * 3.36, Y + 5.6, dz - 4.5 + Math.cos(a) * 3.36, 0, a); }
+  domeParts(k, 3.3, 4.6, Y + 6.9, dz - 4.5, terra, marble);
+  k.cyl(.55, .62, 1.1, marble, 0, Y + 11.9, dz - 4.5, 8); k.cone(.66, 1, marble, 0, Y + 12.95, dz - 4.5, 8); k.ball(.2, M.gold, 0, Y + 13.6, dz - 4.5, 12);
+  for (const [x, z] of [[-3.9, dz - 4.5], [3.9, dz - 4.5], [0, dz - 8.4]]) { k.cyl(1.7, 1.7, 3, marble, x, Y + 1.5, z, 14); k.add(new THREE.SphereGeometry(1.75, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), terra, x, Y + 3, z); }
+  obstacles.push([0, dz + 4, 3.8], [0, dz + .2, 3.8], [0, dz - 4.5, 4], [0, dz - 8.4, 2.1], [-3.9, dz - 4.5, 2.1], [3.9, dz - 4.5, 2.1]);
+  // Giotto-style bell tower with coloured marble bands.
+  const [bx, bz] = [8.5, -9];
+  k.box(2.4, 14, 2.4, marble, bx, Y + 7, bz);
+  for (let i = 1; i < 7; i++) k.box(2.47, .16, 2.47, i % 2 ? green : rose, bx, Y + i * 2, bz);
+  for (const [ox, oz, ry] of [[0, 1.22, 0], [0, -1.22, 0], [1.22, 0, Math.PI / 2], [-1.22, 0, Math.PI / 2]]) for (const yy of [7.2, 9.4, 11.8]) k.box(.5, 1.3, .06, M.dark, bx + ox, Y + yy, bz + oz, ry);
+  k.box(2.9, .32, 2.9, marble, bx, Y + 14.15, bz); for (const [ox, oz] of [[-1.3, -1.3], [1.3, -1.3], [-1.3, 1.3], [1.3, 1.3]]) k.box(.16, .6, .16, marble, bx + ox, Y + 14.6, bz + oz);
+  k.ball(.32, M.gold, bx, Y + 13.2, bz, 12);
+  obstacles.push([bx, bz, 1.9]);
+  // A ring of stucco houses facing the piazza.
+  const cols = ['#e9c690', '#e4a877', '#f1dab2', '#d99b6c', '#efe1c3', '#e6b98a'];
+  [[-12, 1.3, 3.4, 3, 4.6], [10, 1.25, 3.6, 3.2, 5.2], [33, 1.3, 3.2, 3, 4.2], [57, 1.35, 3.4, 3.1, 4.8], [124, 1.25, 3.2, 3, 4.4], [148, 1.3, 3.8, 3.2, 5], [208, 1.25, 3.2, 3, 4.4], [228, 1.3, 3.4, 3.1, 5.2], [306, 1.3, 3.2, 3, 4.2], [330, 1.25, 3.6, 3, 4.6]].forEach(([deg, , w, d, h], i) => {
+    const a = deg * Math.PI / 180, rr = 13.2, u = Math.cos(a) * rr, v = 2 + Math.sin(a) * rr;
+    if (R.sdf(u, v) < 3) return;
+    house(k, u, F.height(u, v) - .05, v, Math.atan2(-Math.cos(a), -Math.sin(a)), w, d, h, stucco(cols[i % cols.length]), terra, 100 + i);
+    obstacles.push([u, v, Math.max(w, d) * .62]);
+  });
+  // The loggia: an open arcade with statues.
+  { const lk = kit(); for (let i = 0; i < 7; i++) { const x = -3.9 + i * 1.3; lk.cyl(.13, .15, 2.6, marble, x, 1.3, 1.1, 10); lk.cyl(.2, .2, .12, marble, x, 2.62, 1.1, 10); if (i < 6) lk.torus(.65, .09, marble, x + .65, 2.6, 1.1, 0, 0, Math.PI); }
+    lk.box(9.2, .55, 2.9, marble, 0, 3.25, 0); lk.box(9.2, 3.3, .3, stucco('#e8d2a8'), 0, 1.65, -1.25); lk.add(new THREE.BoxGeometry(9.6, .14, 3.4), terra, 0, 3.62, -.1, -.12);
+    for (const x of [-2.6, 0, 2.6]) { lk.box(.7, .7, .7, marble, x, .35, -.55); lk.add(new THREE.CapsuleGeometry(.17, .5, 4, 10), marble, x, 1.1, -.55); lk.ball(.13, marble, x, 1.55, -.55, 12); }
+    lk.g.position.set(-12.5, Y, 3); lk.g.rotation.y = Math.PI / 2; k.g.add(lk.g);
+    for (let i = 0; i < 4; i++) obstacles.push([-13.4, 3 - 3.4 + i * 2.3, 1.5]);
+    for (const zz of [-1, 7]) flag(dyn, '#b4492f', -11.3, Y + 3.4, zz, .9, 1.4, Math.PI / 2, '⚜'); }
+  // The fountain.
+  k.cyl(2.3, 2.45, .55, marble, 0, Y + .27, 3, 8); k.add(new THREE.CylinderGeometry(2.05, 2.05, .08, 24), M.pond, 0, Y + .5, 3);
+  k.cyl(.32, .45, 1.6, marble, 0, Y + 1.2, 3, 10); k.cyl(1, .38, .32, marble, 0, Y + 1.95, 3, 16); k.add(new THREE.CapsuleGeometry(.14, .42, 4, 10), marble, 0, Y + 2.5, 3); k.ball(.11, M.gold, 0, Y + 2.92, 3, 10);
+  dyn.add(particles(40, 1, { size: .09, speed: .7, rise: 1.4, spread: 1.4, origin: [0, Y + 2.1, 3], color: '#d8f2ff', boost: 1.4 }));
+  obstacles.push([0, 3, 2.55]);
+  spots.push({ u: 0, v: 6.1, face: Math.PI, act: 'sit', label: 'Rest by the fountain' });
+  // Lamps and a cypress avenue down to the harbour.
+  for (const s of [-1, 1]) for (let i = 0; i < 5; i++) { const u = -1 * (i / 4) * 3 + s * 2.4, v = 12 + i * 2.3; trees.push(['cypress', u, v, .85]); }
+  for (const [u, v] of [[-2.2, 9.5], [2.2, 9.5], [3.5, -2], [-3.5, -2]]) { k.cyl(.06, .08, 2.8, M.iron, u, F.height(u, v) + 1.4, v, 6); k.ball(.2, M.lantern, u, F.height(u, v) + 2.9, v, 10); }
+  // Vineyard rows and olive groves on the western slope.
+  for (let row = 0; row < 5; row++) for (let i = 0; i < 9; i++) { const u = -24 + i * .95, v = 8 + row * 1.7; if (R.sdf(u, v) > 2.5) trees.push(['vine', u, v, .4]); }
+  // The painter's easel above the sea.
+  const easel = makeEasel(); const ef = Math.atan2(.55, .83); easel.g.position.set(15 + Math.sin(ef) * 1.15, Y + .05, 8.5 + Math.cos(ef) * 1.15); easel.g.rotation.y = ef + Math.PI; dyn.add(easel.g);
+  spots.push({ u: 15, v: 8.5, face: ef, act: 'paint', label: 'Paint the view', easel });
+  return { stat: k.g, dyn, obstacles, spots, trees, treeKinds: [['cypress', 26], ['olive', 18], ['oak', 4]] };
+}
+function buildSkyGarden(R, F) {
+  const k = kit(), dyn = new THREE.Group(), Y = R.base + 2.2, obstacles = [], spots = [], trees = [];
+  const moss = std('mossStone', { color: '#bdbca4', map: TEX.stone, bumpMap: TEX.stone, bumpScale: 1.2, roughness: .95 }, .42), mossTop = solid('#6f9c4c', 1);
+  // The underside: a hanging cone of rock with roots and vines.
+  { const prof = [[1, 0], [.97, -1.2], [.86, -3.5], [.66, -7], [.42, -11], [.22, -15], [.08, -18.5], [0, -20]].map(([r, y]) => new THREE.Vector2(r * Math.min(R.rx, R.rz), y));
+    const g = new THREE.LatheGeometry(prof, 40), p = g.attributes.position, col = new Float32Array(p.count * 3), c = new THREE.Color();
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), w = 1 + .22 * fbm(x * .2 + y * .1, z * .2 - y * .13, 3); p.setXYZ(i, x * w * R.rx / Math.min(R.rx, R.rz), y, z * w * R.rz / Math.min(R.rx, R.rz)); c.set('#6f8f4a').lerp(tmpCol.set('#7d7262'), smooth(-.5, -3, y)).lerp(tmpCol.set('#a59a88'), smooth(-12, -19, y)); col.set([c.r, c.g, c.b], i * 3); }
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+    const under = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true })); under.position.y = R.base - 1; under.castShadow = true; dyn.add(under);
+    const vine = solid('#4f7a3a', 1), r = rng32(4);
+    for (let i = 0; i < 26; i++) { const a = r() * Math.PI * 2, rr = .9 + r() * .1, len = 3 + r() * 9; k.cyl(.04 + r() * .05, .02, len, i % 3 ? vine : M.woodDark, Math.cos(a) * R.rx * rr * .93, R.base - 1.6 - len / 2, Math.sin(a) * R.rz * rr * .93, 5); } }
+  // Two waterfalls spilling off the edge into the clouds.
+  const fallMat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, uniforms: { uTime: U.time, uNoise: NOISE, uLight: U.light },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+    fragmentShader: `uniform float uTime,uLight; uniform sampler2D uNoise; varying vec2 vUv; void main(){ float n=texture2D(uNoise,vec2(vUv.x*1.5,vUv.y*.6+uTime*.35)).r, m=texture2D(uNoise,vec2(vUv.x*3.,vUv.y*1.3+uTime*.55)).a;
+      float a=smoothstep(.0,.25,vUv.x)*smoothstep(1.,.75,vUv.x)*smoothstep(0.,.35,vUv.y)*(.45+.55*smoothstep(.3,.7,n*.6+m*.6)); vec3 c=mix(vec3(.72,.86,.95),vec3(1.),m)*max(uLight,.35); gl_FragColor=vec4(c,a*.85);
+      #include <colorspace_fragment>
+      }` });
+  for (const a of [.5, 2.6]) { const u = Math.cos(a) * (R.rx - .6), v = Math.sin(a) * (R.rz - .6), fall = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 36), fallMat); fall.position.set(u * 1.02, R.base - 17, v * 1.02); fall.rotation.y = Math.atan2(Math.cos(a), Math.sin(a)); fall.renderOrder = 3; dyn.add(fall);
+    k.add(new THREE.CylinderGeometry(1.6, 1.6, .08, 18), M.pond, u * .86, F.height(u * .86, v * .86) + .05, v * .86);
+    dyn.add(particles(30, 1, { size: 1.1, speed: .25, rise: 2.5, spread: 3, origin: [u * 1.02, R.base - 30, v * 1.02], box: [2.5, 0, 0], color: '#f4f8ff', additive: false, opacity: .35 })); }
+  // A ruined circular colonnade around the great tree.
+  const r2 = rng32(8);
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2, u = Math.cos(a) * 5.2, v = Math.sin(a) * 5.2, broken = [2, 5, 6, 9].includes(i), h = broken ? .8 + r2() * 1.4 : 3.2;
+    k.cyl(.26, .3, h, moss, u, Y + h / 2, v, 10); k.cyl(.36, .36, .22, moss, u, Y + .11, v, 10); if (!broken) k.box(.75, .2, .75, moss, u, Y + h + .1, v); k.add(new THREE.SphereGeometry(.3, 8, 6), mossTop, u, Y + h + (broken ? 0 : .2), v).scale.set(1, .35, 1);
+    obstacles.push([u, v, .55]); }
+  for (let i = 0; i < 3; i++) { const a0 = (10 + i) / 12 * Math.PI * 2, a1 = (11 + i) / 12 * Math.PI * 2; if (i === 2) break; const m = (a0 + a1) / 2; k.box(2.8, .35, .55, moss, Math.cos(m) * 5.05, Y + 3.38, Math.sin(m) * 5.05, -m + Math.PI / 2); }
+  k.add(new THREE.CylinderGeometry(.3, .3, 3, 10), moss, 3.2, Y + .32, -7, 0, .7, Math.PI / 2);
+  const tree = new THREE.Mesh(treeGeometry('sacred', rng32(5), 2), treeMaterial()); tree.position.set(0, Y - .1, 0); tree.scale.setScalar(1.25); tree.castShadow = tree.receiveShadow = true; dyn.add(tree);
+  obstacles.push([0, 0, 2.6]);
+  // The gardener: a gentle, mossy stone guardian with flowers on its shoulders.
+  { const gk = kit(); gk.add(new THREE.SphereGeometry(1.05, 18, 14), moss, 0, 1.15, 0).scale.set(1, 1.1, .9); gk.ball(.5, moss, 0, 2.25, .35, 16); gk.ball(.12, nightGlow('#ffb347', 2), 0, 2.3, .82, 10);
+    for (const s of [-1, 1]) { gk.add(new THREE.CapsuleGeometry(.16, 1.5, 4, 8), moss, s * 1.05, 1.0, .2, .3, 0, s * .2); gk.ball(.22, moss, s * 1.2, .2, .55, 10); }
+    for (let i = 0; i < 10; i++) { const a = r2() * Math.PI, s = r2() < .5 ? -1 : 1; gk.ball(.08, solid(['#ffd85a', '#f59ac0', '#ffffff', '#a9c4ff'][i % 4], .8), s * (.4 + r2() * .5), 2 + r2() * .3, Math.cos(a) * .4, 8); }
+    gk.add(new THREE.SphereGeometry(.9, 12, 8), mossTop, 0, 1.75, -.15).scale.set(1.05, .5, .95);
+    gk.g.position.set(-7, Y - .1, 6); gk.g.rotation.y = .6; k.g.add(gk.g); obstacles.push([-7, 6, 1.6]); }
+  // An overlook bench.
+  k.box(1.9, .12, .55, moss, 11.2, F.height(11.2, 5.6) + .5, 5.6, -.5); for (const s of [-1, 1]) k.box(.2, .45, .45, moss, 11.2 + s * .8 * Math.cos(.5), F.height(11.2, 5.6) + .22, 5.6 + s * .8 * Math.sin(.5), -.5);
+  spots.push({ u: 10.2, v: 4.2, face: Math.atan2(.9, .4), act: 'meditate', label: 'Meditate at the overlook' });
+  spots.push({ u: -12.5, v: -3.5, face: Math.atan2(-1, -.2), act: 'gaze', label: 'Watch the clouds' });
+  // Floating stones and clouds drift around the island.
+  const drift = new THREE.Group(); dyn.add(drift); const fr = rng32(12), floaters = [];
+  for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2 + fr(), rr = Math.max(R.rx, R.rz) + 5 + fr() * 9, rock = new THREE.Mesh(rockGeometry(i + 3), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95, flatShading: true }));
+    const s = .9 + fr() * 1.8; rock.scale.set(s * 1.4, s, s * 1.2); rock.position.set(Math.cos(a) * rr, R.base - 3 + fr() * 9, Math.sin(a) * rr); drift.add(rock); floaters.push({ m: rock, y: rock.position.y, ph: fr() * 6 });
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(s * 1.2, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mossTop); cap.scale.set(1.15, .3, 1); cap.position.y = s * .55; rock.add(cap); }
+  const cloudMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1, emissive: '#ffffff', emissiveIntensity: .18, transparent: true, opacity: .92 });
+  for (let i = 0; i < 16; i++) { const a = fr() * Math.PI * 2, rr = 16 + fr() * 32, c = new THREE.Group(); c.position.set(Math.cos(a) * rr, R.base - 12 + fr() * 10, Math.sin(a) * rr);
+    for (let j = 0; j < 5; j++) { const b = new THREE.Mesh(SPHERE, cloudMat), s = 1.6 + fr() * 2.4; b.scale.set(s * 1.4, s * .7, s); b.position.set((fr() - .5) * 5, (fr() - .2) * 1.2, (fr() - .5) * 3); c.add(b); }
+    drift.add(c); }
+  const tick = t => { drift.rotation.y = t * .006; for (const f of floaters) { f.m.position.y = f.y + Math.sin(t * .5 + f.ph) * .6; f.m.rotation.y = t * .05 + f.ph; } };
+  return { stat: k.g, dyn, obstacles, spots, trees, tick, treeKinds: [['oak', 10], ['birch', 8], ['sakura', 4]] };
+}
+function buildBathhouse(R, F) {
+  const k = kit(), dyn = new THREE.Group(), Y = R.base + 1.1, obstacles = [], spots = [], trees = [];
+  const lacquer = solid('#a8392b', .5), frame = solid('#35261f', .8), teal = roofMat('#3f6f68'), gold = M.gold, red = nightGlow('#ff7a4a', 1.1);
+  // The bathhouse: four tiers of red lacquer under flared teal roofs, every window lit at dusk.
+  { const bk = kit(); bk.box(12, 1, 10, M.stoneDark, 0, .5, 0);
+    const tiers = [[10, 3, 8], [8.2, 2.7, 6.6], [6.4, 2.4, 5.2], [4.4, 2.1, 3.6]]; let y = 1;
+    tiers.forEach(([w, h, d], ti) => {
+      bk.box(w, h, d, lacquer, 0, y + h / 2, 0);
+      for (const [x, z] of [[-w / 2, -d / 2], [w / 2, -d / 2], [-w / 2, d / 2], [w / 2, d / 2]]) bk.box(.22, h, .22, frame, x, y + h / 2, z);
+      bk.box(w + .1, .16, d + .1, frame, 0, y + h - .1, 0);
+      const n = Math.round(w / 1.2); for (let i = 0; i < n; i++) { const x = (i - (n - 1) / 2) * (w / n); bk.box(.55, h * .42, .05, M.window, x, y + h * .55, d / 2 + .03); bk.box(.55, h * .42, .05, M.window, x, y + h * .55, -d / 2 - .03); }
+      const rr = Math.hypot(w, d) / 2 * 1.32, rg = new THREE.ConeGeometry(rr, 1.1, 4).rotateY(Math.PI / 4); rg.scale((w + 2.2) / (rr * Math.SQRT2), 1, (d + 2.2) / (rr * Math.SQRT2)); bk.add(rg, teal, 0, y + h + .5, 0);
+      for (const s of [-1, 1]) for (let i = 0; i < 7; i++) { const x = (i - 3) * (w + 1.6) / 7; dyn.userData.lanterns = (dyn.userData.lanterns || 0) + 1; bk.ball(.13, red, x, y + h - .05, s * (d / 2 + .9), 8); }
+      y += h + .55;
+    });
+    bk.cyl(.07, .1, 1.8, gold, 0, y + .7, 0, 8); bk.ball(.22, gold, 0, y + 1.6, 0, 12);
+    bk.box(2.2, 2.4, .2, frame, 0, 2.2, 4.08); bk.box(1.6, 2, .1, M.lantern, 0, 2.1, 4.12);
+    bk.g.position.set(-6, Y - .05, 0); bk.g.rotation.y = Math.PI / 2; k.g.add(bk.g);
+    obstacles.push([-6, 0, 6.6], [-6, -3.5, 4.4], [-6, 3.5, 4.4]); }
+  k.cyl(.9, 1.1, 13, solid('#7d4a3a', .9), -12, Y + 6.5, -4, 12);
+  dyn.add(particles(26, 1, { size: 1.6, speed: .07, rise: 8, spread: 1.4, origin: [-12, Y + 13.2, -4], box: [3, 0, 0], color: '#e9e6e0', additive: false, opacity: .3 }));
+  // A red arched bridge over the koi pond.
+  { const pk = kit(); pk.add(new THREE.CylinderGeometry(2.6, 2.6, .08, 30), M.pond, 0, -.02, 0);
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; pk.rock(.35, M.stoneDark, Math.cos(a) * 2.75, .05, Math.sin(a) * 2.75, i); }
+    for (let i = 0; i <= 12; i++) { const u = -3.2 + i * .53, y = Math.sin((i / 12) * Math.PI) * 1.05 + .15; pk.box(.5, .1, 1.7, lacquer, u, y, 0); }
+    for (const s of [-1, 1]) for (let i = 0; i <= 12; i += 2) { const u = -3.2 + i * .53, y = Math.sin((i / 12) * Math.PI) * 1.05 + .15; pk.cyl(.05, .05, .7, lacquer, u, y + .35, s * .82, 6); }
+    const by = F.height(5, 4); pk.g.position.set(5, by, 4); k.g.add(pk.g);
+    R.deck = (u, v) => Math.abs(v - 4) < .85 && u > 1.8 && u < 8.2 ? by + .2 + Math.sin((u - 1.8) / 6.4 * Math.PI) * 1.05 : null;
+    for (let i = 0; i < 5; i++) { const a = i * 1.3, fish = new THREE.Mesh(new THREE.CapsuleGeometry(.07, .25, 3, 6).rotateX(Math.PI / 2), solid(i % 2 ? '#ff8a3d' : '#fff3e6', .5)); fish.position.set(5, F.height(5, 4) + .02, 4); fish.userData.ph = a; dyn.add(fish); (dyn.userData.fish ||= []).push(fish); }
+    obstacles.push([5, 4, 2.8, 1]); }
+  // The outdoor hot spring.
+  { const ok = kit(); ok.add(new THREE.CylinderGeometry(2.7, 2.7, .1, 30), solid('#5fb3ad', .08, { metalness: .1, envMapIntensity: 1.4 }), 0, .18, 0);
+    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; ok.rock(.42 + (i % 3) * .08, M.stoneDark, Math.cos(a) * 2.95, .15, Math.sin(a) * 2.95, i + 7); }
+    ok.g.position.set(7, F.height(7, -8) - .1, -8); k.g.add(ok.g);
+    dyn.add(particles(36, 1, { size: 1.2, speed: .1, rise: 3, spread: 3.4, origin: [7, F.height(7, -8) + .3, -8], color: '#ffffff', additive: false, opacity: .28 }));
+    spots.push({ u: 7, v: -8, face: Math.PI / 2, act: 'soak', label: 'Soak in the hot spring' }); }
+  // Stone lanterns along the path.
+  for (const [u, v] of [[4, -1.5], [9, -1.8], [13, 4.8], [9.5, 6.6], [1.5, -4]]) { const y = F.height(u, v); k.cyl(.32, .4, .25, M.stoneDark, u, y + .12, v, 8); k.cyl(.1, .12, .8, M.stoneDark, u, y + .6, v, 8); k.box(.42, .4, .42, M.lantern, u, y + 1.2, v); k.cone(.42, .3, M.stoneDark, u, y + 1.55, v, 4, Math.PI / 4); obstacles.push([u, v, .5]); }
+  // The sea railway: rails just above the waves, and a little train that runs out to the horizon and back.
+  { const rk = kit(), len = 150, u0 = -R.rx + 2;
+    for (let i = 0; i < len / 3; i++) { const u = u0 - i * 3; rk.cyl(.12, .14, 3, M.stoneDark, u, -1.3, 2.4, 6); rk.box(.25, .14, 2.2, M.woodDark, u, .22, 2.4); }
+    for (const s of [-1, 1]) rk.box(len, .08, .08, M.iron, u0 - len / 2, .33, 2.4 + s * .6);
+    k.g.add(rk.g);
+    const train = new THREE.Group(), tk = kit(); tk.box(5.2, 2.1, 2.1, solid('#3c6e6a', .55), 0, 1.45, 0); tk.box(5.25, .28, 2.15, solid('#efe2c4', .7), 0, 1.15, 0); tk.box(5.3, .14, 2.2, lacquer, 0, .5, 0);
+    for (let i = 0; i < 5; i++) for (const s of [-1, 1]) tk.box(.65, .7, .05, M.window, -2 + i, 1.8, s * 1.06);
+    tk.box(5.4, .18, 2.3, frame, 0, 2.55, 0); tk.ball(.16, M.lantern, 2.65, 1.6, 0, 8); train.add(mergeGroup(tk.g)); train.position.set(u0, .1, 2.4); dyn.add(train); dyn.userData.train = { g: train, u0, len }; }
+  // Floating lanterns and lily pads on the water.
+  { const lr = rng32(31), pad = solid('#4e8a45', .7), petal = solid('#f5a6c4', .6);
+    for (let i = 0; i < 18; i++) { const a = lr() * Math.PI * 2, rr = 1 + .08 + lr() * .3, u = Math.cos(a) * R.rx * rr, v = Math.sin(a) * R.rz * rr; const l = new THREE.Mesh(new THREE.BoxGeometry(.32, .32, .32), M.lantern); l.position.set(u, .2, v); l.userData.ph = lr() * 6; dyn.add(l); (dyn.userData.floats ||= []).push(l); }
+    for (let i = 0; i < 26; i++) { const a = lr() * Math.PI * 2, rr = 1.02 + lr() * .12, u = Math.cos(a) * R.rx * rr, v = Math.sin(a) * R.rz * rr; k.add(new THREE.CircleGeometry(.45 + lr() * .3, 12, .3, Math.PI * 1.85).rotateX(-Math.PI / 2), pad, u, .09, v, 0, lr() * 6, 0, false); if (lr() < .35) k.ball(.12, petal, u, .2, v, 8); } }
+  const tick = t => {
+    const tr = dyn.userData.train, k2 = .5 - .5 * Math.cos(t * .045); tr.g.position.x = tr.u0 - 4 - k2 * (tr.len - 10);
+    for (const l of dyn.userData.floats) { l.position.y = .18 + Math.sin(t * 1.1 + l.userData.ph) * .06; l.rotation.y = t * .2 + l.userData.ph; }
+    for (const f of dyn.userData.fish) { const a = t * .5 + f.userData.ph; f.position.x = 5 + Math.cos(a) * 1.6; f.position.z = 4 + Math.sin(a) * 1.6; f.rotation.y = -a; }
+  };
+  return { stat: k.g, dyn, obstacles, spots, trees, tick, treeKinds: [['sakura', 16], ['pine', 8], ['oak', 6]] };
+}
+function buildStarfall(R, F) {
+  const k = kit(), dyn = new THREE.Group(), Y = R.base + 2.6, obstacles = [], spots = [], trees = [];
+  const stat = std('statue', { color: '#e2e4d8', map: TEX.stone, roughness: .8 }, .42), rune = nightGlow('#8fe6ff', 1.6), cyan = glow('#7fe3ff', 3);
+  // A stepped plinth and a robed statue raising a glowing orb: a waypoint statue among the stars.
+  k.cyl(4.2, 4.4, .5, M.stoneDark, 0, Y + .25, -2, 8); k.cyl(3.3, 3.5, .5, stat, 0, Y + .75, -2, 8); k.cyl(2.4, 2.55, .5, stat, 0, Y + 1.25, -2, 8);
+  k.add(new THREE.RingGeometry(4.7, 4.95, 64).rotateX(-Math.PI / 2), rune, 0, Y + .04, -2, 0, 0, 0, false);
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; k.add(new THREE.PlaneGeometry(.5, .5).rotateX(-Math.PI / 2), rune, Math.cos(a) * 4.82, Y + .05, -2 + Math.sin(a) * 4.82, 0, a, 0, false); }
+  k.cone(1.05, 3.3, stat, 0, Y + 3.15, -2, 18); k.add(new THREE.SphereGeometry(.62, 16, 10), stat, 0, Y + 4.6, -2).scale.set(1.2, .7, 1);
+  k.ball(.4, stat, 0, Y + 5.2, -1.95, 16); k.add(new THREE.SphereGeometry(.5, 14, 10, 0, Math.PI * 2, 0, Math.PI * .55), stat, 0, Y + 5.25, -2.05);
+  for (const s of [-1, 1]) k.add(new THREE.CapsuleGeometry(.12, 1.1, 4, 8), stat, s * .42, Y + 5.6, -1.75, -.35, 0, -s * .45);
+  for (const s of [-1, 1]) { const wg = new THREE.BoxGeometry(.12, 2.4, 1.2); wg.translate(0, 1, -.4); k.add(wg, stat, s * .6, Y + 3.9, -2.5, -.25, s * .5, s * .5); }
+  k.torus(.75, .05, M.gold, 0, Y + 5.3, -2.55, 0);
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(.32, 20, 14), cyan); orb.position.set(0, Y + 6.45, -1.7); dyn.add(orb);
+  obstacles.push([0, -2, 4.3]);
+  // The waypoint: a floating crystal inside turning gold rings.
+  k.cyl(.7, .9, .5, stat, 5, F.height(5, 3) + .25, 3, 8); k.add(new THREE.RingGeometry(.9, 1.05, 32).rotateX(-Math.PI / 2), rune, 5, F.height(5, 3) + .52, 3, 0, 0, 0, false);
+  const wp = new THREE.Group(); wp.position.set(5, F.height(5, 3) + 2, 3); dyn.add(wp);
+  const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(.42), cyan); crystal.scale.y = 1.6; wp.add(crystal);
+  const rings = [0, 1].map(i => { const r = new THREE.Mesh(new THREE.TorusGeometry(.8 + i * .18, .03, 6, 40), M.gold); wp.add(r); return r; });
+  obstacles.push([5, 3, 1]);
+  dyn.add(particles(40, 1, { size: .12, speed: .3, rise: 5, spread: 6, origin: [0, Y, -2], color: '#9fe8ff', boost: 2.4 }));
+  // Glowing lilies, standing stones and rocky outcrops.
+  const lr = rng32(17), lilyGeo = new THREE.ConeGeometry(.08, .22, 5).translate(0, .2, 0), lily = new THREE.InstancedMesh(lilyGeo, nightGlow('#cfeeff', 1.2), 60), d0 = new THREE.Object3D();
+  let n = 0; for (let tries = 0; n < 60 && tries < 900; tries++) { const u = (lr() - .5) * R.rx * 2, v = (lr() - .5) * R.rz * 2; if (R.sdf(u, v) < 1.5 || Math.hypot(u, v + 2) < 5 || Math.hypot(u - 5, v - 3) < 1.6) continue; d0.position.set(u, F.height(u, v), v); d0.rotation.set(0, lr() * 6, 0); d0.updateMatrix(); lily.setMatrixAt(n++, d0.matrix); }
+  lily.count = n; dyn.add(lily);
+  for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 + .4, u = Math.cos(a) * 8.5, v = Math.sin(a) * 7.2; if (R.sdf(u, v) < 2) continue; k.box(.7, 2.4 + (i % 2), .5, stat, u, F.height(u, v) + 1.1, v, a); obstacles.push([u, v, .7]); }
+  spots.push({ u: 0, v: 3.2, face: Math.PI, act: 'pray', label: 'Make a wish at the statue' });
+  spots.push({ u: 5, v: 5.4, face: Math.PI, act: 'meditate', label: 'Rest by the waypoint' });
+  const tick = t => { orb.position.y = Y + 6.45 + Math.sin(t * 1.4) * .08; crystal.rotation.y = t * .8; wp.position.y = F.height(5, 3) + 2 + Math.sin(t * 1.2) * .15; rings[0].rotation.set(t * .7, t * .4, 0); rings[1].rotation.set(-t * .5, 0, t * .6); };
+  return { stat: k.g, dyn, obstacles, spots, trees, tick, treeKinds: [['pine', 8], ['birch', 6]] };
+}
+// The painter's easel: the canvas fills with dabs of colour while Nivetha paints.
+function makeEasel() {
+  const g = new THREE.Group(), wood = M.wood, c = document.createElement('canvas'); c.width = 192; c.height = 144;
+  const x2 = c.getContext('2d'); x2.fillStyle = '#f6efdf'; x2.fillRect(0, 0, 192, 144);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  for (const s of [-1, 1]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(.06, 1.8, .06), wood); leg.position.set(s * .38, .9, .05); leg.rotation.z = -s * .12; g.add(leg); }
+  const back = new THREE.Mesh(new THREE.BoxGeometry(.06, 1.7, .06), wood); back.position.set(0, .85, -.42); back.rotation.x = -.35; g.add(back);
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(.9, .05, .12), wood); shelf.position.set(0, .82, .1); g.add(shelf);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(.92, .72, .04), M.woodDark); frame.position.set(0, 1.25, .08); frame.rotation.x = -.1; g.add(frame);
+  const canvasMesh = new THREE.Mesh(new THREE.PlaneGeometry(.84, .64), new THREE.MeshStandardMaterial({ map: tex, roughness: .9 })); canvasMesh.position.set(0, 1.25, .105); canvasMesh.rotation.x = -.1; g.add(canvasMesh);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  let progress = 0, acc = 0; const r = rng32(99);
+  const palette = [['#9cc7e6', '#c9e2f2', '#f4d9a8'], ['#3f8fb3', '#5aa6c4'], ['#7fae5c', '#5f8f45', '#c9b46a'], ['#c0623e', '#f1ece0']];
+  function paint(dt) {
+    acc += dt; if (acc < .25) return; acc = 0; progress = Math.min(1, progress + .012);
+    for (let i = 0; i < 6; i++) {
+      const y = r() * 144, band = y < 60 ? 0 : y < 84 ? 1 : 2, cols = palette[band]; x2.fillStyle = cols[(r() * cols.length) | 0]; x2.globalAlpha = .55;
+      x2.beginPath(); x2.ellipse(r() * 192, y, 6 + r() * 14, 2 + r() * 4, (r() - .5) * .6, 0, Math.PI * 2); x2.fill();
+    }
+    if (progress > .45) { x2.globalAlpha = .7; x2.fillStyle = palette[3][(r() * 2) | 0]; const cx = 120 + (r() - .5) * 18, cy = 70 + (r() - .5) * 10; x2.beginPath(); x2.ellipse(cx, cy, 4 + r() * 6, 3 + r() * 4, 0, Math.PI, Math.PI * 2); x2.fill(); }
+    if (progress > .8 && r() < .3) { x2.globalAlpha = .9; x2.fillStyle = '#ffe7a3'; x2.beginPath(); x2.arc(40, 30, 9, 0, Math.PI * 2); x2.fill(); }
+    x2.globalAlpha = 1; tex.needsUpdate = true;
+  }
+  return { g, paint };
+}
+// The sky ferry: a little sailboat with gold trim that unfolds wings and flies between realms.
+function makeFerry() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const hull = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), M.wood); hull.scale.set(1.15, .7, 2.9); hull.castShadow = true; body.add(hull);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(1.95, .08, 4.9), M.woodDark); deck.position.y = -.06; body.add(deck);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(1, .05, 6, 48).rotateX(Math.PI / 2), M.gold); rim.scale.set(1.15, 1, 2.9); body.add(rim);
+  const prow = new THREE.Mesh(new THREE.TorusGeometry(.28, .06, 8, 20, Math.PI * 1.4), M.gold); prow.position.set(0, .35, 2.95); prow.rotation.y = Math.PI / 2; body.add(prow);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(.06, .08, 4.4, 8), M.woodDark); mast.position.set(0, 2.15, .4); mast.castShadow = true; body.add(mast);
+  const yard = new THREE.Mesh(new THREE.BoxGeometry(2.5, .08, .08), M.woodDark); yard.position.set(0, 3.9, .4); body.add(yard);
+  const sailTex = canvasTexture(256, (x, s) => { x.fillStyle = '#f5ead0'; x.fillRect(0, 0, s, s); x.strokeStyle = '#c49a45'; x.lineWidth = 10; x.strokeRect(10, 10, s - 20, s - 20); x.fillStyle = '#c49a45'; x.font = `${s * .42}px Georgia, serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('✦', s / 2, s / 2 + 6); });
+  const sg = new THREE.PlaneGeometry(2.3, 2.5, 8, 8), sp = sg.attributes.position; for (let i = 0; i < sp.count; i++) sp.setZ(i, Math.cos(sp.getX(i) / 2.3 * Math.PI) * .35);
+  sg.computeVertexNormals(); const sail = new THREE.Mesh(sg, new THREE.MeshStandardMaterial({ map: sailTex, side: THREE.DoubleSide, roughness: .9 })); sail.position.set(0, 2.6, .5); sail.castShadow = true; body.add(sail);
+  for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .9, 6), M.iron); post.position.set(s * .75, .45, -2.2); body.add(post); const l = new THREE.Mesh(new THREE.SphereGeometry(.12, 10, 8), M.lantern); l.position.set(s * .75, .95, -2.2); body.add(l); }
+  const bench = new THREE.Mesh(new THREE.BoxGeometry(1.6, .12, .45), M.wood); bench.position.set(0, .2, -1.6); body.add(bench);
+  const wingGeo = new THREE.BufferGeometry(); wingGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, -1.4, 0, 0, 1.2, 3.2, .3, -.6, 0, 0, 1.2, 3.2, .3, -.6, 2.4, .2, .9], 3)); wingGeo.computeVertexNormals();
+  const wingMat = new THREE.MeshStandardMaterial({ color: '#fff1c8', emissive: '#f2c76a', emissiveIntensity: .8, transparent: true, opacity: .55, side: THREE.DoubleSide, depthWrite: false });
+  const wings = [-1, 1].map(s => { const w = new THREE.Mesh(wingGeo, wingMat); w.position.set(s * 1.05, .15, .2); w.scale.set(s * .001, 1, 1); body.add(w); return w; });
+  const proxy = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 3.2, 10), new THREE.MeshBasicMaterial({ visible: false })); proxy.position.y = 1; proxy.userData = { kind: 'ferry' }; g.add(proxy);
+  return { g, body, wings, sail, proxy };
+}
+// Mochi, Nivetha's cat: cream fur, ginger patches, a red scarf and a little gold bell.
+function makeCat() {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const cream = toonMat('#f6e7cc'), ginger = toonMat('#e0935a'), pink = toonMat('#f2a0a6'), ink = new THREE.MeshBasicMaterial({ color: '#2a1f1a' }), white = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+  const outline = new THREE.MeshBasicMaterial({ color: '#2b2420', side: THREE.BackSide });
+  const add = (parent, geo, mat, p, s, r, line = true) => { const m = new THREE.Mesh(geo, mat); m.position.set(...p); if (s) m.scale.set(...s); if (r) m.rotation.set(...r); m.castShadow = true; parent.add(m); if (line) { const o = new THREE.Mesh(geo, outline); o.position.copy(m.position); o.rotation.copy(m.rotation); o.scale.copy(m.scale).multiplyScalar(1.07); parent.add(o); } return m; };
+  add(body, capsule(.12, .26).rotateX(Math.PI / 2), cream, [0, .27, 0], [1, .95, 1]);
+  add(body, SPHERE, ginger, [0, .36, -.06], [.09, .05, .12], null, false); add(body, SPHERE, ginger, [.05, .34, .1], [.06, .04, .06], null, false);
+  const head = new THREE.Group(); head.position.set(0, .42, .24); body.add(head);
+  add(head, SPHERE, cream, [0, 0, 0], [.125, .112, .118]);
+  for (const s of [-1, 1]) {
+    add(head, new THREE.ConeGeometry(.048, .1, 4), s < 0 ? ginger : cream, [s * .066, .1, -.01], null, [0, 0, -s * .3]);
+    add(head, new THREE.ConeGeometry(.026, .06, 4), pink, [s * .066, .1, .012], null, [0, 0, -s * .3], false);
+    add(head, SPHERE, ink, [s * .046, .015, .104], [.022, .028, .012], null, false);
+    add(head, SPHERE, white, [s * .046 - .006, .026, .114], [.007, .007, .004], null, false);
+    add(head, SPHERE, cream, [s * .05, -.04, .09], [.05, .035, .04], null, false);
+  }
+  add(head, SPHERE, pink, [0, -.02, .121], [.015, .011, .008], null, false);
+  const eyes = head.children.filter(m => m.material === ink);
+  add(body, new THREE.TorusGeometry(.085, .022, 6, 18).rotateX(Math.PI / 2 - .5), toonMat('#b4492f'), [0, .38, .18], null, null, false);
+  add(body, new THREE.SphereGeometry(.024, 10, 8), glow('#f0c565', .4), [0, .32, .25], null, null, false);
+  const legs = [[-.065, .13], [.065, .13], [-.065, -.12], [.065, -.12]].map(([x, z]) => { const g = new THREE.Group(); g.position.set(x, .2, z); body.add(g); add(g, capsule(.034, .12), cream, [0, -.09, 0]); add(g, SPHERE, ginger, [0, -.17, .01], [.04, .025, .045], null, false); return g; });
+  const tail = []; let parent = body; const base = new THREE.Group(); base.position.set(0, .32, -.2); body.add(base); parent = base;
+  for (let i = 0; i < 5; i++) { const seg = new THREE.Group(); seg.position.set(0, i ? .075 : 0, i ? -.02 : 0); parent.add(seg); add(seg, capsule(.028 - i * .002, .06), i > 2 ? ginger : cream, [0, .04, 0]); tail.push(seg); parent = seg; }
+  const proxy = new THREE.Mesh(new THREE.SphereGeometry(.45, 8, 6), new THREE.MeshBasicMaterial({ visible: false })); proxy.position.y = .3; proxy.userData = { kind: 'cat' }; root.add(proxy);
+  root.scale.setScalar(1.25);
+  return { root, body, head, legs, tail, eyes, proxy, phase: 0, yaw: 0, sit: 0, hop: 0, happy: 0, still: 0 };
+}
+// Hand-held props for Nivetha's activities.
+function makeProps() {
+  const P = {}, t = (geo, c) => new THREE.Mesh(geo, toonMat(c));
+  P.book = new THREE.Group(); for (const s of [-1, 1]) { const page = t(new THREE.BoxGeometry(.16, .012, .22), '#f4ead2'); page.position.x = s * .08; page.rotation.z = s * .18; P.book.add(page); const cover = t(new THREE.BoxGeometry(.17, .01, .23), '#7a2e2a'); cover.position.set(s * .085, -.012, 0); cover.rotation.z = s * .18; P.book.add(cover); }
+  P.ledger = P.book.clone();
+  P.hammer = new THREE.Group(); { const h = t(new THREE.CylinderGeometry(.018, .02, .42, 6), '#6b4a33'); h.position.y = -.12; const head = t(new THREE.BoxGeometry(.16, .08, .08), '#596065'); head.position.y = -.33; P.hammer.add(h, head); P.hammer.rotation.x = Math.PI / 2; }
+  P.quill = new THREE.Group(); { const f = t(new THREE.ConeGeometry(.025, .26, 5), '#fff6e6'); f.position.y = .1; const n = t(new THREE.CylinderGeometry(.004, .006, .08, 4), '#2a2321'); n.position.y = -.05; P.quill.add(f, n); P.quill.rotation.x = .9; }
+  P.brush = new THREE.Group(); { const h = t(new THREE.CylinderGeometry(.01, .012, .3, 6), '#b4492f'); const tip = t(new THREE.ConeGeometry(.016, .06, 6), '#3f8fb3'); tip.position.y = .17; P.brush.add(h, tip); P.brush.rotation.x = 1.2; }
+  P.wrench = new THREE.Group(); { const h = t(new THREE.BoxGeometry(.03, .26, .02), '#8a9096'); const hd = t(new THREE.TorusGeometry(.035, .012, 6, 12, Math.PI * 1.5), '#8a9096'); hd.position.y = .14; P.wrench.add(h, hd); P.wrench.rotation.x = 1.3; }
+  P.anvil = new THREE.Group(); { const b = new THREE.Mesh(new THREE.BoxGeometry(.5, .3, .28), M.iron), top = new THREE.Mesh(new THREE.BoxGeometry(.7, .12, .3), M.iron), st = new THREE.Mesh(new THREE.CylinderGeometry(.22, .26, .42, 10), M.woodDark); st.position.y = .21; b.position.y = .57; top.position.y = .78; P.anvil.add(st, b, top); P.anvil.traverse(o => { o.castShadow = true; }); }
+  for (const p of Object.values(P)) p.visible = false;
+  return P;
 }
 
 // ───────────────────────────── voices ─────────────────────────────
@@ -861,6 +1291,11 @@ const SIZE_SCALE = { value: 400 };
 // ───────────────────────────── main ─────────────────────────────
 function start() {
   buildField(); makeTextures(); makeMaterials(); NOISE.value = noiseTexture();
+  // Where Nivetha is: the home island (realm = null) or one of the realms beyond the sea.
+  let realm = null, voyage = null, pierInfo = null, groundAt = heightAt, mainMask = null, rescueTravel = null, dynObstacles = [];
+  const realms = [], hooks = {};
+  const posW = (lx, ly) => realm ? [realm.R.at[0] + (lx - 550) * SCALE, realm.R.at[1] + (ly - 360) * SCALE] : toW(lx, ly);
+  const posL = (x, z) => realm ? [(x - realm.R.at[0]) / SCALE + 550, (z - realm.R.at[1]) / SCALE + 360] : toL(x, z);
   const frameEl = canvas.parentElement, glCanvas = document.createElement('canvas');
   glCanvas.className = 'w3-canvas'; glCanvas.setAttribute('aria-hidden', 'true');
   frameEl.insertBefore(glCanvas, canvas);
@@ -946,6 +1381,7 @@ function start() {
     // Recovery mode keeps the world calm: lanterns lit, fireflies out, a softer breeze.
     const glowNow = Math.max(look.glow, calm ? .55 : 0);
     M.window.emissiveIntensity = .2 + glowNow * 2.4; M.lantern.emissiveIntensity = 1 + glowNow * 2.6;
+    for (const m of NIGHT_GLOW) m.emissiveIntensity = (.3 + glowNow * 2.4) * m.userData.k;
     U.rim.value.copy(U.sunColor.value).multiplyScalar(.22 + look.glow * .12);
     U.wind.value = reduceMotion.matches ? .35 : calm ? .6 : 1;
     bloom.strength = look.bloom;
@@ -1058,7 +1494,7 @@ function start() {
     const geo = finishPart(g, (c, x, y) => c.copy(P.g2).lerp(P.rock, smooth(.25, .8, y)).lerp(P.snow, smooth(1.0, 1.3, y)));
     const a = k / 9 * Math.PI * 2 + farR() * .5, dist = 260 + farR() * 200, isle = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
     isle.position.set(Math.sin(a) * dist, -2, Math.cos(a) * dist * .8 - 40); isle.scale.set(28 + farR() * 40, 18 + farR() * 55, 24 + farR() * 30); isle.rotation.y = farR() * 6;
-    scene.add(isle);
+    if (REALMS.every(R => Math.hypot(isle.position.x - R.at[0], isle.position.z - R.at[1]) > 130)) scene.add(isle);
   }
 
   // Landmarks, barriers for locked places, hit targets and collision circles (logical units).
@@ -1187,13 +1623,74 @@ function start() {
     const k = kit(), ph = .55, len = 9;
     for (let i = 0; i < len / .5; i++) k.box(1.6, .08, .44, M.wood, 0, ph, -1.5 + i * .5);
     for (let i = 0; i < len / 2; i++) for (const s of [-1, 1]) k.cyl(.07, .08, 2.6, M.woodDark, s * .78, ph - 1.2, -1 + i * 2, 7);
-    const pier = mergeGroup(k.g); pier.position.set(sx, 0, sz); scene.add(pier);
+    const pier = mergeGroup(k.g); pier.position.set(sx, 0, sz); scene.add(pier); pierInfo = { sx, sz, len };
     const boat = new THREE.Group(), hull = new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2); hull.scale(.62, .4, 1.6);
     const hm = new THREE.Mesh(hull, M.wood); hm.castShadow = true; boat.add(hm);
     const seat = new THREE.Mesh(new THREE.BoxGeometry(1.1, .06, .3), M.woodDark); seat.position.y = -.05; boat.add(seat);
     boat.position.set(sx + 1.9, .08, sz + len - 2.2); boat.rotation.y = .25; scene.add(boat);
     animated.push(t => { boat.position.y = .1 + Math.sin(t * 1.1) * .06; boat.rotation.z = Math.sin(t * .9) * .04; boat.rotation.x = Math.sin(t * .7) * .03; });
   }
+
+
+  // Beyond the sea: build each realm at its own offset in the ocean.
+  for (const R of REALMS) {
+    const F = realmField(R); R.sdf = F.sdf;
+    const group = new THREE.Group(); group.position.set(R.at[0], 0, R.at[1]); scene.add(group);
+    group.add(realmTerrain(R, F)); if (!R.float) group.add(shoreMesh(R));
+    const B = R.build(R, F); mergeGroup(B.stat); group.add(B.stat, B.dyn); if (B.tick) animated.push(B.tick);
+    F.ground = (u, v) => { const h = F.height(u, v), dh = R.deck?.(u, v); return dh != null ? Math.max(h, dh) : h; };
+    // A pier on the side that faces home; the ferry moors at its end.
+    const dir = new THREE.Vector2(-R.at[0], -R.at[1]).normalize(); let su = 0, sv = 0;
+    for (let d = 0; d < 90; d += .25) { su = dir.x * d; sv = dir.y * d; if (F.sdf(su, sv) < .3) break; }
+    { const pk = kit(), ph = R.float ? R.base + .25 : .55;
+      for (let i = 0; i < 16; i++) pk.box(1.6, .08, .44, M.wood, 0, ph, -1.2 + i * .5);
+      for (let i = 0; i < 4; i++) for (const s of [-1, 1]) pk.cyl(.07, .08, R.float ? 1.2 : 2.6, M.woodDark, s * .78, ph - (R.float ? .6 : 1.2), -.8 + i * 2, 7);
+      for (const s of [-1, 1]) { pk.cyl(.05, .06, 1.6, M.iron, s * .82, ph + .8, -.9, 6); pk.ball(.15, M.lantern, s * .82, ph + 1.65, -.9, 10); }
+      pk.g.position.set(su, 0, sv); pk.g.rotation.y = Math.atan2(dir.x, dir.y); group.add(mergeGroup(pk.g)); }
+    const obstacles = [...B.obstacles];
+    // Trees: the builder's own placements, then a seeded scatter of the realm's species.
+    const placed = {}, rr = rng32(R.seed * 7), bu = su - dir.x * 3.2, bv = sv - dir.y * 3.2;
+    const clear = (u, v, pad) => F.sdf(u, v) > 3 && F.paved(u, v) < .1 && R.pads.every(P => Math.hypot(u - P[0], v - P[1]) > P[2] + pad) && obstacles.every(o => Math.hypot(u - o[0], v - o[1]) > o[2] + pad) && B.spots.every(s => Math.hypot(u - s.u, v - s.v) > 3) && Math.hypot(u - bu, v - bv) > 5 && Math.hypot(u - su, v - sv) > 4;
+    for (const [kind, u, v, s] of B.trees) (placed[kind] ||= []).push([u, v, rr() * 6.28, s]);
+    for (const [kind, n] of B.treeKinds) for (let tries = 0, c = 0; c < n && tries < n * 80; tries++) {
+      const u = (rr() - .5) * R.rx * 2, v = (rr() - .5) * R.rz * 2, s = .75 + rr() * .5;
+      if (!clear(u, v, 1.4) || Object.values(placed).some(list => list.some(t => Math.hypot(t[0] - u, t[1] - v) < 2.3 * Math.max(t[3], .6)))) continue;
+      (placed[kind] ||= []).push([u, v, rr() * 6.28, s]); c++;
+    }
+    for (const [kind, list] of Object.entries(placed)) {
+      const mesh = new THREE.InstancedMesh(treeGeometry(kind === 'vine' ? 'bush' : kind, rng32(kind.length * 31 + R.seed), Q.blob), treeMaterial(), list.length);
+      list.forEach(([u, v, ry, s], i) => { dummy.position.set(u, F.height(u, v) - .1, v); dummy.rotation.set(0, ry, 0); dummy.scale.setScalar(s); dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix); if (kind !== 'vine') obstacles.push([u, v, .42 * s]); });
+      mesh.castShadow = mesh.receiveShadow = true; mesh.computeBoundingSphere(); group.add(mesh);
+    }
+    // Grass and wildflowers.
+    { const gN = Q.grass * .08 | 0, fN = Q.flowers * .2 | 0, grass = new THREE.InstancedMesh(grassBladeGeometry(), grassMaterial('grass', 1.15), gN), fg = new THREE.IcosahedronGeometry(1, 0);
+      fg.scale(1, .55, 1); fg.translate(0, 1, 0); const flowers = new THREE.InstancedMesh(fg, grassMaterial('flower', 1.0, .3), fN), g1 = C(R.palette.g1), g2 = C(R.palette.g2), gc = new THREE.Color();
+      const fcols = ['#fff6e6', '#ffd85a', '#f59ac0', '#a9c4ff', '#ffffff', '#ff8f6b', '#e6b3ff'].map(C);
+      let n = 0, f = 0;
+      for (let tries = 0; (n < gN || f < fN) && tries < gN * 6; tries++) {
+        const u = (rr() - .5) * R.rx * 2, v = (rr() - .5) * R.rz * 2;
+        if (F.sdf(u, v) < (R.float ? 1.2 : 2.3) || F.paved(u, v) > .25 || obstacles.some(o => Math.hypot(u - o[0], v - o[1]) < o[2] * .9)) continue;
+        const h = F.height(u, v);
+        if (n < gN) { const w = .07 + rr() * .05; dummy.position.set(u, h - .03, v); dummy.rotation.set(0, rr() * 6.28, 0); dummy.scale.set(w, .3 + rr() * .45, w); dummy.updateMatrix(); grass.setMatrixAt(n, dummy.matrix); gc.copy(g1).lerp(g2, rr()).multiplyScalar(.95 + rr() * .2); grass.setColorAt(n++, gc); }
+        if (f < fN && rr() < .35) { const s = .045 + rr() * .035; dummy.position.set(u, h + .22 + rr() * .2, v); dummy.scale.set(s, s, s); dummy.updateMatrix(); flowers.setMatrixAt(f, dummy.matrix); flowers.setColorAt(f++, fcols[(rr() * fcols.length) | 0]); }
+      }
+      grass.count = n; flowers.count = f; grass.receiveShadow = flowers.receiveShadow = true; grass.computeBoundingSphere(); flowers.computeBoundingSphere(); group.add(grass, flowers); }
+    const toLL = (u, v) => ({ x: u / SCALE + 550, y: v / SCALE + 360 });
+    const parkU = su + dir.x * 5.2 - dir.y * 2.1, parkV = sv + dir.y * 5.2 + dir.x * 2.1;
+    realms.push({
+      R, F, group, obstacles, board: toLL(bu, bv),
+      park: { pos: new THREE.Vector3(R.at[0] + parkU, R.float ? R.base - .1 : 0, R.at[1] + parkV), yaw: Math.atan2(-dir.x, -dir.y) },
+      labelPos: new THREE.Vector3(R.at[0], R.base + R.labelH, R.at[1]),
+      spots: B.spots.map(s => ({ ...s, realmId: R.id, L: toLL(s.u, s.v), pos: new THREE.Vector3(R.at[0] + s.u, F.ground(s.u, s.v), R.at[1] + s.v) })),
+      walkable(lx, ly) {
+        const u = (lx - 550) * SCALE, v = (ly - 360) * SCALE;
+        if (F.sdf(u, v) < 1.1) return false;
+        const deck = R.deck?.(u, v) != null;
+        return obstacles.every(o => (u - o[0]) ** 2 + (v - o[1]) ** 2 > o[2] * o[2] || (o[3] && deck));
+      },
+    });
+  }
+  groundAt = (x, z) => { for (const r of realms) if (Math.abs(x - r.R.at[0]) < r.R.rx + 14 && Math.abs(z - r.R.at[1]) < r.R.rz + 14) return r.F.ground(x - r.R.at[0], z - r.R.at[1]); return heightAt(x, z); };
 
   // Characters.
   const player = makeCharacter(PLAYER_LOOK, true); scene.add(player.root);
@@ -1286,12 +1783,13 @@ function start() {
   // Collision against landmarks, trees, characters and the coast (all in logical units).
   const botObstacles = () => bots.filter(o => o.ch.root.visible).map(o => ({ x: o.b.x, y: o.b.y, r: 10 }));
   let obstacles = [];
-  const refreshObstacles = level => { obstacles = [...staticObstacles, ...treeObstacles, ...botObstacles(), ...(level >= 7 ? gateObstacles : [])]; };
-  const walkable = (lx, ly) => { const [x, z] = toW(lx, ly); return sdfAt(x, z) > 1.1 && heightAt(x, z) < 12.5 && obstacles.every(o => (lx - o.x) ** 2 + (ly - o.y) ** 2 > o.r * o.r); };
+  const refreshObstacles = level => { dynObstacles = [...botObstacles(), ...(level >= 7 ? gateObstacles : [])]; obstacles = [...staticObstacles, ...treeObstacles, ...dynObstacles]; };
+  const walkable = (lx, ly) => realm ? realm.walkable(lx, ly) : mainWalkable(lx, ly);
+  const mainWalkable = (lx, ly) => { const [x, z] = toW(lx, ly); return sdfAt(x, z) > 1.1 && heightAt(x, z) < 12.5 && !(mainMask && mainMask.test(x, z)) && (mainMask ? dynObstacles : obstacles).every(o => (lx - o.x) ** 2 + (ly - o.y) ** 2 > o.r * o.r); };
   function nearestWalkable(p) {
     if (walkable(p.x, p.y)) return p;
     for (let r = 6; r < 260; r += 6) for (let a = 0; a < 24; a++) { const x = p.x + Math.cos(a / 24 * Math.PI * 2) * r, y = p.y + Math.sin(a / 24 * Math.PI * 2) * r; if (walkable(x, y)) return { x, y }; }
-    return { x: 555, y: 390 };
+    return realm ? { ...realm.board } : { x: 555, y: 390 };
   }
 
   // Keep the 3D world in step with the game state.
@@ -1311,6 +1809,7 @@ function start() {
     for (const { o, el } of botLabels) { const has = !!nextQuestFor(o.b), html = `<i class="${has ? 'quest' : ''}">${has ? '!' : '…'}</i>${esc(o.b.name)}${st[o.b.id] ? ` <em>Lv ${st[o.b.id].level}</em>` : ''}`; if (el.innerHTML !== html) { el.innerHTML = html; el._size = null; } }
     for (const { o, el } of councilLabels) { const open = partyUnlocked(o.c), html = `<b>${esc(o.c.name)}</b><small>${open ? 'COUNCIL · LV ' + (st[o.c.id]?.level ?? 1) + (nextQuestFor(o.c) ? ' · !' : '') : '◇ LEVEL ' + WORLD.find(r => r.id === o.c.region).unlock}</small>`; el.classList.toggle('locked', !open); if (el.innerHTML !== html) { el.innerHTML = html; el._size = null; } }
     if (state.equipped !== lastCloak && player.cloakMesh) { lastCloak = state.equipped; player.cloakMesh.material = toonMat(palettes[state.equipped] || palettes.sage); }
+    hooks.sync?.();
   }
   let active = true;
   const prevUpdate = update; update = function () { prevUpdate(); if (active) sync(); };
@@ -1335,6 +1834,7 @@ function start() {
   const greeting = () => { const h = hourOverride ?? istHours(); return h < 4.5 ? 'You’re up late' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21.5 ? 'Good evening' : 'You’re up late'; };
   const shortName = callName;
   function anchorOf(sp, v) {
+    if (sp.pos) return v.copy(sp.pos).setY(sp.pos.y + 3.4);
     if (sp.kind === 'me') return v.copy(player.root.position).setY(player.root.position.y + 2.45);
     if (sp.kind === 'bot') return v.copy(sp.o.ch.root.position).setY(sp.o.ch.root.position.y + (sp.o.b.style === 'egg' ? 2.75 : 2.5));
     const a = sp.seat; return v.copy(sp.o.pos).add(new THREE.Vector3(Math.sin(a) * 1.4, 2.7, Math.cos(a) * 1.4));
@@ -1376,7 +1876,7 @@ function start() {
         <p class="qs-detail">${esc(q.detail)}</p>
         ${q.checks ? `<h3>To complete</h3><ul>${q.checks.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
         <h3>Bring back as proof</h3><p>${esc(proof)}</p>
-        <div class="qs-rewards"><div><b>+${q.xp}</b><small>${esc(q.stat)} XP</small></div><div><b>+${coins}</b><small>Coins</small></div>${st ? `<div><b>Lv ${st.level}</b><small>${esc(shortName(giver))} levels with you</small></div>` : ''}</div>
+        <div class="qs-rewards"><div><b>+${q.xp}</b><small>${esc(q.stat)} XP</small></div><div><b>+${E.questGold(q).toLocaleString('en-IN')}</b><small>Gold</small></div><div><b>+${coins}</b><small>Coins</small></div>${st ? `<div><b>Lv ${st.level}</b><small>${esc(shortName(giver))} levels with you</small></div>` : ''}</div>
         <p class="qs-note">“${esc(voice.note)}”<span>— ${esc(giver.name)}</span></p>
         ${done ? '<div class="qs-stamp">Completed today</div>' : ''}
         <div class="qs-actions">${done ? '<button type="button" class="primary" data-act="close">Close the scroll</button>' : '<button type="button" class="primary" data-act="accept">Accept quest ✦</button><button type="button" class="secondary" data-act="claim">I’ve done it · claim XP</button>'}<button type="button" class="secondary" data-act="another">Another quest</button><button type="button" class="qs-link" data-act="list">All of ${esc(shortName(giver))}’s quests</button></div>
@@ -1458,6 +1958,7 @@ function start() {
   window.addEventListener('keydown', e => {
     if (!talk.on || $('#modal').open || document.querySelector('.quest-scroll')) return;
     if (e.key === 'Escape') { e.preventDefault(); endTalk(); return; }
+    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) { endTalk(); return; }
     if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest?.('button')) { e.preventDefault(); e.stopPropagation(); talk.advance?.(); }
   }, true);
 
@@ -1467,7 +1968,7 @@ function start() {
   const toNdc = e => { const r = canvas.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); };
   function pick(e) {
     toNdc(e); raycaster.setFromCamera(ndc, camera);
-    const hit = raycaster.intersectObjects(proxies.filter(p => p.visible !== false).concat(bots.filter(o => o.proxy.visible).map(o => o.proxy)), false).sort((a, b) => (a.object.userData.kind === 'bot' ? -1 : 0) - (b.object.userData.kind === 'bot' ? -1 : 0) || a.distance - b.distance)[0];
+    const hit = raycaster.intersectObjects(proxies.filter(p => p.visible !== false && !(realm && p.userData.kind === 'area')).concat(realm ? [] : bots.filter(o => o.proxy.visible).map(o => o.proxy)), false).sort((a, b) => (a.object.userData.kind === 'bot' ? -1 : 0) - (b.object.userData.kind === 'bot' ? -1 : 0) || a.distance - b.distance)[0];
     return hit ? hit.object.userData : null;
   }
   function groundPoint(e) {
@@ -1476,7 +1977,7 @@ function start() {
     let prev = 0;
     for (let t = .5; t < 500; t += .25 + t * .012) {
       const x = o.x + d.x * t, y = o.y + d.y * t, z = o.z + d.z * t;
-      if (y <= Math.max(heightAt(x, z), 0)) { let lo = prev, hi = t; for (let k = 0; k < 8; k++) { const m = (lo + hi) / 2; if (o.y + d.y * m <= Math.max(heightAt(o.x + d.x * m, o.z + d.z * m), 0)) hi = m; else lo = m; } return new THREE.Vector3(o.x + d.x * hi, o.y + d.y * hi, o.z + d.z * hi); }
+      if (y <= Math.max(groundAt(x, z), 0)) { let lo = prev, hi = t; for (let k = 0; k < 8; k++) { const m = (lo + hi) / 2; if (o.y + d.y * m <= Math.max(groundAt(o.x + d.x * m, o.z + d.z * m), 0)) hi = m; else lo = m; } return new THREE.Vector3(o.x + d.x * hi, o.y + d.y * hi, o.z + d.z * hi); }
       prev = t;
     }
     return null;
@@ -1485,13 +1986,17 @@ function start() {
     if (!active || e.target !== canvas) return;
     e.stopPropagation(); canvas.focus();
     if (dragged) { dragged = false; return; }
+    if (voyage) { voyage.t = 1; return; }
     if (talk.on) { talk.advance?.(); return; }
     const hit = pick(e);
+    if (hit?.kind === 'ferry') { ferryDialog(); return; }
+    if (hit?.kind === 'cat') { doEmote('pet'); return; }
+    if (hit?.kind === 'spot') { doSpot(hit.spot); return; }
     if (hit?.kind === 'bot') { botTalk(hit.bot); return; }
     if (hit?.kind === 'council') { councilTalk(hit.council); return; }
     if (hit?.kind === 'area') { visit(hit.area.id); return; }
     const g = groundPoint(e); if (!g) return;
-    const [lx, ly] = toL(g.x, g.z), target = nearestWalkable({ x: clamp(lx, 40, 1060), y: clamp(ly, 40, 690) });
+    const [lx, ly] = posL(g.x, g.z), target = nearestWalkable({ x: clamp(lx, 40, 1060), y: clamp(ly, 40, 690) });
     goTo(target.x, target.y);
   }, true);
   frameEl.addEventListener('mousemove', e => { if (!active || e.target !== canvas) return; e.stopPropagation(); hoverEvent = e; }, true);
@@ -1519,7 +2024,7 @@ function start() {
     if (pointers.size || talk.on) { tip.hidden = true; return; }
     const hit = pick(e), box = canvas.getBoundingClientRect();
     if (hit) {
-      const level = E.level(E.total(state)), text = hit.kind === 'bot' ? hit.bot.name + ' · ' + hit.bot.role : hit.kind === 'council' ? hit.council.name + ' · ' + hit.council.role : hit.area.name + (level < hit.area.unlock ? ' · Unlock at level ' + hit.area.unlock : ' · Visit');
+      const level = E.level(E.total(state)), text = hit.kind === 'ferry' ? 'The Sky Ferry · Sail to other worlds' : hit.kind === 'cat' ? 'Mochi · Give her a pat' : hit.kind === 'spot' ? '✦ ' + hit.spot.label : hit.kind === 'bot' ? hit.bot.name + ' · ' + hit.bot.role : hit.kind === 'council' ? hit.council.name + ' · ' + hit.council.role : hit.area.name + (level < hit.area.unlock ? ' · Unlock at level ' + hit.area.unlock : ' · Visit');
       canvas.style.cursor = 'pointer'; tip.hidden = false; tip.textContent = text;
       tip.style.left = Math.min(e.clientX - box.left + 12, box.width - 200) + 'px'; tip.style.top = Math.max(45, e.clientY - box.top - 40) + 'px';
     } else { canvas.style.cursor = 'grab'; tip.hidden = true; }
@@ -1531,7 +2036,7 @@ function start() {
   function constrainMovement(dt) {
     const p = state.position;
     if (state !== prevState || !prev) { prevState = state; Object.assign(p, nearestWalkable(p)); prev = { x: p.x, y: p.y }; wasTravelling = !!travel; return; }
-    if (talk.on) { travel = null; p.x = prev.x; p.y = prev.y; return; }
+    if (talk.on || voyage) { travel = null; p.x = prev.x; p.y = prev.y; return; }
     let dx = p.x - prev.x, dy = p.y - prev.y;
     const arrived = wasTravelling && !travel;
     if (Math.hypot(dx, dy) > 40) { Object.assign(p, nearestWalkable(p)); }
@@ -1542,8 +2047,402 @@ function start() {
       if (!walkable(nx, ny)) { if (walkable(nx, prev.y)) ny = prev.y; else if (walkable(prev.x, ny)) nx = prev.x; else { nx = prev.x; ny = prev.y; } }
       p.x = nx; p.y = ny;
     }
-    if (travel) { stuck = Math.hypot(p.x - prev.x, p.y - prev.y) < .4 ? stuck + dt : 0; if (stuck > .8) { const t = nearestWalkable({ x: travel.x, y: travel.y }); p.x = t.x; p.y = t.y; stuck = 0; } }
+    if (travel) { stuck = Math.hypot(p.x - prev.x, p.y - prev.y) < .4 ? stuck + dt : 0; if (stuck > .8) { stuck = 0; if (rescueTravel) rescueTravel(); else { const t = nearestWalkable({ x: travel.x, y: travel.y }); p.x = t.x; p.y = t.y; } } }
     prev = { x: p.x, y: p.y }; wasTravelling = !!travel;
+  }
+
+
+
+  // ───────── Solid ground: a collision mask traced from the real buildings, and paths around them ─────────
+  // Every landmark triangle that reaches between knee and head height is rasterised onto a 25 cm grid, so walls,
+  // fences, fountains and statues all block her, while arches, roofs and low rugs do not.
+  function collisionMask(roots, x0, z0, w, d, groundFn, skip) {
+    const cell = .25, nx = Math.ceil(w / cell), nz = Math.ceil(d / cell), m = new Uint8Array(nx * nz), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+    const mark = (x, z) => { const i = Math.floor((x - x0) / cell), j = Math.floor((z - z0) / cell); if (i >= 0 && j >= 0 && i < nx && j < nz) m[j * nx + i] = 1; };
+    const line = (p, q) => { const n = Math.ceil(Math.hypot(q.x - p.x, q.z - p.z) / (cell * .5)) + 1; for (let k = 0; k <= n; k++) mark(p.x + (q.x - p.x) * k / n, p.z + (q.z - p.z) * k / n); };
+    for (const root of roots) {
+      root.updateMatrixWorld(true);
+      root.traverse(o => {
+        if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry?.attributes.position) return;
+        const pos = o.geometry.attributes.position, idx = o.geometry.index, tris = (idx ? idx.count : pos.count) / 3;
+        for (let t = 0; t < tris; t++) {
+          a.fromBufferAttribute(pos, idx ? idx.getX(t * 3) : t * 3).applyMatrix4(o.matrixWorld);
+          b.fromBufferAttribute(pos, idx ? idx.getX(t * 3 + 1) : t * 3 + 1).applyMatrix4(o.matrixWorld);
+          c.fromBufferAttribute(pos, idx ? idx.getX(t * 3 + 2) : t * 3 + 2).applyMatrix4(o.matrixWorld);
+          const cx = (a.x + b.x + c.x) / 3, cz = (a.z + b.z + c.z) / 3; if (skip?.(cx, cz)) continue;
+          const g = groundFn(cx, cz), lo = Math.min(a.y, b.y, c.y), hi = Math.max(a.y, b.y, c.y);
+          if (hi < g + .3 || lo > g + 1.8) continue;
+          line(a, b); line(b, c); line(c, a);
+          const area = Math.abs((b.x - a.x) * (c.z - a.z) - (c.x - a.x) * (b.z - a.z)) / 2;
+          if (area > cell * cell) { const n = Math.ceil(Math.sqrt(area) / cell * 1.6); for (let i = 0; i <= n; i++) for (let j = 0; j <= n - i; j++) { const u = i / n, v = j / n; mark(a.x + (b.x - a.x) * u + (c.x - a.x) * v, a.z + (b.z - a.z) * u + (c.z - a.z) * v); } }
+        }
+      });
+    }
+    const out = m.slice();
+    for (let j = 1; j < nz - 1; j++) for (let i = 1; i < nx - 1; i++) if (m[j * nx + i]) { out[j * nx + i - 1] = out[j * nx + i + 1] = out[(j - 1) * nx + i] = out[(j + 1) * nx + i] = 1; }
+    const circle = (x, z, r) => { for (let zz = z - r; zz <= z + r; zz += cell * .5) for (let xx = x - r; xx <= x + r; xx += cell * .5) if ((xx - x) ** 2 + (zz - z) ** 2 <= r * r) { const i = Math.floor((xx - x0) / cell), j = Math.floor((zz - z0) / cell); if (i >= 0 && j >= 0 && i < nx && j < nz) out[j * nx + i] = 1; } };
+    const clear = (x, z, r) => { for (let zz = z - r; zz <= z + r; zz += cell * .5) for (let xx = x - r; xx <= x + r; xx += cell * .5) if ((xx - x) ** 2 + (zz - z) ** 2 <= r * r) { const i = Math.floor((xx - x0) / cell), j = Math.floor((zz - z0) / cell); if (i >= 0 && j >= 0 && i < nx && j < nz) out[j * nx + i] = 0; } };
+    return { circle, clear, test(x, z) { const i = Math.floor((x - x0) / cell), j = Math.floor((z - z0) / cell); return i >= 0 && j >= 0 && i < nx && j < nz && out[j * nx + i] === 1; } };
+  }
+  mainMask = collisionMask(Object.values(sites).map(s => s.group), X0, Z0, FW, FD, heightAt);
+  for (const o of [...staticObstacles, ...treeObstacles]) { const [x, z] = toW(o.x, o.y); mainMask.circle(x, z, o.r * SCALE); }
+  for (const r of realms) {
+    const { R, F } = r, x0 = R.at[0] - R.rx - 4, z0 = R.at[1] - R.rz - 4;
+    r.mask = collisionMask([r.group], x0, z0, R.rx * 2 + 8, R.rz * 2 + 8, (x, z) => F.ground(x - R.at[0], z - R.at[1]), (x, z) => R.deck?.(x - R.at[0], z - R.at[1]) != null || F.sdf(x - R.at[0], z - R.at[1]) < 0);
+    const ponds = r.obstacles.filter(o => o[3]);
+    for (const o of r.obstacles) if (!o[3]) r.mask.circle(R.at[0] + o[0], R.at[1] + o[1], o[2]);
+    for (const s of r.spots) r.mask.clear(s.pos.x, s.pos.z, .55);
+    r.walkable = (lx, ly) => {
+      const u = (lx - 550) * SCALE, v = (ly - 360) * SCALE;
+      if (F.sdf(u, v) < 1.1 || r.mask.test(R.at[0] + u, R.at[1] + v)) return false;
+      return ponds.every(o => (u - o[0]) ** 2 + (v - o[1]) ** 2 > o[2] * o[2] || R.deck?.(u, v) != null);
+    };
+  }
+  // Click-to-travel follows an A* path on an 8-unit grid, smoothed into straight runs, instead of
+  // walking into walls and giving up.
+  function lineClear(a, b) { const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 3); for (let k = 1; k <= n; k++) if (!walkable(a.x + (b.x - a.x) * k / n, a.y + (b.y - a.y) * k / n)) return false; return true; }
+  function findPath(from, to) {
+    const goal = walkable(to.x, to.y) ? { x: to.x, y: to.y } : nearestWalkable(to);
+    if (lineClear(from, goal)) return [goal];
+    const ST = 8, W = Math.ceil(1100 / ST) + 1, H = Math.ceil(720 / ST) + 1, free = new Int8Array(W * H), g = new Float32Array(W * H).fill(Infinity), came = new Int32Array(W * H).fill(-1), closed = new Uint8Array(W * H);
+    const ok = k => { if (!free[k]) free[k] = walkable((k % W) * ST, Math.floor(k / W) * ST) ? 1 : -1; return free[k] === 1; };
+    const near = (x, y) => { const i0 = Math.round(x / ST), j0 = Math.round(y / ST); for (let r = 0; r < 4; r++) for (let j = j0 - r; j <= j0 + r; j++) for (let i = i0 - r; i <= i0 + r; i++) { if (i < 0 || j < 0 || i >= W || j >= H) continue; const k = j * W + i; if (ok(k)) return k; } return -1; };
+    const s = near(from.x, from.y), e = near(goal.x, goal.y); if (s < 0 || e < 0) return null;
+    const ex = e % W, ey = Math.floor(e / W), hf = k => { const dx = Math.abs(k % W - ex), dy = Math.abs(Math.floor(k / W) - ey); return (dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy)) * ST; };
+    const heap = [], push = (k, f) => { heap.push([f, k]); let i = heap.length - 1; while (i) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = i * 2 + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top[1]; };
+    g[s] = 0; push(s, hf(s));
+    for (let n = 0; heap.length && n < 25000; n++) {
+      const k = pop(); if (closed[k]) continue; closed[k] = 1; if (k === e) break;
+      const i = k % W, j = Math.floor(k / W);
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        if (!di && !dj) continue; const ni = i + di, nj = j + dj; if (ni < 0 || nj < 0 || ni >= W || nj >= H) continue;
+        const nk = nj * W + ni; if (closed[nk] || !ok(nk)) continue;
+        if (di && dj && (!ok(j * W + ni) || !ok(nj * W + i))) continue;
+        const ng = g[k] + (di && dj ? Math.SQRT2 : 1) * ST; if (ng < g[nk]) { g[nk] = ng; came[nk] = k; push(nk, ng + hf(nk)); }
+      }
+    }
+    if (came[e] < 0 && e !== s) return null;
+    const pts = [goal]; for (let k = came[e]; k >= 0 && k !== s; k = came[k]) pts.unshift({ x: (k % W) * ST, y: Math.floor(k / W) * ST }); pts.unshift({ x: from.x, y: from.y });
+    const out = []; for (let i = 0; i < pts.length - 1;) { let j = Math.min(pts.length - 1, i + 30); while (j > i + 1 && !lineClear(pts[i], pts[j])) j--; out.push(pts[j]); i = j; }
+    return out;
+  }
+  const goToDirect = goTo; let stuckCount = 0;
+  goTo = (x, y, cb) => {
+    if (!active || reduceMotion.matches) return goToDirect(x, y, cb);
+    const path = findPath({ x: state.position.x, y: state.position.y }, { x, y });
+    if (!path) return goToDirect(x, y, cb);
+    let i = -1; const next = () => { i++; if (i >= path.length - 1) { stuckCount = 0; goToDirect(path[path.length - 1].x, path[path.length - 1].y, cb); } else goToDirect(path[i].x, path[i].y, next); };
+    next();
+  };
+  rescueTravel = () => { const t = travel; travel = null; if (++stuckCount < 3) goTo(t.x, t.y, t.callback); else { stuckCount = 0; toast('That spot is out of reach. Try somewhere nearby.'); } };
+  // Leaving a conversation: a visible button, or simply walking away.
+  const leaveBtn = document.createElement('button'); leaveBtn.type = 'button'; leaveBtn.className = 'w3-leave'; leaveBtn.innerHTML = '✕ <span>Leave</span>'; leaveBtn.setAttribute('aria-label', 'Leave the conversation');
+  leaveBtn.onclick = e => { e.stopPropagation(); endTalk(); }; frameEl.append(leaveBtn);
+  frameEl.querySelector('.touch-controls')?.addEventListener('pointerdown', () => { if (talk.on) endTalk(); }, true);
+
+  // ───────── Nivetha's day: actions, activities, Mochi the cat, the sky ferry and voyages ─────────
+  const PR = makeProps(), tv = new THREE.Vector3();
+  for (const k of ['hammer', 'quill', 'brush', 'wrench']) { player.arms[1].add(PR[k]); PR[k].position.set(0, -.47, .06); }
+  player.body.add(PR.book, PR.ledger); PR.book.position.set(0, 1.12, .34); PR.book.rotation.x = -.95; PR.ledger.position.set(-.1, 1.02, .3); PR.ledger.rotation.set(-1, 0, .35);
+  scene.add(PR.anvil);
+  const laidStaff = player.staff.clone(true); laidStaff.visible = false; scene.add(laidStaff);
+  const cat = makeCat(); scene.add(cat.root); proxies.push(cat.proxy);
+  const ferry = makeFerry(); scene.add(ferry.g); proxies.push(ferry.proxy);
+  const homePark = { pos: new THREE.Vector3(pierInfo.sx - 2.4, 0, pierInfo.sz + 4.4), yaw: Math.PI };
+  const homeBoard = nearestWalkable((([x, y]) => ({ x, y }))(toL(pierInfo.sx, pierInfo.sz - 2.2)));
+  const aura = particles(46, 1, { size: .12, speed: .32, rise: 2.4, spread: 1.1, color: '#ffe08a', boost: 2.6, opacity: 0 });
+  const sparks = particles(36, 1, { size: .07, speed: 1.8, rise: .9, spread: .8, color: '#ffb347', boost: 3.5, opacity: 0 });
+  const burst = particles(60, 1, { size: .16, speed: .9, rise: 3.6, spread: 2.2, color: '#ffe8a0', boost: 3, opacity: 0 });
+  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.4, 44, 32, 1, true), new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { uA: { value: 0 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+    fragmentShader: 'uniform float uA; varying vec2 vUv; void main(){ float a=uA*smoothstep(1.,.05,vUv.y)*(.6+.4*sin(vUv.x*60.)); gl_FragColor=vec4(vec3(1.,.86,.5)*a,a); }' }));
+  pillar.visible = false; pillar.renderOrder = 6; scene.add(aura, sparks, burst, pillar);
+  // Activity spots: one at every landmark (once it is unlocked) plus each realm's own.
+  const MAIN_SPOTS = [['camp', 'campfire', 'Sit by the campfire', -30, 26], ['forge', 'hammer', 'Work the anvil', 32, 34], ['citadel', 'write', 'Write in the ledger', 36, 38], ['grove', 'train', 'Train in the grove', -38, 34], ['tower', 'read', 'Read a chapter', 30, 38], ['temple', 'meditate', 'Meditate at the temple', -34, 36], ['lab', 'tinker', 'Tinker in the lab', 34, 34], ['summit', 'gaze', 'Gaze from the summit', -28, 30]];
+  const spots = [
+    ...MAIN_SPOTS.map(([id, a, text, dx, dy]) => { const r = WORLD.find(w => w.id === id); return { realmId: null, area: r, act: a, label: text, want: { x: r.x + dx, y: r.y + dy }, L: null, pos: new THREE.Vector3(), face: 0 }; }),
+    ...realms.flatMap(r => r.spots),
+  ];
+  const spotMarker = new THREE.OctahedronGeometry(.13), spotMat = glow('#ffd979', 2.2);
+  for (const s of spots) {
+    s.el = label('w3-bot w3-spot'); s.el.innerHTML = `<i>✦</i>${esc(s.label)}`;
+    s.mark = new THREE.Mesh(spotMarker, spotMat); scene.add(s.mark);
+    s.proxy = new THREE.Mesh(new THREE.SphereGeometry(.9, 8, 6), new THREE.MeshBasicMaterial({ visible: false })); s.proxy.userData = { kind: 'spot', spot: s }; scene.add(s.proxy); proxies.push(s.proxy);
+  }
+  function placeMainSpots() {
+    for (const s of spots) if (!s.realmId) {
+      const L = nearestWalkable(s.want), [x, z] = toW(L.x, L.y), [cx, cz] = toW(...SITES[s.area.id].at);
+      s.L = L; s.pos.set(x, heightAt(x, z), z); s.face = Math.atan2(cx - x, cz - z);
+    }
+  }
+  const spotOpen = s => s.realmId ? realm?.R.id === s.realmId : !realm && s.L && E.level(E.total(state)) >= s.area.unlock;
+  function nearestSpot(max) { let best = null, bd = max; for (const s of spots) { if (!spotOpen(s)) continue; const d = Math.hypot(s.pos.x - player.root.position.x, s.pos.z - player.root.position.z); if (d < bd) { bd = d; best = s; } } return best; }
+  // What she can do. Poses are bone targets blended over the walk/idle animation.
+  const SIT = { by: -.66, bx: -.12, l0x: -1.45, l1x: -1.45, l0z: -.08, l1z: .08, a0x: .55, a1x: .55, a0z: -.35, a1z: .35, cx: .35 };
+  const hop = (t, f) => Math.abs(Math.sin(t * f)) * .3;
+  const ACTS = {
+    wave: { dur: 1.9, expr: 'happy', say: 'Waving hello', start: () => { player.wave = 1.8; } },
+    cheer: { dur: 2.4, expr: 'happy', emote: '✦', say: 'Celebrating!', pose: t => ({ by: hop(t, 5.5), a0z: -2.7, a1z: 2.7, a0x: -.25, a1x: -.25, hx: -.25 }) },
+    dance: { loop: true, expr: 'happy', emote: '♪', say: 'Dancing', pose: t => { const b = Math.sin(t * 5); return { bry: Math.sin(t * 1.8) * .7 + ((t % 6) < 1 ? (t % 6) * Math.PI * 2 : 0), by: Math.abs(b) * .08, a0z: -1.3 - .8 * b, a1z: 1.3 - .8 * b, a0x: -.3, a1x: -.3, hz: Math.sin(t * 2.5) * .18, l0x: b * .35, l1x: -b * .35 }; } },
+    sit: { loop: true, say: 'Resting for a while', pose: () => SIT },
+    stretch: { dur: 2.8, expr: 'closed', say: 'Stretching', pose: t => ({ a0z: -2.85, a1z: 2.85, a0x: -.15, a1x: -.15, bx: -.12, hx: -.3, by: .04 * Math.sin(t * 2) }) },
+    look: { dur: 3.4, say: 'Looking around', pose: t => ({ hy: Math.sin(t * 1.85) * .75, hx: -.06 }) },
+    staff: { dur: 2.6, say: 'Admiring her staff', glow: 4, pose: t => ({ a0x: -2.3 + Math.sin(t * 3) * .15, a0z: -.25, hx: -.35, hy: -.25 }) },
+    hum: { dur: 4.5, expr: 'happy', emote: '♪', say: 'Humming a tune', pose: t => ({ hz: Math.sin(t * 3) * .14, bz: Math.sin(t * 3) * .04 }) },
+    yawn: { dur: 3, expr: 'wide', emote: '~', say: 'Getting sleepy', pose: () => ({ a0z: -2.4, a1z: 2.4, a0x: -.6, a1x: -.6, hx: -.4 }) },
+    twirl: { dur: 1.5, expr: 'happy', emote: '✿', say: 'Showing off her new cloak', pose: t => ({ bry: smooth(0, 1.3, t) * Math.PI * 2, a0z: -1, a1z: 1, cx: .9 }) },
+    pet: { dur: 4, expr: 'happy', emote: '♥', say: 'Petting Mochi', pose: t => ({ bx: .5, by: -.12, a1x: -1.25 + Math.sin(t * 5) * .15, a1z: .05, hx: .45 }) },
+    campfire: { loop: true, expr: 'happy', say: 'Warming her hands by the fire', pose: t => ({ ...SIT, a0x: -.95, a1x: -.95, a0z: .12, a1z: -.12, hx: .05 + Math.sin(t * .6) * .03 }) },
+    hammer: { loop: true, say: 'Working the anvil', prop: ['hammer'], anvil: true, pose: t => { const ph = (t * 1.3) % 1, up = ph < .7 ? smooth(0, .7, ph) : 1 - smooth(.7, .8, ph); return { a1x: -.55 - 1.9 * up, a1z: .12, hx: .35, bx: .1 }; } },
+    write: { loop: true, say: 'Writing in her ledger', prop: ['quill', 'ledger'], pose: t => ({ a0x: -1.05, a0z: .5, a1x: -1.1 + Math.sin(t * 9) * .05, a1z: -.28 + Math.sin(t * 3.5) * .07, hx: .42 }) },
+    train: { loop: true, emote: '!', say: 'Training: jumping jacks', pose: t => { const k = (1 - Math.cos(t * 2.6 * Math.PI)) / 2; return { by: k * .2, a0z: -.15 - 2.5 * k, a1z: .15 + 2.5 * k, l0z: -.28 * k, l1z: .28 * k }; } },
+    read: { loop: true, say: 'Reading a chapter', prop: ['book'], pose: t => ({ a0x: -1.05, a1x: -1.05, a0z: .4, a1z: -.4, hx: .4 + Math.sin(t * .5) * .03, hy: Math.sin(t * .9) * .08 }) },
+    meditate: { loop: true, expr: 'closed', say: 'Meditating', aura: .8, glow: 2, pose: t => ({ by: -.62 + Math.sin(t * 1.1) * .04, l0x: -1.35, l1x: -1.35, l0z: -.8, l1z: .8, a0x: -.5, a1x: -.5, a0z: -.42, a1z: .42, hx: .1, cx: .3 }) },
+    tinker: { loop: true, say: 'Tinkering with a gadget', prop: ['wrench'], pose: t => ({ a0x: -1, a0z: .3, a1x: -1.15 + Math.sin(t * 6) * .12, a1z: -.25, a1y: Math.sin(t * 6) * .4, hx: .42, bx: .12 }) },
+    gaze: { loop: true, say: 'Gazing at the horizon', pose: t => ({ a1x: -2.15, a1z: -.62, hx: -.12, hy: Math.sin(t * .45) * .5 }) },
+    paint: { loop: true, say: 'Painting the view', prop: ['brush'], pose: t => ({ a1x: -1.4 + Math.sin(t * 2.1) * .18, a1z: -.12 + Math.cos(t * 1.7) * .22, hx: .05, hy: Math.sin(t * .35) * .15 }) },
+    soak: { loop: true, expr: 'closed', emote: '♨', say: 'Soaking in the hot spring', pose: () => ({ by: -.98, l0x: -1.4, l1x: -1.4, l0z: -.2, l1z: .2, a0x: .3, a1x: .3, a0z: -1.15, a1z: 1.15, hx: -.3, cx: .5 }) },
+    pray: { loop: true, expr: 'closed', say: 'Making a wish', aura: 1, pose: () => ({ a0x: -1.18, a1x: -1.18, a0z: .64, a1z: -.64, hx: .32, bx: .08 }) },
+  };
+  const STAFF_DOWN = new Set(['campfire', 'write', 'train', 'read', 'meditate', 'tinker', 'paint', 'soak', 'pray', 'sit', 'pet', 'dance']);
+  const EMOTES = [['wave', '〜', 'Wave'], ['cheer', '✦', 'Cheer'], ['dance', '♪', 'Dance'], ['sit', '⌒', 'Sit'], ['stretch', '❋', 'Stretch'], ['pet', '♥', 'Pet Mochi']];
+  let lastRewards = null, spotLevel = -1, act = null, idle = 0, idleNext = 8, pendingCheer = 0, lastXP = null, lastCloak2 = null, nowT = 0, emoteUntil = 0, uiTimer = 0;
+  function startAct(id, spot) {
+    const A = ACTS[id]; if (!A || voyage || talk.on) return;
+    act = { id, A, t: 0, end: -1, spot }; A.start?.(); idle = 0;
+    if (A.emote) emote(A.emote, A.loop ? 3 : A.dur);
+    if (id === 'pray') pulsePillar(.5);
+    status();
+  }
+  const stopAct = () => { if (act && act.end < 0) act.end = 0; };
+  function doSpot(s) {
+    if (voyage || talk.on || !spotOpen(s)) return;
+    if (act?.spot === s) { stopAct(); return; }
+    if (Math.hypot(state.position.x - s.L.x, state.position.y - s.L.y) < 14) startAct(s.act, s);
+    else { stopAct(); goTo(s.L.x, s.L.y, () => startAct(s.act, s)); }
+  }
+  function doEmote(id) {
+    if (voyage || talk.on) return;
+    if (act?.id === id && act.A.loop) { stopAct(); return; }
+    if (id === 'pet') { cat.still = 2; const d = player.root.position.distanceTo(cat.root.position); if (d > 2.4) { tv.set(Math.sin(player.yaw), 0, Math.cos(player.yaw)).multiplyScalar(1.1).add(player.root.position); cat.root.position.set(tv.x, groundAt(tv.x, tv.z), tv.z); } }
+    startAct(id);
+  }
+  const emoteEl = label('w3-emote');
+  function emote(text, dur) { emoteEl.textContent = text; emoteEl.classList.remove('pop'); void emoteEl.offsetWidth; emoteEl.classList.add('pop'); emoteEl._size = null; emoteUntil = nowT + dur; }
+  function pulsePillar(strength) { pillar.visible = true; pillar.userData = { t: 0, k: strength }; }
+  function celebrate(levelUp) { startAct('cheer'); cat.hop = .7; burst.material.uniforms.uOpacity.value = 1; if (levelUp) { pulsePillar(1); emote('✦ LEVEL UP ✦', 3); } }
+  // Labels for the ferry, realms and home.
+  const ferryLabel = label('w3-bot w3-spot'); ferryLabel.innerHTML = '<i>⛵</i>The Sky Ferry';
+  const homeLabel = label('w3-area w3-realm'); homeLabel.innerHTML = '<b>⌂ The Inner Kingdom</b><small>HOME · SAIL BACK ANY TIME</small>';
+  for (const r of realms) { r.el = label('w3-area w3-realm'); r.el.innerHTML = `<b>${r.R.glyph} ${esc(r.R.name)}</b><small>${esc(r.R.sub.toUpperCase())}</small>`; }
+  const homeLabelPos = new THREE.Vector3(0, 16, 0);
+  hooks.labels = place => {
+    if (nowT < emoteUntil) { tv.copy(player.root.position); tv.y += 2.95; place(emoteEl, tv, 60, 6); } else fadeLabel(emoteEl, 0);
+    for (const s of spots) {
+      const open = spotOpen(s) && !(act?.spot === s);
+      s.mark.visible = s.proxy.visible = open; if (open) { s.mark.position.set(s.pos.x, s.pos.y + 1.25 + Math.sin(nowT * 2 + s.pos.x) * .08, s.pos.z); s.mark.rotation.y = nowT * 1.5; s.proxy.position.copy(s.mark.position); }
+      if (open) { tv.copy(s.pos); tv.y += 1.85; place(s.el, tv, 12, 2); } else fadeLabel(s.el, 0);
+    }
+    if (!voyage) { tv.copy(ferry.g.position); tv.y += 4.9; place(ferryLabel, tv, 26, 2); } else fadeLabel(ferryLabel, 0);
+    for (const r of realms) if (r === realm) fadeLabel(r.el, 0); else place(r.el, r.labelPos, 700, 1);
+    if (realm) place(homeLabel, homeLabelPos, 700, 1); else fadeLabel(homeLabel, 0);
+  };
+  // The ferry and voyages between realms.
+  function parkFerry() { const p = realm ? realm.park : homePark; ferry.g.position.copy(p.pos); ferry.g.rotation.set(0, p.yaw, 0); ferry.body.rotation.set(0, 0, 0); for (const [i, w] of ferry.wings.entries()) w.scale.set((i ? 1 : -1) * .001, 1, 1); }
+  parkFerry();
+  function sail(dest) {
+    if (voyage || talk.on || !active) return;
+    if ((dest || null) === realm) { toast(dest ? `You’re already in ${dest.R.name}.` : 'You’re already home.'); return; }
+    if (screen !== 'world') showScreen('world');
+    stopAct(); act = null; travel = null; keys.clear(); $('#mapTooltip').hidden = true;
+    if (reduceMotion.matches) { arrive(dest); return; }
+    const from = ferry.g.position.clone(), to = (dest ? dest.park : homePark).pos.clone(), flat = new THREE.Vector3(to.x - from.x, 0, to.z - from.z), dist = flat.length(); flat.normalize();
+    const H = 20 + dist * .08;
+    voyage = { t: 0, dur: 3.6 + dist / 32, dest, p: [from, from.clone().addScaledVector(flat, 16).setY(from.y + H), to.clone().addScaledVector(flat, -16).setY(to.y + H), to], deck: new THREE.Vector3(), fwd: flat.clone(), heading: Math.atan2(flat.x, flat.z) };
+    bars.classList.add('on'); frameEl.classList.add('voyaging'); emote('✦', 2); status(); renderRealmCards();
+  }
+  function arrive(dest) {
+    realm = dest || null; voyage = null; bars.classList.remove('on'); frameEl.classList.remove('voyaging'); talk.settle = 1.6;
+    const b = realm ? realm.board : homeBoard; state.position = { x: b.x, y: b.y }; prev = null; save();
+    parkFerry(); cat.placed = false; idle = 0; renderRealmCards(); status();
+    const cap = frameEl.querySelector('.map-caption span'); if (cap) cap.textContent = realm ? `${realm.R.glyph} ${realm.R.name.toUpperCase()}` : '✦ THE INNER KINGDOM';
+    toast(realm ? realm.R.arrive : 'Home again. The Inner Kingdom missed you.');
+  }
+  async function ferryDialog() {
+    if (talk.on || voyage || !active) return;
+    const b = realm ? realm.board : homeBoard;
+    if (Math.hypot(state.position.x - b.x, state.position.y - b.y) > 30) await new Promise(res => goTo(b.x, b.y, res));
+    if (talk.on || voyage || $('#modal').open) return;
+    stopAct(); talk.on = true; talk.target = { pos: ferry.g.position }; travel = null; keys.clear();
+    bars.classList.add('on'); frameEl.classList.add('talking'); $('#mapTooltip').hidden = true;
+    const choices = realms.filter(r => r !== realm).map(r => ({ label: `${r.R.glyph} ${r.R.name}`, value: r }));
+    if (realm) choices.unshift({ label: '⌂ Home', value: 'home' });
+    choices.push({ label: 'Not now', value: null });
+    let pick = null;
+    try { pick = await say({ kind: 'ferry', pos: ferry.g.position, name: 'The Sky Ferry', color: '#c49a45' }, realm ? `${realm.R.name} will keep. Where to next, Nivetha?` : 'All aboard! Where shall the wind take you, Nivetha?', choices); } catch (err) { if (err.message !== 'abort') console.error(err); }
+    endTalk();
+    if (pick) sail(pick === 'home' ? null : pick);
+  }
+  function interact() {
+    if (talk.on || voyage) return false;
+    const b = realm ? realm.board : homeBoard;
+    if (player.root.position.distanceTo(ferry.g.position) < 7 || Math.hypot(state.position.x - b.x, state.position.y - b.y) < 45) { ferryDialog(); return true; }
+    const s = nearestSpot(3.6); if (s) { doSpot(s); return true; }
+    if (realm) { toast('Walk to the ferry or a ✦ spot, then press E.'); return true; }
+    return false;
+  }
+  // Leaving a realm for anything that lives on the home island (areas, guides, the camp button).
+  const leaveRealm = fn => (...a) => { if (realm && !voyage) arrive(null); return fn(...a); };
+  visit = leaveRealm(visit); botTalk = leaveRealm(botTalk); councilTalk = leaveRealm(councilTalk); regionDialog = leaveRealm(regionDialog);
+  frameEl.addEventListener('click', e => {
+    if (!active) return;
+    if (e.target.closest('#home') && (realm || voyage)) { e.preventDefault(); e.stopPropagation(); if (!voyage) sail(null); }
+    else if (e.target.closest('#touchEnter') && interact()) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  frameEl.addEventListener('keydown', e => {
+    if (!active || $('#modal').open) return;
+    if (voyage && ['Escape', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); e.stopImmediatePropagation(); voyage.t = 1; return; }
+    if (talk.on || voyage) return;
+    if (e.key.toLowerCase() === 'e' && interact()) { e.preventDefault(); e.stopImmediatePropagation(); }
+    else if (/^[1-6]$/.test(e.key) && e.target === canvas) { e.preventDefault(); doEmote(EMOTES[+e.key - 1][0]); }
+  }, true);
+  // The action bar under the map, and the "beyond the sea" cards under the area list.
+  const bar = document.createElement('div'); bar.className = 'w3-actions'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Nivetha’s actions');
+  bar.innerHTML = `<div class="w3-who"><b>Nivetha <i>&amp; Mochi</i></b><small id="w3Doing" role="status">Exploring</small></div><div class="w3-emotes">${EMOTES.map(([id, ic, name], i) => `<button type="button" data-emote="${id}" title="${name} (${i + 1})"><i aria-hidden="true">${ic}</i><span>${name}</span></button>`).join('')}</div><button type="button" class="w3-ctx" hidden></button>`;
+  frameEl.after(bar);
+  bar.querySelectorAll('[data-emote]').forEach(b => b.onclick = () => doEmote(b.dataset.emote));
+  const ctxBtn = bar.querySelector('.w3-ctx'), doingEl = bar.querySelector('#w3Doing');
+  ctxBtn.onclick = () => { const s = nearestSpot(7); if (s) doSpot(s); else ferryDialog(); };
+  function status() {
+    const text = voyage ? `Sailing to ${voyage.dest ? voyage.dest.R.name : 'the Inner Kingdom'}` : act && act.end < 0 ? act.A.say : travel ? 'On the move' : realm ? `Exploring ${realm.R.name}` : 'Exploring the Inner Kingdom';
+    if (doingEl.textContent !== text) doingEl.textContent = text;
+    bar.querySelectorAll('[data-emote]').forEach(b => b.classList.toggle('on', act?.id === b.dataset.emote && act.end < 0));
+  }
+  const realmHead = document.createElement('div'); realmHead.className = 'below-map realms-head';
+  realmHead.innerHTML = '<div><span class="eyebrow">BEYOND THE SEA</span><h3>Other worlds to wander.</h3></div><span class="small-muted">BOARD THE SKY FERRY AT THE PIER</span>';
+  const realmStrip = document.createElement('div'); realmStrip.className = 'realm-strip';
+  $('#areas').after(realmHead, realmStrip);
+  const ART = {
+    home: '<path d="M0 46 Q30 30 60 40 T120 36 V60 H0Z" fill="#7fb257"/><path d="M50 40 l10-14 10 14z" fill="#d7ae70"/><circle cx="96" cy="16" r="7" fill="#ffe7a3"/>',
+    florentia: '<path d="M0 48 Q40 40 120 46 V60 H0Z" fill="#8fb05a"/><rect x="40" y="28" width="26" height="18" fill="#f1ece0"/><path d="M42 28 Q53 6 64 28z" fill="#c0623e"/><rect x="51" y="6" width="4" height="6" fill="#f1ece0"/><rect x="72" y="14" width="7" height="32" fill="#f1ece0"/><path d="M20 46 q3-18 6 0z M100 46 q3-16 6 0z" fill="#2f5a3a"/><circle cx="100" cy="14" r="6" fill="#ffe7a3"/>',
+    skygarden: '<path d="M28 30 Q60 22 92 30 L72 52 L60 60 L46 50z" fill="#8a7c68"/><path d="M28 30 Q60 22 92 30 Q60 36 28 30z" fill="#7fb55a"/><rect x="83" y="31" width="3" height="28" fill="#dff2ff" opacity=".8"/><circle cx="58" cy="20" r="9" fill="#5d9a47"/><ellipse cx="18" cy="48" rx="16" ry="5" fill="#fff" opacity=".85"/><ellipse cx="104" cy="44" rx="14" ry="4" fill="#fff" opacity=".85"/>',
+    bathhouse: '<rect x="0" y="48" width="120" height="12" fill="#3f7fa0"/><rect x="38" y="30" width="34" height="18" fill="#a8392b"/><path d="M32 31 L55 20 L78 31z" fill="#3f6f68"/><rect x="44" y="12" width="22" height="9" fill="#a8392b"/><path d="M40 13 L55 5 L70 13z" fill="#3f6f68"/><circle cx="46" cy="38" r="2" fill="#ffd27a"/><circle cx="64" cy="38" r="2" fill="#ffd27a"/><rect x="80" y="44" width="40" height="2" fill="#5a5048"/><rect x="96" y="38" width="14" height="7" fill="#3c6e6a"/>',
+    starfall: '<path d="M0 50 Q40 40 120 50 V60 H0Z" fill="#4f8a52"/><path d="M52 50 L60 22 L68 50z" fill="#e2e4d8"/><circle cx="60" cy="18" r="5" fill="#e2e4d8"/><circle cx="60" cy="8" r="4" fill="#7fe3ff"/><circle cx="20" cy="12" r="1.5" fill="#fff"/><circle cx="96" cy="10" r="1.5" fill="#fff"/><circle cx="104" cy="22" r="1" fill="#fff"/>',
+  };
+  const SKY = { home: ['#bfe0f2', '#fdf2d6'], florentia: ['#f6c98e', '#fde9c4'], skygarden: ['#8fc6ee', '#e3f3ff'], bathhouse: ['#2b3a6a', '#d9877a'], starfall: ['#141f3a', '#3b4f8a'] };
+  function renderRealmCards() {
+    const list = [{ id: 'home', name: 'The Inner Kingdom', sub: 'Home island', r: null }, ...realms.map(r => ({ id: r.R.id, name: r.R.name, sub: r.R.sub, r }))];
+    realmStrip.innerHTML = list.map(c => { const here = (c.r || null) === realm; return `<button type="button" class="realm-card${here ? ' here' : ''}" data-realm="${c.id}" aria-label="${esc(c.name)}${here ? ', you are here' : ', sail there'}"><svg viewBox="0 0 120 60" aria-hidden="true" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sky-${c.id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${SKY[c.id][0]}"/><stop offset="1" stop-color="${SKY[c.id][1]}"/></linearGradient></defs><rect width="120" height="60" fill="url(#sky-${c.id})"/>${ART[c.id]}</svg><span class="realm-text"><strong>${esc(c.name)}</strong><small>${here ? '✦ You are here' : esc(c.sub)}</small></span></button>`; }).join('');
+    realmStrip.querySelectorAll('[data-realm]').forEach(b => b.onclick = () => { const r = realms.find(x => x.R.id === b.dataset.realm) || null; if (r === realm) { toast(r ? `You’re in ${r.R.name}. Have a wander.` : 'You’re home on the Inner Kingdom.'); return; } canvas.scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'center' }); sail(r); });
+  }
+  renderRealmCards();
+  hooks.sync = () => {
+    const xp = E.total(state);
+    if (lastXP !== null && xp > lastXP) pendingCheer = E.level(xp) > E.level(lastXP) ? 2 : 1;
+    if (lastCloak2 !== null && state.equipped !== lastCloak2) pendingCheer ||= 3;
+    const rw = (state.rewards || []).length; if (lastRewards !== null && rw > lastRewards) pendingCheer ||= 1;
+    lastXP = xp; lastCloak2 = state.equipped; lastRewards = rw;
+    const lv = E.level(xp); if (!realm && (lv !== spotLevel || !spots[0].L)) { spotLevel = lv; placeMainSpots(); }
+  };
+  // Every frame: voyages and ferry bobbing.
+  const bez = (p, t, out) => { const u = 1 - t; return out.set(0, 0, 0).addScaledVector(p[0], u * u * u).addScaledVector(p[1], 3 * u * u * t).addScaledVector(p[2], 3 * u * t * t).addScaledVector(p[3], t * t * t); };
+  const bv1 = new THREE.Vector3(), bv2 = new THREE.Vector3();
+  hooks.frame = (dt, t) => {
+    nowT = t;
+    if (voyage) {
+      const v = voyage; v.t = Math.min(1, v.t + dt / v.dur); const e = v.t < .5 ? 2 * v.t * v.t : 1 - (-2 * v.t + 2) ** 2 / 2;
+      bez(v.p, e, bv1); bez(v.p, Math.min(1, e + .01), bv2); bv2.sub(bv1); if (bv2.lengthSq() < 1e-8) bv2.copy(v.fwd);
+      ferry.g.position.copy(bv1); v.heading = Math.atan2(bv2.x, bv2.z); ferry.g.rotation.set(0, v.heading, 0);
+      ferry.body.rotation.x = -Math.atan2(bv2.y, Math.hypot(bv2.x, bv2.z)) * .7; ferry.body.rotation.z = Math.sin(t * 1.3) * .05;
+      const open = smooth(0, .12, v.t) * (1 - smooth(.88, 1, v.t));
+      ferry.wings.forEach((w, i) => { const s = i ? 1 : -1; w.scale.set(s * Math.max(.001, open), 1, 1); w.rotation.z = s * Math.sin(t * 5) * .28 * open; });
+      v.fwd.set(bv2.x, 0, bv2.z).normalize(); v.deck.copy(bv1).addScaledVector(v.fwd, .7); v.deck.y -= .02;
+      if (v.t >= 1) arrive(v.dest);
+    } else {
+      const p = realm ? realm.park : homePark; ferry.g.position.y = p.pos.y + .1 + Math.sin(t * 1.1) * .06; ferry.body.rotation.z = Math.sin(t * .9) * .04; ferry.body.rotation.x = Math.sin(t * .7) * .03;
+    }
+  };
+  // Every frame, after the walk animation: blend her current activity, props, Mochi and effects.
+  hooks.prePose = () => { const b = player; b.body.rotation.y = b.body.rotation.z = 0; for (const l of b.legs) l.rotation.y = l.rotation.z = 0; for (const a of b.arms) a.rotation.y = 0; b.head.rotation.x = b.head.rotation.z = 0; };
+  function applyPose(p, w) {
+    const L = (o, k, v) => { if (v !== undefined) o[k] += (v - o[k]) * w; }, b = player;
+    L(b.body.position, 'y', p.by); L(b.body.rotation, 'x', p.bx); L(b.body.rotation, 'y', p.bry); L(b.body.rotation, 'z', p.bz);
+    for (const i of [0, 1]) for (const ax of ['x', 'y', 'z']) { L(b.legs[i].rotation, ax, p[`l${i}${ax}`]); L(b.arms[i].rotation, ax, p[`a${i}${ax}`]); }
+    L(b.head.rotation, 'x', p.hx); L(b.head.rotation, 'y', p.hy); L(b.head.rotation, 'z', p.hz); if (b.cloak) L(b.cloak.rotation, 'x', p.cx);
+  }
+  hooks.pose = (dt, t, speed, px, py, pz) => {
+    const moving = speed > .5 || keys.size > 0 || !!travel, busy = talk.on || !!voyage || $('#modal').open || screen !== 'world' || !!document.querySelector('.quest-scroll');
+    if (moving && act && !voyage) stopAct();
+    idle = moving || busy ? 0 : idle + dt;
+    if (!act && !busy && !moving) {
+      if (pendingCheer) { if (pendingCheer === 3) startAct('twirl'); else celebrate(pendingCheer === 2); pendingCheer = 0; }
+      else if (idle > idleNext) {
+        const s = nearestSpot(4.5), catNear = cat.root.position.distanceTo(player.root.position) < 3, night = look.glow > .6;
+        if (s) startAct(s.act, s);
+        else if (idle > 40) startAct('sit');
+        else startAct(['stretch', 'look', 'staff', 'hum', catNear ? 'pet' : 'look', night ? 'yawn' : 'hum', 'wave'][Math.random() * 7 | 0]);
+        idleNext = idle + 9 + Math.random() * 10;
+      }
+    }
+    let pose = null, w = 0;
+    if (act) {
+      act.t += dt; const A = act.A;
+      if (A.dur && act.t > A.dur && act.end < 0) act.end = 0;
+      if (act.end >= 0) act.end += dt;
+      w = Math.min(1, act.t / .35) * (act.end >= 0 ? Math.max(0, 1 - act.end / .35) : 1);
+      pose = A.pose?.(act.t);
+      if (act.end >= .35) { act = null; status(); }
+    }
+    if (voyage) { pose = ACTS.gaze.pose(t); w = Math.min(1, voyage.t * 8); player.yaw = voyage.heading; }
+    if (pose) applyPose(pose, w);
+    if (act?.spot && w > 0) player.yaw = lerpAngle(player.yaw, act.spot.face, 1 - Math.exp(-dt * 6));
+    if (act?.id === 'pet') player.yaw = lerpAngle(player.yaw, Math.atan2(cat.root.position.x - px, cat.root.position.z - pz), 1 - Math.exp(-dt * 6));
+    player.root.rotation.y = player.yaw;
+    player.expr = act && w > .3 ? (act.A.expr || 'normal') : voyage ? 'happy' : 'normal';
+    // props and the staff she sets down
+    const props = act && w > .25 ? act.A.prop || [] : [];
+    for (const k of ['book', 'ledger', 'hammer', 'quill', 'brush', 'wrench']) PR[k].visible = props.includes(k);
+    const down = !!(act && STAFF_DOWN.has(act.id) && w > .5);
+    player.staff.visible = !down; laidStaff.visible = down;
+    if (down) { const s = Math.sin(player.yaw), c = Math.cos(player.yaw); laidStaff.position.set(px + c * .65 - s * .2, py + .06, pz - s * .65 - c * .2); laidStaff.rotation.set(0, player.yaw, Math.PI / 2); }
+    PR.anvil.visible = !!(act?.A.anvil && w > .1);
+    if (PR.anvil.visible) { const s = Math.sin(player.yaw), c = Math.cos(player.yaw); PR.anvil.position.set(px + s * .8, py, pz + c * .8); PR.anvil.rotation.y = player.yaw; }
+    const su = sparks.material.uniforms;
+    if (act?.id === 'hammer') { const ph = (act.t * 1.3) % 1; su.uOrigin.value.set(PR.anvil.position.x, PR.anvil.position.y + .85, PR.anvil.position.z); su.uOpacity.value = ph > .78 && ph < .9 ? 1 : Math.max(0, su.uOpacity.value - dt * 5); }
+    else su.uOpacity.value = Math.max(0, su.uOpacity.value - dt * 5);
+    if (act?.id === 'paint' && w > .8) act.spot.easel?.paint(dt);
+    const au = aura.material.uniforms; au.uOrigin.value.set(px, py + .2, pz); au.uOpacity.value += ((act?.A.aura ? act.A.aura * w : voyage ? .5 : 0) - au.uOpacity.value) * Math.min(1, dt * 3);
+    const bu = burst.material.uniforms; bu.uOrigin.value.set(px, py + .3, pz); bu.uOpacity.value = Math.max(0, bu.uOpacity.value - dt * .45);
+    if (pillar.visible) { const d = pillar.userData; d.t += dt; pillar.position.set(px, py + 20, pz); pillar.material.uniforms.uA.value = d.k * Math.sin(Math.min(1, d.t / 2.6) * Math.PI) * .55; pillar.scale.set(1 + d.t * .4, 1, 1 + d.t * .4); if (d.t > 2.6) pillar.visible = false; }
+    if (player.orb) player.orb.material.emissiveIntensity = 3 + look.glow * 3 + (act?.A.glow ? act.A.glow * w : 0) + (voyage ? 2 : 0) + (pillar.visible ? 3 : 0);
+    catFrame(dt, t, px, py, pz);
+    if ((uiTimer -= dt) <= 0) { uiTimer = .3; status(); const s = !voyage && !talk.on ? nearestSpot(7) : null, nearFerry = !voyage && !talk.on && player.root.position.distanceTo(ferry.g.position) < 9; const label2 = s && act?.spot !== s ? `✦ ${s.label}` : nearFerry ? '⛵ Board the sky ferry' : ''; ctxBtn.hidden = !label2; if (label2 && ctxBtn.textContent !== label2) ctxBtn.textContent = label2; }
+  };
+  // Mochi follows a step behind her, sits when she stops, and purrs when petted.
+  function catFrame(dt, t, px, py, pz) {
+    const c = cat, petting = act?.id === 'pet';
+    if (voyage) { const f = voyage.fwd; c.root.position.set(px - f.x * 1.5, py, pz - f.z * 1.5); c.yaw = voyage.heading; c.still = 2; }
+    else {
+      const s = Math.sin(player.yaw), co = Math.cos(player.yaw), tx = px - s * 1.05 + co * .7, tz = pz - co * 1.05 - s * .7;
+      let dx = tx - c.root.position.x, dz = tz - c.root.position.z, d = Math.hypot(dx, dz);
+      if (d > 14 || !c.placed) { c.root.position.set(tx, groundAt(tx, tz), tz); c.placed = true; d = 0; }
+      c.speed = 0;
+      if (d > .4 && !petting) { c.speed = Math.min(d * 2.6, 8); const k = Math.min(1, c.speed * dt / d); c.root.position.x += dx * k; c.root.position.z += dz * k; c.yaw = lerpAngle(c.yaw, Math.atan2(dx, dz), 1 - Math.exp(-dt * 10)); c.still = 0; }
+      else { c.still += dt; c.yaw = lerpAngle(c.yaw, Math.atan2(px - c.root.position.x, pz - c.root.position.z), 1 - Math.exp(-dt * 3)); }
+      let gy = groundAt(c.root.position.x, c.root.position.z); if (gy < -50) { c.root.position.set(px, py, pz); gy = py; }
+      c.hop = Math.max(0, c.hop - dt); c.root.position.y = gy + (c.hop > 0 ? Math.sin((1 - c.hop / .7) * Math.PI) * .4 : 0);
+    }
+    c.root.rotation.y = c.yaw;
+    const sp = c.speed || 0; c.phase += dt * (2 + sp * 3.2);
+    const sw = Math.sin(c.phase) * .7 * Math.min(1, sp / 3);
+    c.sit += ((c.still > 1.2 ? 1 : 0) - c.sit) * Math.min(1, dt * 4);
+    c.legs[0].rotation.x = sw + .45 * c.sit; c.legs[1].rotation.x = -sw + .45 * c.sit; c.legs[2].rotation.x = -sw - .9 * c.sit; c.legs[3].rotation.x = sw - .9 * c.sit;
+    c.body.rotation.x = -.45 * c.sit; c.body.position.y = -.06 * c.sit; c.head.rotation.x = .38 * c.sit - (petting ? .1 : 0);
+    c.head.rotation.z = petting ? Math.sin(t * 3) * .15 : 0;
+    c.tail.forEach((s, i) => { s.rotation.x = (sp > .5 ? -.25 : -.5 + c.sit * .3) + (i ? .12 : 0); s.rotation.z = Math.sin(t * (sp > .5 ? 6 : 2.2) + i * .7) * (.18 + i * .04); });
+    c.blink = (c.blink ?? 2) - dt; if (c.blink < -.14) c.blink = 2 + Math.random() * 4;
+    for (const e of c.eyes) e.scale.y = petting ? .004 : c.blink < 0 ? .006 : .028;
   }
 
   // Frame loop (called by app.js tick through `draw`).
@@ -1553,7 +2452,9 @@ function start() {
     const dt = clamp(t - lastT, .001, .05); lastT = t;
     U.time.value = t;
     constrainMovement(dt);
-    const [px, pz] = toW(state.position.x, state.position.y), py = heightAt(px, pz);
+    hooks.frame?.(dt, t);
+    let [px, pz] = posW(state.position.x, state.position.y), py = groundAt(px, pz);
+    if (voyage) ({ x: px, y: py, z: pz } = voyage.deck);
     const moved = Math.hypot(px - player.root.position.x, pz - player.root.position.z);
     if (moved > .002 && moved < 5) player.yaw = lerpAngle(player.yaw, Math.atan2(px - player.root.position.x, pz - player.root.position.z), 1 - Math.exp(-dt * 14));
     if (talk.on) { const g = talk.target.ch ? talk.target.ch.root.position : talk.target.pos; player.yaw = lerpAngle(player.yaw, Math.atan2(g.x - px, g.z - pz), 1 - Math.exp(-dt * 6)); if ($('#modal').open || screen !== 'world') endTalk(); }
@@ -1564,7 +2465,9 @@ function start() {
       scrollProp.rotation.set(k * 5, k * 2.5, .3); scrollProp.scale.setScalar(1 + Math.sin(k * Math.PI) * .5);
       if (k >= 1) { talk.flight = null; scrollProp.visible = false; fl.resolve(); }
     }
-    animateCharacter(player, moved < 5 ? moved / dt : 0, dt, t);
+    hooks.prePose?.();
+    animateCharacter(player, voyage ? 0 : moved < 5 ? moved / dt : 0, dt, t);
+    hooks.pose?.(dt, t, voyage ? 0 : moved < 5 ? moved / dt : 0, px, py, pz);
     U.player.value.set(px, py, pz);
     for (const o of bots) {
       if (!o.ch.root.visible) continue;
@@ -1587,24 +2490,25 @@ function start() {
       wantYaw = near + (near === a1 ? -.32 : .32); wantPitch = .13; wantDist = Math.max(4.8, sep * 1.25 + 2.6);
       worldPos.set((px + g.x) / 2, (py + g.y) / 2 + 1.45, (pz + g.z) / 2);
     }
-    const blend = talk.on || talk.settle > 0 ? (reduceMotion.matches ? 1 : 1 - Math.exp(-dt * 3.2)) : 1;
+    if (voyage) { wantYaw = voyage.heading + Math.PI + .55; wantPitch = .3; wantDist = 15; worldPos.set(px, py + 1, pz); }
+    const blend = talk.on || talk.settle > 0 || voyage ? (reduceMotion.matches ? 1 : 1 - Math.exp(-dt * 3.2)) : 1;
     if (!talk.on && talk.settle > 0) talk.settle -= dt;
     view.yaw = lerpAngle(view.yaw, wantYaw, blend); view.pitch += (wantPitch - view.pitch) * blend; view.dist += (wantDist - view.dist) * blend;
     const yaw = view.yaw, pitch = view.pitch, dist = view.dist;
     cam.target.lerp(worldPos, reduceMotion.matches ? 1 : 1 - Math.exp(-dt * (talk.on ? 3.5 : 7)));
     camera.position.set(cam.target.x + Math.sin(yaw) * Math.cos(pitch) * dist, cam.target.y + Math.sin(pitch) * dist, cam.target.z + Math.cos(yaw) * Math.cos(pitch) * dist);
-    camera.position.y = Math.max(camera.position.y, Math.max(heightAt(camera.position.x, camera.position.z), 0) + 1.2);
+    camera.position.y = Math.max(camera.position.y, Math.max(groundAt(camera.position.x, camera.position.z), 0) + 1.2);
     camera.lookAt(cam.target);
     sky.position.copy(camera.position);
     // sun shadow follows the view, snapped to texels to avoid shimmering
     const snap = 60 / Q.shadow, sx = Math.round(cam.target.x / snap) * snap, sz = Math.round(cam.target.z / snap) * snap;
-    sun.target.position.set(sx, 0, sz); sun.position.copy(sun.target.position).addScaledVector(look.sun, 90); sun.target.updateMatrixWorld();
+    sun.target.position.set(sx, cam.target.y - 1.3, sz); sun.position.copy(sun.target.position).addScaledVector(look.sun, 90); sun.target.updateMatrixWorld();
     motes.material.uniforms.uOrigin.value.copy(cam.target); flies.material.uniforms.uOrigin.value.set(cam.target.x, cam.target.y + 1, cam.target.z);
     for (const fn of animated) fn(t, dt);
     for (const bd of birds) { const a = t * .12 + bd.off; bd.g.position.set(Math.cos(a) * bd.rad, bd.h + Math.sin(t * .5 + bd.off) * 1.2, Math.sin(a) * bd.rad * .7 - 4); bd.g.rotation.y = -a; const f = Math.sin(t * 7 + bd.off * 3) * .5; bd.l.rotation.z = f; bd.r.rotation.z = -f; }
     for (const bf of flutter) { const tt = t * .5 + bf.seed; bf.g.position.set(bf.home[0] + Math.sin(tt * 1.3) * 2.2, heightAt(bf.home[0], bf.home[1]) + .7 + Math.sin(tt * 2.3) * .35, bf.home[1] + Math.cos(tt) * 2.2); bf.g.rotation.y = tt * 1.3 + Math.PI / 2; const f = Math.sin(t * 22 + bf.seed) * 1.1; bf.l.rotation.z = f; bf.r.rotation.z = f; }
     marker.visible = !!travel;
-    if (travel) { const [mx, mz] = toW(travel.x, travel.y); marker.position.set(mx, Math.max(heightAt(mx, mz), 0) + .06, mz); const k = (t * 1.5) % 1; marker.scale.setScalar(.8 + k * .6); marker.material.opacity = .9 * (1 - k); }
+    if (travel) { const [mx, mz] = posW(travel.x, travel.y); marker.position.set(mx, Math.max(groundAt(mx, mz), 0) + .06, mz); const k = (t * 1.5) % 1; marker.scale.setScalar(.8 + k * .6); marker.material.opacity = .9 * (1 - k); }
     // labels and compass
     // Labels are queued, then laid out nearest-and-most-important first. A label that would cover another
     // (or the map's own controls) lifts above it, or fades out if there is no room.
@@ -1620,6 +2524,7 @@ function start() {
     worldPos.set(gate.position.x, gate.position.y + 7.4, gate.position.z); if (gate.visible) placeLabel(gateLabel, worldPos, 140, 3); else fadeLabel(gateLabel, 0);
     placeLabel(seaLabel, seaPos, 160, 0);
     councilLabels.forEach(({ o, el }) => { worldPos.copy(o.pos); worldPos.y += 3.2; placeLabel(el, worldPos, 32, 2); });
+    hooks.labels?.(placeLabel);
     layoutLabels();
     if (talk.on && talk.anchor && !bubble.hidden) {
       projV.copy(anchorOf(talk.anchor, worldPos)).project(camera);

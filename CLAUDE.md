@@ -39,7 +39,7 @@ The game scripts share globals. Preserve order: engine.js → data.js → roster
 
 ## Behavior and data to preserve
 
-Keep save version 1 and storage keys `nivetha-becoming-v1` and `nivetha-cloud-base-v1` unless implementing and testing a migration. Keep quest IDs and completion keys stable to preserve existing XP. Completing a real-world action requires evidence/a note; keep duplicate award prevention and reward reconciliation. Daily reset uses Asia/Kolkata. Recovery mode is a deliberate alternative to training.
+The save may include an optional `rewards` array (Treasury redemptions); older saves without it stay valid. Keep save version 1 and storage keys `nivetha-becoming-v1` and `nivetha-cloud-base-v1` unless implementing and testing a migration. Keep quest IDs and completion keys stable to preserve existing XP. Completing a real-world action requires evidence/a note; keep duplicate award prevention and reward reconciliation. Daily reset uses Asia/Kolkata. Recovery mode is a deliberate alternative to training.
 
 If you change engine.js, copy it exactly to lib/engine.cjs so server validation stays aligned. Never put personal progress, credentials, browser state, .env.local, node_modules or build output in commits. Export progress from the current game in Settings and import it on a new hostname; the code repository contains no private save data.
 
