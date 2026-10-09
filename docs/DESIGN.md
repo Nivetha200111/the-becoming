@@ -99,3 +99,7 @@ The ⛶ button on the map (or F with the map focused) puts the world in full scr
 `physics.js` owns movement at 120 fixed steps per second: acceleration, braking, swept body footprints, wall sliding, terrain slope limits and gravity. Shift runs, Space jumps, and touch players have a Jump button. `app.js` hands movement to the 3D motor while WebGL is active; the renderer never corrects a second movement simulation. Travel callbacks run only on actual arrival. Paths use the same body footprint as movement.
 
 Veer and Mochi use collision-aware follower motors and choose clear resting footprints. Veer rests beside Nivetha during LeetCode rather than targeting the desk or laptop. Both pets re-anchor at realm arrival and board the ferry in distinct positions.
+
+## Arena outfits
+
+`outfits.js` defines fourteen outfits, one per home arena and overseas realm. Auto dress chooses the current realm or nearby unlocked area. The Wardrobe also lets Nivetha pin any outfit or return to automatic dressing. Outfits have different silhouettes (gi, apron, coat, yukata, running kit and robes), and changing clothes preserves expressions, activity props and the earned cloak colour.

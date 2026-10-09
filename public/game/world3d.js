@@ -1,3 +1,4 @@
+import { OUTFITS, outfitLook } from './outfits.js';
 import { CharacterMotor, footprintClear, MOTOR } from './physics.js';
 // The Becoming · 3D world (three.js)
 // Progressive enhancement over app.js's 2D map. Quests, saves, travel, keyboard movement and dialogs stay in
@@ -1858,7 +1859,7 @@ function start() {
   groundAt = (x, z) => { for (const r of realms) if (Math.abs(x - r.R.at[0]) < r.R.rx + 14 && Math.abs(z - r.R.at[1]) < r.R.rz + 14) return r.F.ground(x - r.R.at[0], z - r.R.at[1]); return heightAt(x, z); };
 
   // Characters.
-  const player = makeCharacter(PLAYER_LOOK, true); scene.add(player.root);
+  let player = makeCharacter(PLAYER_LOOK, true); scene.add(player.root);
   const bots = PARTY.map((b, i) => { const ch = makeCharacter(lookFor(b)); const [x, z] = toW(b.x, b.y); ch.root.position.set(x, heightAt(x, z), z); ch.yaw = 0; scene.add(ch.root); const proxy = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 2.6, 8), new THREE.MeshBasicMaterial({ visible: false })); proxy.position.set(x, heightAt(x, z) + 1.3, z); proxy.userData = { kind: 'bot', bot: b }; scene.add(proxy); return { b, ch, proxy, seed: i * 1.7, greeted: false }; });
 
   // Atmosphere.
@@ -2594,11 +2595,46 @@ function start() {
     lastXP = xp; lastCloak2 = state.equipped; lastRewards = rw;
     const lv = E.level(xp); if (!realm && (lv !== spotLevel || !spots[0].L)) { spotLevel = lv; placeMainSpots(); }
   };
+  // Arena wardrobe: dress automatically on arrival, or keep a favourite outfit.
+  const wardrobe = document.createElement('section'); wardrobe.className = 'arena-wardrobe';
+  wardrobe.innerHTML = `<div class="eyebrow">DRESSED FOR YOUR WORLD</div><h3>A look for every arena.</h3><p id="outfitStatus" role="status"></p><button type="button" class="secondary" id="autoOutfit" aria-pressed="true">Auto dress for arena</button><div class="outfit-grid">${OUTFITS.map(o => `<button type="button" class="outfit-card" data-outfit="${o.id}" style="--outfit:${o.color}"><span aria-hidden="true">✦</span><b>${o.name}</b><small>${o.arena}</small></button>`).join('')}</div>`;
+  $('#rewardsScreen').prepend(wardrobe);
+  let outfitPreference = 'auto', outfitId = 'camp', wardrobeAge = 0;
+  try { const saved = localStorage.getItem('becoming-arena-outfit'); if (saved === 'auto' || OUTFITS.some(o => o.id === saved)) outfitPreference = saved; } catch {}
+  const outfitCache = new Map([['camp', player]]);
+  function setOutfit(id) {
+    if (outfitId === id) return;
+    const previous = player; let next = outfitCache.get(id);
+    if (!next) { next = makeCharacter(outfitLook(PLAYER_LOOK, id)); outfitCache.set(id, next); }
+    for (const k of ['hammer', 'quill', 'brush', 'wrench', 'phone']) next.arms[1].add(PR[k]);
+    next.body.add(PR.book, PR.ledger);
+    next.root.position.copy(previous.root.position); next.root.rotation.copy(previous.root.rotation);
+    for (const k of ['yaw', 'phase', 'wave', 'give', 'expr']) next[k] = previous[k];
+    previous.root.removeFromParent(); player = next; scene.add(player.root); outfitId = id;
+    if (player.cloakMesh) player.cloakMesh.material = toonMat(palettes[state.equipped] || palettes.sage);
+    wardrobe.querySelectorAll('[data-outfit]').forEach(b => { b.classList.toggle('on', b.dataset.outfit === id); b.setAttribute('aria-pressed', String(b.dataset.outfit === id)); });
+  }
+  function currentOutfit() {
+    if (outfitPreference !== 'auto') return outfitPreference;
+    if (realm) return realm.R.id;
+    if (act?.spot?.region) return act.spot.region;
+    const nearby = WORLD.filter(r => E.level(E.total(state)) >= r.unlock).map(r => ({ r, d: Math.hypot(state.position.x - r.x, state.position.y - r.y) }));
+    nearby.sort((a, b) => a.d - b.d); return nearby[0]?.d < 100 ? nearby[0].r.id : 'camp';
+  }
+  function updateWardrobe() {
+    const id = currentOutfit(); setOutfit(id);
+    wardrobe.querySelector('#outfitStatus').textContent = `${OUTFITS.find(o => o.id === id).name} · ${outfitPreference === 'auto' ? 'Changes with your arena' : 'Your chosen outfit'}`;
+    wardrobe.querySelector('#autoOutfit').setAttribute('aria-pressed', String(outfitPreference === 'auto'));
+  }
+  const chooseOutfit = id => { outfitPreference = id; try { localStorage.setItem('becoming-arena-outfit', id); } catch {} updateWardrobe(); toast(id === 'auto' ? 'Your outfit will follow the arena.' : `Wearing ${OUTFITS.find(o => o.id === id).name}.`); };
+  wardrobe.querySelectorAll('[data-outfit]').forEach(b => b.onclick = () => chooseOutfit(b.dataset.outfit));
+  wardrobe.querySelector('#autoOutfit').onclick = () => chooseOutfit('auto'); updateWardrobe();
+
   // Every frame: voyages and ferry bobbing.
   const bez = (p, t, out) => { const u = 1 - t; return out.set(0, 0, 0).addScaledVector(p[0], u * u * u).addScaledVector(p[1], 3 * u * u * t).addScaledVector(p[2], 3 * u * t * t).addScaledVector(p[3], t * t * t); };
   const bv1 = new THREE.Vector3(), bv2 = new THREE.Vector3();
   hooks.frame = (dt, t) => {
-    nowT = t;
+    nowT = t; if ((wardrobeAge -= dt) <= 0 && !voyage) { wardrobeAge = .3; updateWardrobe(); }
     const wantSky = realm?.R.sky && !voyage ? 1 : 0; if (Math.abs(wantSky - skyBlend) > .001) { skyBlend += (wantSky - skyBlend) * Math.min(1, dt * 1.2); if (Math.abs(wantSky - skyBlend) < .01) skyBlend = wantSky; envDirty = true; }
     if (voyage) {
       const v = voyage; v.t = Math.min(1, v.t + dt / v.dur); const e = v.t < .5 ? 2 * v.t * v.t : 1 - (-2 * v.t + 2) ** 2 / 2;
@@ -2830,7 +2866,7 @@ function start() {
       if (!show) { fadeLabel(el, 0); return; }
       labelQueue.push({ el, x: (projV.x * .5 + .5) * viewW, y: (-projV.y * .5 + .5) * viewH, op: clamp((far - d) / (far * .25), 0, 1), pri, d });
     };
-    areaLabels.forEach(a => placeLabel(a.el, a.pos, 140, 3));
+    areaLabels.forEach(a => { if (realm || voyage) { a.el._op = 0; a.el.style.opacity = '0'; } else placeLabel(a.el, a.pos, 140, 3); });
     botLabels.forEach(({ o, el }) => { if (!o.ch.root.visible) { fadeLabel(el, 0); return; } worldPos.copy(o.ch.root.position); worldPos.y += 2.55; placeLabel(el, worldPos, 34, 4); });
     worldPos.set(gate.position.x, gate.position.y + 7.4, gate.position.z); if (gate.visible) placeLabel(gateLabel, worldPos, 140, 3); else fadeLabel(gateLabel, 0);
     placeLabel(seaLabel, seaPos, 160, 0);
@@ -2852,7 +2888,7 @@ function start() {
   }
 
   sync();
-  if (window.LOCAL_DESIGN_MODE) window.world3d = { THREE, scene, camera, renderer, cam, look, talk, converse, bots, councils, setHour: h => { hourOverride = h; envDirty = true; }, bloom, player, motor, veer, cat, realms, sail, doSpot, doEmote, activity: () => act, currentRealm: () => realm, walkable, nearestWalkable, obstacles: () => obstacles, heightAt, sdfAt, pathDistAt, toW, toL };
+  if (window.LOCAL_DESIGN_MODE) window.world3d = { THREE, scene, camera, renderer, cam, look, talk, converse, bots, councils, setHour: h => { hourOverride = h; envDirty = true; }, bloom, get player() { return player; }, outfit: () => outfitId, motor, veer, cat, realms, sail, doSpot, doEmote, activity: () => act, currentRealm: () => realm, walkable, nearestWalkable, obstacles: () => obstacles, heightAt, sdfAt, pathDistAt, toW, toL };
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
   const draw2d = draw;
   // If the GPU drops the context or a frame throws, hand the map back to the original 2D renderer

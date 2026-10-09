@@ -530,3 +530,10 @@ body.world-full{overflow:hidden}
 .world-frame>.w3-actions .w3-emotes i{width:38px;height:38px}
 .world-frame>.w3-actions .w3-lc,.world-frame>.w3-actions .w3-ctx{flex:none;width:auto;white-space:nowrap}
 @media(max-width:900px){.world-frame>.w3-actions .w3-who{display:none}.world-frame>.w3-actions .w3-lc{font-size:0;gap:0;padding:6px}.world-frame>.w3-actions .w3-lc i{font-size:14px}}
+
+.arena-wardrobe{padding:20px 0 24px;margin-bottom:24px;border-bottom:1px solid var(--gold)}
+.arena-wardrobe h3{font:600 28px var(--serif);margin:8px 0}
+.outfit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-top:16px}
+.outfit-card{display:grid;gap:6px;text-align:left;padding:16px;border:1px solid #c7b486;border-radius:12px;background:#fff8e8;color:#33291f;cursor:pointer;min-height:120px}
+.outfit-card>span{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--outfit);color:#fff1c8;font-size:22px}
+.outfit-card b{font-size:13px}.outfit-card small{font-size:11px;color:#75674f}.outfit-card.on{outline:3px solid #c49a45;outline-offset:2px}.outfit-card:focus-visible{outline:3px solid #39578c;outline-offset:3px}
