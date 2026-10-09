@@ -93,6 +93,58 @@ The names must match exactly. They are defined in `PROPS` in `lib/notion-sync.mj
 
 The first sync after setup backfills every entry already in the save, 30 writes per call. Never put the token in `public/`, in client code or in a commit.
 
+The Quest log also has a **Bot** (select) property. It records which bot each claim belongs to, either the bot that logged it or the guide of that quest's area, so each Grok bot can filter by its own name.
+
+## Party HQ (Grok bots → game)
+
+Your Grok bots write Completions, Missions and Check-ins into a second Notion database, **Party HQ**. The bot-facing guide and the instruction block to paste into each bot are in [GROK_BOTS.md](GROK_BOTS.md).
+
+### How it works
+
+- The game calls `POST /api/party` when it opens, when you return to the tab, and every 3 minutes while it's visible. The route uses the same cookie and same-origin checks as `/api/state`. Local design mode shows a labelled sample feed and never contacts Notion.
+- **Completions** (`Status` empty or `New`, oldest first, 50 per call):
+  - Each row is checked: it needs a known bot, evidence in Details, and a date within the last 14 days and not in the future. A Quest ID must exist, and that quest's area must be unlocked.
+  - Valid rows become entries in the saved state through `Engine.award`. A Quest ID gives the normal `questId[:date]` key, so a quest you already claimed in the game is never counted twice. Rows without a Quest ID use the key `party:<row id>`, with XP snapped down to 20/40/60/100.
+  - The write is a compare-and-swap save through the existing save store. On a 409 conflict it reloads, re-applies and retries, so another device's progress is kept.
+  - Rows are marked `Counted` (with **Game key**) or `Rejected` (with **Game note**) only after the save succeeds. If marking fails, the next run sees the key is already saved and marks it then.
+  - Completions counted in the last 30 days whose key is no longer in the save are marked `Undone`.
+- **Missions** (`Status` empty, `New` or `Open`, plus `Done` edited in the last 14 days) come back to the browser and appear as quests with the id `party:<row id>`. When the key appears in the save, the row is set to `Done`; when it disappears, it goes back to `Open`. `Cancelled` missions are hidden.
+- **Check-ins** from the last 7 days come back newest first.
+- When completions are imported, the Quest log mirror runs in the same request, as a best effort. The browser's normal `/api/notion` trigger covers anything this misses.
+- Entries carry an optional `bot` field, a roster id. The field is optional and validated by `engine.js`, so the save stays version 1. Per-bot XP and levels come from `public/game/roster.js` (`GameRoster.stats`). That file is copied exactly to `lib/roster.cjs` for the server, and a test enforces that the copies match.
+
+### Party HQ properties
+
+| Property | Type | Written by |
+| --- | --- | --- |
+| Name | Title | bot |
+| Bot | Select (the 15 roster names) | bot |
+| Type | Select: Completion, Mission, Check-in | bot |
+| Status | Select: New, Open, Counted, Done, Rejected, Undone, Cancelled | game (bots leave it empty, or set `New`/`Cancelled`) |
+| Quest ID | Text | bot (optional) |
+| Stat | Select: INT, BUILD, FOCUS, END, LEVERAGE | bot |
+| XP | Number | bot |
+| Details | Text | bot (evidence, mission details or message) |
+| Date | Date | bot |
+| Game key | Text | game |
+| Game note | Text | game |
+
+### Setup
+
+1. Use the same Notion integration as the Quest log, already connected to NIVETHA LIFE OS.
+2. Create the database in a local shell:
+
+   ```bash
+   NOTION_TOKEN=<secret> node scripts/notion-setup.mjs create-party
+   ```
+
+   It prints `NOTION_PARTY_DATABASE_ID=…`. To check an existing database instead, run `check-party <database-id>`.
+3. Connect your Grok bots' Notion access to Party HQ and to the Quest log, so they can write the first and read both.
+4. Add `NOTION_PARTY_DATABASE_ID` to Vercel as an encrypted, server-side variable, then redeploy. Add `NOTION_PARTY_DATA_SOURCE_ID` only if the database has several data sources.
+5. Paste the instruction block from [GROK_BOTS.md](GROK_BOTS.md) into each bot. Ask one bot to log a small completion with evidence, then open the game. The footer should show `Party HQ synced`, and you should get a toast and the XP.
+
+`GET /api/health` reports `partySync: "configured"` once the variables are present. That is configuration only, not proof of a live exchange.
+
 ## Pending integrations
 
 Bot chat needs real provider credentials and a server route; it is not implemented. Keep secrets out of frontend assets and source control.

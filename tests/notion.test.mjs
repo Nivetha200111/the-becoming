@@ -99,5 +99,5 @@ test('Notion errors are reported without leaking the token',async()=>{
  const fetcher=async()=>Response.json({code:'unauthorized',message:'API token is invalid.'},{status:401});
  await assert.rejects(reconcile([],{...env,NOTION_DATABASE_ID:'fedcba9876543210fedcba9876543210'},{fetcher,sleep:async()=>{}}),e=>e.status===401&&!e.message.includes(TOKEN));
  assert.deepEqual(schemaProblems(Object.fromEntries(Object.entries(SCHEMA).map(([k,type])=>[k,{type}]))),[]);
- assert.deepEqual(schemaProblems({[PROPS.title]:{type:'title'}}).length,5);
+ assert.deepEqual(schemaProblems({[PROPS.title]:{type:'title'}}).length,6);
 });
