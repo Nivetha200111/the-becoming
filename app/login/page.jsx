@@ -1,0 +1,3 @@
+import { configured } from '../../lib/auth.mjs';
+export const dynamic='force-dynamic';
+export default async function Login({searchParams}){const q=await searchParams;return <main className="login"><span className="sigil">✦</span><h1>The Becoming</h1><p>Your world is waiting.</p>{configured()?<form method="POST" action="/api/login"><label htmlFor="password">Your world’s passphrase</label><input id="password" name="password" type="password" autoComplete="current-password" required maxLength={256}/>{q?.error&&<p className="error">That passphrase didn’t match.</p>}<button type="submit">Enter your world →</button></form>:<p>This deployment needs its private-access settings before the world can open.</p>}</main>;}

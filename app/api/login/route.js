@@ -1,0 +1,3 @@
+import { checkPassword,configured,issueSession,cookieHeader,sameOrigin } from '../../../lib/auth.mjs';
+export const runtime='nodejs';
+export async function POST(req){if(!sameOrigin(req))return new Response('Request origin rejected',{status:403});if(!configured())return new Response('Private access needs to be configured in the deployment settings.',{status:503});const form=await req.formData();if(!checkPassword(form.get('password')))return Response.redirect(new URL('/login?error=1',req.url),303);return new Response(null,{status:303,headers:{Location:'/', 'Set-Cookie':cookieHeader(issueSession(),req),'Cache-Control':'no-store'}});}
