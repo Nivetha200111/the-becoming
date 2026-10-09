@@ -26,9 +26,24 @@ test('steep climbs are blocked; ordinary slopes stay grounded', () => {
   const hill = make(() => true, x => x * .3);
   for (let i = 0; i < 120; i++) hill.update(1 / 120, { x: 1 }); assert.ok(hill.x > 3); assert.equal(hill.y, hill.x * .3);
 });
+test('navigation rejects thin obstacles and intermediate cliffs even when endpoints fit', () => {
+  const wall = make(x => x < 1 || x > 1.12);
+  assert.equal(wall.pathClear(0, 0, 2, 0), false);
+  const hill = make(() => true, x => Math.max(0, 1 - Math.abs(x - 1)) * 2);
+  assert.equal(hill.pathClear(0, 0, 2, 0), false);
+  assert.equal(hill.pathClear(1, 0, 2, 0), true);
+  assert.equal(make(() => true, x => x * .3).pathClear(0, 0, 2, 0), true);
+});
 test('jump follows gravity, lands on terrain, and holding jump does not repeat', () => {
   const m = make(); let peak = 0;
   for (let i = 0; i < 180; i++) { m.update(1 / 120, { jump: true }); peak = Math.max(peak, m.y); }
   assert.ok(peak > .9 && peak < 1.2); assert.equal(m.grounded, true); assert.equal(m.y, 0);
   m.update(1 / 120, { jump: false }); m.update(1 / 120, { jump: true }); assert.equal(m.grounded, false);
+});
+test('walking off a ledge falls under gravity rather than snapping to the lower ground', () => {
+  const m = make(() => true, x => x < 1 ? 2 : 0);
+  m.reset(.99, 0); m.vx = 4.2; m.update(1 / 120, { x: 1 });
+  assert.equal(m.grounded, false); assert.ok(m.y > 1.9); assert.ok(m.vy < 0);
+  for (let i = 0; i < 120; i++) m.update(1 / 120, { x: 1 });
+  assert.equal(m.grounded, true); assert.equal(m.y, 0);
 });

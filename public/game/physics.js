@@ -10,6 +10,17 @@ export class CharacterMotor {
   constructor({ clear, ground, radius = MOTOR.radius, slope = MOTOR.maxSlope }) { this.clear = clear; this.ground = ground; this.radius = radius; this.slope = slope; this.reset(0, 0); }
   reset(x, z) { this.x = x; this.z = z; this.y = this.ground(x, z); this.vx = this.vz = this.vy = this.accumulator = this.speed = 0; this.grounded = true; this.jumpHeld = false; }
   fits(x, z) { return footprintClear(x, z, this.clear, this.radius); }
+  pathClear(ax, az, bx, bz) {
+    const steps = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / .08));
+    let x = ax, z = az, height = this.ground(x, z);
+    for (let i = 1; i <= steps; i++) {
+      const nx = ax + (bx - ax) * i / steps, nz = az + (bz - az) * i / steps;
+      const nextHeight = this.ground(nx, nz), distance = Math.hypot(nx - x, nz - z);
+      if (!this.fits(nx, nz) || (distance > 1e-8 && nextHeight - height > distance * (this.slope + .01))) return false;
+      x = nx; z = nz; height = nextHeight;
+    }
+    return true;
+  }
   canMove(x, z) {
     const d = Math.hypot(x - this.x, z - this.z), rise = this.ground(x, z) - this.ground(this.x, this.z);
     return this.fits(x, z) && (d < 1e-8 || rise <= d * (this.slope + .01));
@@ -53,6 +64,7 @@ export class CharacterMotor {
       const distance = Math.hypot(this.vx, this.vz) * h, ratio = distance ? Math.min(1, limit / distance) : 1;
       moved += this.move(this.vx * h * ratio, this.vz * h * ratio);
       const floor = this.ground(this.x, this.z);
+      if (this.grounded && this.y - floor > .24) { this.grounded = false; this.vy = 0; }
       if (this.grounded) this.y = floor;
       else { this.vy -= MOTOR.gravity * h; this.y += this.vy * h; if (this.y <= floor) { this.y = floor; this.vy = 0; this.grounded = true; } }
     }

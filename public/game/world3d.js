@@ -2078,7 +2078,8 @@ function start() {
     const fill = line => line.replace('{greet}', greeting()).replace('{name}', giver.name);
     try {
       if (t.ch) t.ch.wave = 1.8;
-      await say(host, fill(pickLine(voice.hi)));
+      const chatChoice = await say(host, fill(pickLine(voice.hi)), [{ label: 'Chat with ' + shortName(giver), value: 'chat' }, { label: 'Show my quests', value: 'quests' }]);
+      if (chatChoice === 'chat') { endTalk(); window.BotChat?.open(giver.id); return; }
       if (giver.id === 'gilfoyle' && kobra()) { const lc = await say(host, 'Anything to report?', [{ label: '⚔ I’m doing LeetCode', value: true }, { label: 'Career talk', value: false }]); if (lc) { await say(me, 'LeetCode time.'); await say(host, pickLine(GILFOYLE_LC)); endTalk(); sail(kobra(), { leetcode: true }); return; } }
       const live = liveLine(giver);
       if (live.live) await say(host, (live.sample ? 'From my sample check-in: ' : 'From today’s Party HQ check-in: ') + clip(live.text, 200));
@@ -2298,14 +2299,14 @@ function start() {
   }
   // Click-to-travel follows an A* path on an 8-unit grid, smoothed into straight runs, instead of
   // walking into walls and giving up.
-  function lineClear(a, b) { const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 1.5); for (let k = 1; k <= n; k++) if (!motor.fits(...posW(a.x + (b.x - a.x) * k / n, a.y + (b.y - a.y) * k / n))) return false; return true; }
-  function findPath(from, to) {
-    const goal = safePosition(to);
-    if (lineClear(from, goal)) return [goal];
+  function lineClear(a, b, pathMotor = motor) { return pathMotor.pathClear(...posW(a.x, a.y), ...posW(b.x, b.y)); }
+  function findPath(from, to, pathMotor = motor) {
+    const goal = safePosition(to, pathMotor.radius), clearLine = (a, b) => lineClear(a, b, pathMotor);
+    if (clearLine(from, goal)) return [goal];
     const ST = 8, W = Math.ceil(1100 / ST) + 1, H = Math.ceil(720 / ST) + 1, free = new Int8Array(W * H), g = new Float32Array(W * H).fill(Infinity), came = new Int32Array(W * H).fill(-1), closed = new Uint8Array(W * H);
-    const ok = k => { if (!free[k]) free[k] = motor.fits(...posW((k % W) * ST, Math.floor(k / W) * ST)) ? 1 : -1; return free[k] === 1; };
-    const near = (x, y) => { const i0 = Math.round(x / ST), j0 = Math.round(y / ST); for (let r = 0; r < 4; r++) for (let j = j0 - r; j <= j0 + r; j++) for (let i = i0 - r; i <= i0 + r; i++) { if (i < 0 || j < 0 || i >= W || j >= H) continue; const k = j * W + i; if (ok(k)) return k; } return -1; };
-    const s = near(from.x, from.y), e = near(goal.x, goal.y); if (s < 0 || e < 0) return null;
+    const ok = k => { if (!free[k]) free[k] = pathMotor.fits(...posW((k % W) * ST, Math.floor(k / W) * ST)) ? 1 : -1; return free[k] === 1; };
+    const near = (x, y, entering) => { const i0 = Math.round(x / ST), j0 = Math.round(y / ST); for (let r = 0; r < 4; r++) for (let j = j0 - r; j <= j0 + r; j++) for (let i = i0 - r; i <= i0 + r; i++) { if (i < 0 || j < 0 || i >= W || j >= H) continue; const k = j * W + i; if (ok(k)) { const p = { x: i * ST, y: j * ST }; if (entering ? clearLine(from, p) : clearLine(p, goal)) return k; } } return -1; };
+    const s = near(from.x, from.y, true), e = near(goal.x, goal.y, false); if (s < 0 || e < 0) return null;
     const ex = e % W, ey = Math.floor(e / W), hf = k => { const dx = Math.abs(k % W - ex), dy = Math.abs(Math.floor(k / W) - ey); return (dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy)) * ST; };
     const heap = [], push = (k, f) => { heap.push([f, k]); let i = heap.length - 1; while (i) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
     const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = i * 2 + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top[1]; };
@@ -2317,12 +2318,13 @@ function start() {
         if (!di && !dj) continue; const ni = i + di, nj = j + dj; if (ni < 0 || nj < 0 || ni >= W || nj >= H) continue;
         const nk = nj * W + ni; if (closed[nk] || !ok(nk)) continue;
         if (di && dj && (!ok(j * W + ni) || !ok(nj * W + i))) continue;
+        if (!clearLine({ x: i * ST, y: j * ST }, { x: ni * ST, y: nj * ST })) continue;
         const ng = g[k] + (di && dj ? Math.SQRT2 : 1) * ST; if (ng < g[nk]) { g[nk] = ng; came[nk] = k; push(nk, ng + hf(nk)); }
       }
     }
     if (came[e] < 0 && e !== s) return null;
-    const pts = [goal]; for (let k = came[e]; k >= 0 && k !== s; k = came[k]) pts.unshift({ x: (k % W) * ST, y: Math.floor(k / W) * ST }); pts.unshift({ x: from.x, y: from.y });
-    const out = []; for (let i = 0; i < pts.length - 1;) { let j = Math.min(pts.length - 1, i + 30); while (j > i + 1 && !lineClear(pts[i], pts[j])) j--; out.push(pts[j]); i = j; }
+    const pts = [goal]; for (let k = e; k >= 0; k = came[k]) pts.unshift({ x: (k % W) * ST, y: Math.floor(k / W) * ST }); pts.unshift({ x: from.x, y: from.y });
+    const out = []; for (let i = 0; i < pts.length - 1;) { let j = Math.min(pts.length - 1, i + 30); while (j > i + 1 && !clearLine(pts[i], pts[j])) j--; out.push(pts[j]); i = j; }
     return out;
   }
   const goToDirect = goTo; let stuckCount = 0;
@@ -2510,7 +2512,7 @@ function start() {
   function arrive(dest, opts = {}) {
     realm = dest || null; voyage = null; bars.classList.remove('on'); frameEl.classList.remove('voyaging'); talk.settle = 1.6;
     const b = realm ? realm.board : homeBoard; state.position = { x: b.x, y: b.y }; prev = null; save();
-    parkFerry(); cat.placed = veer.placed = false; idle = 0; renderRealmCards(); status();
+    parkFerry(); cat.placed = veer.placed = false; idle = 0; renderRealmCards(); status(); updateWardrobe();
     const cap = frameEl.querySelector('.map-caption span'); if (cap) cap.textContent = realm ? `${realm.R.glyph} ${realm.R.name.toUpperCase()}` : '✦ THE INNER KINGDOM';
     toast(realm ? realm.R.arrive : 'Home again. The Inner Kingdom missed you.');
     if (realm) skyRef = realm.R.sky || skyRef;
@@ -2557,6 +2559,7 @@ function start() {
   // The action bar under the map, and the "beyond the sea" cards under the area list.
   const bar = document.createElement('div'); bar.className = 'w3-actions'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Nivetha’s actions');
   bar.innerHTML = `<div class="w3-who"><b>Nivetha <i>with Veer &amp; Mochi</i></b><small id="w3Doing" role="status">Exploring</small></div><div class="w3-emotes">${EMOTES.map(([id, ic, name], i) => `<button type="button" data-emote="${id}" title="${name} (${i + 1})"><i aria-hidden="true">${ic}</i><span>${name}</span></button>`).join('')}</div><button type="button" class="w3-lc" title="Tell Gilfoyle you’re doing LeetCode"><i aria-hidden="true">⚔</i>LeetCode</button><button type="button" class="w3-ctx" hidden></button>`;
+  const chatAction = document.createElement('button'); chatAction.type = 'button'; chatAction.className = 'w3-chat-action'; chatAction.textContent = 'Chat'; chatAction.onclick = () => { endTalk(); const b = realm?.R.id === 'kobra' ? { id: 'fletcher' } : [...PARTY].sort((a, b) => Math.hypot(a.x - state.position.x, a.y - state.position.y) - Math.hypot(b.x - state.position.x, b.y - state.position.y))[0]; window.BotChat?.open(b?.id || 'grok'); }; bar.append(chatAction);
   frameEl.after(bar);
   bar.querySelectorAll('[data-emote]').forEach(b => b.onclick = () => doEmote(b.dataset.emote));
   bar.querySelector('.w3-lc').onclick = () => leetcodeCall();
@@ -2617,7 +2620,7 @@ function start() {
   function currentOutfit() {
     if (outfitPreference !== 'auto') return outfitPreference;
     if (realm) return realm.R.id;
-    if (act?.spot?.region) return act.spot.region;
+    if (act?.spot?.area) return act.spot.area.id;
     const nearby = WORLD.filter(r => E.level(E.total(state)) >= r.unlock).map(r => ({ r, d: Math.hypot(state.position.x - r.x, state.position.y - r.y) }));
     nearby.sort((a, b) => a.d - b.d); return nearby[0]?.d < 100 ? nearby[0].r.id : 'camp';
   }
@@ -2733,11 +2736,11 @@ function start() {
       m.reset(target.x, target.z); pet.placed = true; pet.route = null;
     }
     const from = { x: m.x, y: m.z }, to = { x: target.x, y: target.z };
-    const clearLine = (a, b) => { const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / .1)); for (let i = 0; i <= n; i++) if (!m.fits(a.x + (b.x - a.x) * i / n, a.y + (b.y - a.y) * i / n)) return false; return true; };
+    const clearLine = (a, b) => m.pathClear(a.x, a.y, b.x, b.y);
     pet.routeTimer = (pet.routeTimer || 0) - dt;
     let waypoint = target;
     if (!clearLine(from, to)) {
-      if (pet.routeTimer <= 0) { pet.routeTimer = .65; const [fx, fy] = posL(m.x, m.z), [tx, ty] = posL(target.x, target.z); pet.route = findPath({ x: fx, y: fy }, { x: tx, y: ty }); }
+      if (pet.routeTimer <= 0) { pet.routeTimer = .65; const [fx, fy] = posL(m.x, m.z), [tx, ty] = posL(target.x, target.z); pet.route = findPath({ x: fx, y: fy }, { x: tx, y: ty }, m); }
       while (pet.route?.length) { const [x, z] = posW(pet.route[0].x, pet.route[0].y); if (Math.hypot(x - m.x, z - m.z) < .25) pet.route.shift(); else { waypoint = { x, z }; break; } }
       if (!pet.route?.length) waypoint = { x: m.x, z: m.z };
     } else pet.route = null;

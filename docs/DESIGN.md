@@ -103,3 +103,7 @@ Veer and Mochi use collision-aware follower motors and choose clear resting foot
 ## Arena outfits
 
 `outfits.js` defines fourteen outfits, one per home arena and overseas realm. Auto dress chooses the current realm or nearby unlocked area. The Wardrobe also lets Nivetha pin any outfit or return to automatic dressing. Outfits have different silhouettes (gi, apron, coat, yukata, running kit and robes), and changing clothes preserves expressions, activity props and the earned cloak colour.
+
+## Chat and fullscreen
+
+Chat opens from the top navigation, the world action bar or a guide's conversation. The dialog uses plain-text message rendering and remains inside the fullscreen world. Fullscreen also keeps settings and quest dialogs accessible and handles rapid repeated toggles. Existing Grok bot messaging and live xAI role chat are labelled separately; unavailable connections do not show pretend replies.

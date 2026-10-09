@@ -11,10 +11,13 @@
     "dev:local": "node scripts/dev-local.mjs",
     "build": "next build --webpack",
     "start": "next start",
-    "test": "node tests/sync.test.cjs && node --test tests/server.test.mjs tests/notion.test.mjs tests/party.test.mjs tests/treasury.test.mjs tests/physics.test.mjs"
+    "test": "node tests/sync.test.cjs && node --test tests/server.test.mjs tests/notion.test.mjs tests/party.test.mjs tests/treasury.test.mjs tests/physics.test.mjs tests/chat.test.mjs",
+    "access:hash": "node scripts/access-hash.mjs"
   },
   "dependencies": {
-    "next": "16.3.4",
+    "@ai-sdk/xai": "^5.0.20",
+    "ai": "^7.0.137",
+    "next": "16.3.8",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },

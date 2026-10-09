@@ -77,3 +77,18 @@ automation (Lab, level 4+) · signal, interview (Summit, level 5+). Bosses = 250
 - The Automation Lab unlocks at level 4 and the Opportunity Summit at level 5; Quest IDs there are rejected until then. SPM Tower and Claude Temple are open from level 1 because CCDF and CIS-SPM are this month's campaign.
 - The game checks Party HQ when it opens, when you return to the tab, and every 3 minutes while it's visible. It does nothing while closed, so bot rows wait until you next open the game.
 - In-game bot dialogue is still scripted. The live exchange is through Notion.
+
+## In-game chat: the shared inbox
+
+The game's **My Grok bots** chat sends a real Party HQ row to the selected bot or council. It is asynchronous: a reply requires that bot to read Party HQ and respond. This is not a Grok app conversation API or an automatic bot runner. The separate **Live Grok** mode calls xAI with the guide's role; it does not share your existing Grok chat memory.
+
+Add this to each existing bot's Party HQ protocol once:
+
+1. Read rows addressed to your Bot name with Type `Message`, Status `New`, and a Game key starting `chat:`. `Details` contains Nivetha's message; Name is `Nivetha → <bot>`.
+2. Read earlier Message/Reply rows for your Bot if context is needed. Respect your existing charter and anti-jobs.
+3. Write a row with Type `Reply`, Bot set to the same bot, Game key **exactly copied from the message**, Details set to your answer, Name set to a short description, and Date set to today.
+4. Before creating a Reply, check whether a Reply with that Game key already exists. Reuse it on retries rather than producing duplicates.
+5. Mark the original Message `Answered` only after the Reply exists.
+6. Chat messages never award XP. Real completions still go through the existing evidence-based Completion protocol.
+
+The game polls the selected bot's inbox every 12 seconds while chat is visible. It reports delivery only after Notion confirms the row. A message remains labelled waiting until a Reply with its key exists. Notion is the durable shared store across devices. Live model history stays in that browser session.

@@ -120,8 +120,8 @@ Your Grok bots write Completions, Missions and Check-ins into a second Notion da
 | --- | --- | --- |
 | Name | Title | bot |
 | Bot | Select (the 15 roster names) | bot |
-| Type | Select: Completion, Mission, Check-in, Scoreboard | bot (Scoreboard: game) |
-| Status | Select: New, Open, Counted, Done, Rejected, Undone, Cancelled | game (bots leave it empty, or set `New`/`Cancelled`) |
+| Type | Select: Completion, Mission, Check-in, Scoreboard, Message, Reply | bot (Scoreboard and Message: game) |
+| Status | Select: New, Open, Counted, Done, Rejected, Undone, Cancelled, Answered | game (bots leave it empty, or set `New`/`Cancelled`) |
 | Quest ID | Text | bot (optional) |
 | Stat | Select: INT, BUILD, FOCUS, END, LEVERAGE | bot |
 | XP | Number | bot |
@@ -148,4 +148,19 @@ Your Grok bots write Completions, Missions and Check-ins into a second Notion da
 
 ## Pending integrations
 
-Bot chat needs real provider credentials and a server route; it is not implemented. Keep secrets out of frontend assets and source control.
+Bot chat is implemented. Live replies require a server-side xAI API key; existing bots communicate through the configured Party HQ inbox. Keep credentials in Vercel Secrets.
+
+## Private access without saving the actual passphrase
+
+Run `npm run access:hash` yourself in a macOS terminal. It reads the passphrase twice with echo disabled, derives a salted scrypt hash, and copies only the hash to your clipboard. The passphrase is never printed or saved to a file. Paste the hash into Vercel Production `APP_PASSWORD_HASH` as a Secret, keep `APP_PASSWORD` unset, and redeploy. Keep `SESSION_SECRET` as a separate generated server-only Secret. The login form still accepts your actual passphrase. Missing settings keep the world and APIs locked; there is no public first-visitor setup endpoint. A legacy `APP_PASSWORD` remains supported for existing deployments.
+
+## Chat connections
+
+The authenticated `/api/chat` endpoint has two explicit connections:
+
+- **My Grok bots:** uses the existing `NOTION_TOKEN` and `NOTION_PARTY_DATABASE_ID` Secrets. Messages and Replies live in Party HQ with stable UUID keys. Give your actual bots the Message/Reply protocol in `GROK_BOTS.md`. Until a bot reads and responds, chat says waiting; it never manufactures a reply.
+- **Live Grok:** set `XAI_API_KEY` as a Production Secret (not a public variable). Optionally set `GROK_CHAT_MODEL`; the default is the current documented `grok-4.7`. Replies use each roster role and authoritative saved progress when available. It has no action tools and cannot claim XP or mutate Notion. Existing Grok app chats and memory are not connected by this API.
+
+Local design disables both external connections. Browser chat shows which connection is available. Auth, same-origin POST checks, message/role validation, response-size limits and provider-error redaction keep keys on the server. No credentials belong in the repo or chat transcript.
+
+The project was created in the connected Vercel account as `the-becoming` (`prj_PlXkF4RmNrmxbg83QksIhboGwYVI`). Source releases are uploaded directly because the account needs its GitHub login connection before Git integration can be linked. Production alias: https://the-becoming-seven.vercel.app. Configure access and integration secrets directly in Vercel, then redeploy. The code being deployed is pinned to its committed SHA.

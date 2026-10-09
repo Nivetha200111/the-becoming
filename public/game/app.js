@@ -76,8 +76,21 @@ CloudSave.init({get:()=>state,set:s=>{state=s;travel=null;try{localStorage.setIt
 // otherwise (iPhone). The action bar and notices move onto the map so nothing is lost while it is open.
 const worldFrame=$('.world-frame'),fsBtn=$('#fullscreen');
 function worldFull(){return document.fullscreenElement===worldFrame||document.webkitFullscreenElement===worldFrame||worldFrame.classList.contains('immersive');}
-function syncFull(){const on=worldFull(),bar=$('.w3-actions');fsBtn.innerHTML=on?'✕ <span>Exit full screen</span>':'⛶ <span>Full screen</span>';fsBtn.setAttribute('aria-pressed',String(on));document.body.classList.toggle('world-full',on);if(on){if(bar&&bar.parentNode!==worldFrame)worldFrame.append(bar);if($('#toast').parentNode!==worldFrame)worldFrame.append($('#toast'));}else{if(bar&&bar.parentNode===worldFrame)worldFrame.after(bar);if($('#toast').parentNode===worldFrame)document.body.append($('#toast'));}resize();canvas.focus({preventScroll:true});}
-async function toggleFull(){if(worldFull()){if(document.fullscreenElement||document.webkitFullscreenElement)(document.exitFullscreen||document.webkitExitFullscreen).call(document);else{worldFrame.classList.remove('immersive');syncFull();}return;}if(screen!=='world')showScreen('world');try{const req=worldFrame.requestFullscreen||worldFrame.webkitRequestFullscreen;if(!req)throw Error('unsupported');await req.call(worldFrame,{navigationUI:'hide'});}catch(e){worldFrame.classList.add('immersive');syncFull();}}
+function syncFull(){const on=worldFull(),bar=$('.w3-actions');fsBtn.innerHTML=on?'✕ <span>Exit full screen</span>':'⛶ <span>Full screen</span>';fsBtn.setAttribute('aria-pressed',String(on));document.body.classList.toggle('world-full',on);if(on){if(bar&&bar.parentNode!==worldFrame)worldFrame.append(bar);if($('#toast').parentNode!==worldFrame)worldFrame.append($('#toast'));if($('#modal').parentNode!==worldFrame)worldFrame.append($('#modal'));if(window.BotChat)BotChat.mount(worldFrame);}else{if(bar&&bar.parentNode===worldFrame)worldFrame.after(bar);if($('#toast').parentNode===worldFrame)document.body.append($('#toast'));if($('#modal').parentNode===worldFrame)document.body.append($('#modal'));if(window.BotChat)BotChat.mount(document.body);}resize();canvas.focus({preventScroll:true});}
+let fullscreenPending=false;
+async function toggleFull(){
+ if(fullscreenPending)return;fullscreenPending=true;
+ try{
+  if(worldFull()){
+   if(document.fullscreenElement||document.webkitFullscreenElement)await(document.exitFullscreen||document.webkitExitFullscreen).call(document);
+   worldFrame.classList.remove('immersive');syncFull();return;
+  }
+  if(screen!=='world')showScreen('world');
+  try{const req=worldFrame.requestFullscreen||worldFrame.webkitRequestFullscreen;if(!req)throw Error('unsupported');await req.call(worldFrame,{navigationUI:'hide'});}
+  catch{worldFrame.classList.add('immersive');}
+  syncFull();
+ }finally{fullscreenPending=false;}
+}
 fsBtn.onclick=toggleFull;document.addEventListener('fullscreenchange',syncFull);document.addEventListener('webkitfullscreenchange',syncFull);
 canvas.addEventListener('keydown',e=>{if((e.key==='f'||e.key==='F')&&!$('#modal').open&&!e.ctrlKey&&!e.metaKey){e.preventDefault();toggleFull();}});
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&!e.defaultPrevented&&worldFrame.classList.contains('immersive')&&!$('#modal').open&&!document.querySelector('.quest-scroll')){worldFrame.classList.remove('immersive');syncFull();}});
