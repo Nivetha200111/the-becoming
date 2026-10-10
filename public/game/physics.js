@@ -6,10 +6,32 @@ export function footprintClear(x, z, clear, radius = MOTOR.radius) {
   for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; if (!clear(x + Math.cos(a) * radius, z + Math.sin(a) * radius)) return false; }
   return true;
 }
+// Circular bounds include the visible head, paws and tail through every turn/pose.
+export function actorsClear(x, z, radius, actors, gap = .08) {
+  return actors.every(a => Math.hypot(x - a.x, z - a.z) >= radius + a.radius + gap - 1e-7);
+}
+export function separateActor(x, z, radius, actors, clear, gap = .08) {
+  const fits = (px, pz) => clear(px, pz) && actorsClear(px, pz, radius, actors, gap);
+  if (fits(x, z)) return { x, z };
+  let px = x, pz = z;
+  for (let pass = 0; pass < 12; pass++) {
+    for (const a of actors) {
+      const dx = px - a.x, dz = pz - a.z, d = Math.hypot(dx, dz), min = radius + a.radius + gap;
+      if (d < min) { px = a.x + (d > 1e-7 ? dx / d : 1) * (min + .001); pz = a.z + (d > 1e-7 ? dz / d : 0) * (min + .001); }
+    }
+    if (fits(px, pz)) return { x: px, z: pz };
+  }
+  // A wall may block the direct push. Search outward for the closest free footprint.
+  for (let r = .12; r <= 4; r += .12) for (let i = 0; i < 48; i++) {
+    const a = i * Math.PI / 24, nx = x + Math.cos(a) * r, nz = z + Math.sin(a) * r;
+    if (fits(nx, nz)) return { x: nx, z: nz };
+  }
+  return null;
+}
 export class CharacterMotor {
-  constructor({ clear, ground, radius = MOTOR.radius, slope = MOTOR.maxSlope }) { this.clear = clear; this.ground = ground; this.radius = radius; this.slope = slope; this.reset(0, 0); }
+  constructor({ clear, ground, radius = MOTOR.radius, slope = MOTOR.maxSlope, dynamicClear = () => true }) { this.clear = clear; this.ground = ground; this.radius = radius; this.slope = slope; this.dynamicClear = dynamicClear; this.reset(0, 0); }
   reset(x, z) { this.x = x; this.z = z; this.y = this.ground(x, z); this.vx = this.vz = this.vy = this.accumulator = this.speed = 0; this.grounded = true; this.jumpHeld = false; }
-  fits(x, z) { return footprintClear(x, z, this.clear, this.radius); }
+  fits(x, z) { return footprintClear(x, z, this.clear, this.radius) && this.dynamicClear(x, z); }
   pathClear(ax, az, bx, bz) {
     const steps = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / .08));
     let x = ax, z = az, height = this.ground(x, z);

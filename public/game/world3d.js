@@ -1,5 +1,5 @@
 import { OUTFITS, outfitLook } from './outfits.js';
-import { CharacterMotor, footprintClear, MOTOR } from './physics.js';
+import { CharacterMotor, footprintClear, actorsClear, separateActor, MOTOR } from './physics.js';
 // The Becoming · 3D world (three.js)
 // Progressive enhancement over app.js's 2D map. Quests, saves, travel, keyboard movement and dialogs stay in
 // app.js/party.js on the 1100×720 logical map; this module draws that map as a 3D island, maps pointer input
@@ -1336,9 +1336,9 @@ function makeEasel() {
 // The sky ferry: a little sailboat with gold trim that unfolds wings and flies between realms.
 function makeFerry() {
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
-  const hull = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), M.wood); hull.scale.set(1.15, .7, 2.9); hull.castShadow = true; body.add(hull);
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(1.95, .08, 4.9), M.woodDark); deck.position.y = -.06; body.add(deck);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(1, .05, 6, 48).rotateX(Math.PI / 2), M.gold); rim.scale.set(1.15, 1, 2.9); body.add(rim);
+  const hull = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), M.wood); hull.scale.set(3.25, .7, 2.9); hull.castShadow = true; body.add(hull);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(5.8, .08, 4.9), M.woodDark); deck.position.y = -.06; body.add(deck);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(1, .05, 6, 48).rotateX(Math.PI / 2), M.gold); rim.scale.set(3.25, 1, 2.9); body.add(rim);
   const prow = new THREE.Mesh(new THREE.TorusGeometry(.28, .06, 8, 20, Math.PI * 1.4), M.gold); prow.position.set(0, .35, 2.95); prow.rotation.y = Math.PI / 2; body.add(prow);
   const mast = new THREE.Mesh(new THREE.CylinderGeometry(.06, .08, 4.4, 8), M.woodDark); mast.position.set(0, 2.15, .4); mast.castShadow = true; body.add(mast);
   const yard = new THREE.Mesh(new THREE.BoxGeometry(2.5, .08, .08), M.woodDark); yard.position.set(0, 3.9, .4); body.add(yard);
@@ -1349,7 +1349,7 @@ function makeFerry() {
   const bench = new THREE.Mesh(new THREE.BoxGeometry(1.6, .12, .45), M.wood); bench.position.set(0, .2, -1.6); body.add(bench);
   const wingGeo = new THREE.BufferGeometry(); wingGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, -1.4, 0, 0, 1.2, 3.2, .3, -.6, 0, 0, 1.2, 3.2, .3, -.6, 2.4, .2, .9], 3)); wingGeo.computeVertexNormals();
   const wingMat = new THREE.MeshStandardMaterial({ color: '#fff1c8', emissive: '#f2c76a', emissiveIntensity: .8, transparent: true, opacity: .55, side: THREE.DoubleSide, depthWrite: false });
-  const wings = [-1, 1].map(s => { const w = new THREE.Mesh(wingGeo, wingMat); w.position.set(s * 1.05, .15, .2); w.scale.set(s * .001, 1, 1); body.add(w); return w; });
+  const wings = [-1, 1].map(s => { const w = new THREE.Mesh(wingGeo, wingMat); w.position.set(s * 3.1, .15, .2); w.scale.set(s * .001, 1, 1); body.add(w); return w; });
   const proxy = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 3.2, 10), new THREE.MeshBasicMaterial({ visible: false })); proxy.position.y = 1; proxy.userData = { kind: 'ferry' }; g.add(proxy);
   return { g, body, wings, sail, proxy };
 }
@@ -2707,34 +2707,63 @@ function start() {
     const bu = burst.material.uniforms; bu.uOrigin.value.set(px, py + .3, pz); bu.uOpacity.value = Math.max(0, bu.uOpacity.value - dt * .45);
     if (pillar.visible) { const d = pillar.userData; d.t += dt; pillar.position.set(px, py + 20, pz); pillar.material.uniforms.uA.value = d.k * Math.sin(Math.min(1, d.t / 2.6) * Math.PI) * .55; pillar.scale.set(1 + d.t * .4, 1, 1 + d.t * .4); if (d.t > 2.6) pillar.visible = false; }
     if (player.orb) player.orb.material.emissiveIntensity = 3 + look.glow * 3 + (act?.A.glow ? act.A.glow * w : 0) + (voyage ? 2 : 0) + (pillar.visible ? 3 : 0);
-    catFrame(dt, t, px, py, pz);
     veerFrame(dt, t, px, py, pz);
+    catFrame(dt, t, px, py, pz);
+    if (window.LOCAL_DESIGN_MODE) {
+      const pets = [veer, cat].map(p => ({ name: p === veer ? 'Veer' : 'Mochi', visible: p.root.visible,
+        clearance: Math.min(...companionActors(p).map(a => Math.hypot(p.root.position.x - a.x, p.root.position.z - a.z) - a.radius - (p === veer ? PET_RADIUS.veer : PET_RADIUS.mochi))) }));
+      observedPetClearance = Math.min(observedPetClearance, ...pets.filter(p => p.visible).map(p => p.clearance));
+      frameEl.dataset.companions = JSON.stringify({ activity: act?.id || 'idle', sailing: !!voyage, minimumClearance: observedPetClearance, pets });
+    }
     for (const n of npcs) { const near = n.realm === realm && Math.hypot(px - n.ch.root.position.x, pz - n.ch.root.position.z) < 7; n.ch.yaw = lerpAngle(n.ch.yaw, near ? Math.atan2(px - n.ch.root.position.x, pz - n.ch.root.position.z) : n.face, 1 - Math.exp(-dt * 3)); n.ch.root.rotation.y = n.ch.yaw; animateCharacter(n.ch, 0, dt, t, n.seed); }
     for (const r of realms) if (r.B.frame) r.B.frame(dt, t, r === realm && !voyage ? { u: px - r.R.at[0], v: pz - r.R.at[1], act: act && act.end < 0 ? act.id : null } : null);
     if ((uiTimer -= dt) <= 0) { uiTimer = .3; status(); const s = !voyage && !talk.on ? nearestSpot(7) : null, nearFerry = !voyage && !talk.on && player.root.position.distanceTo(ferry.g.position) < 9; const label2 = s && act?.spot !== s ? `✦ ${s.label}` : nearFerry ? '⛵ Board the sky ferry' : ''; ctxBtn.hidden = !label2; if (label2 && ctxBtn.textContent !== label2) ctxBtn.textContent = label2; }
   };
-  // Pets share the world's collision rules and route around furniture. Choose a clear resting
-  // footprint beside the player; work surfaces and the laptop are never lap targets.
-  function companionTarget(px, pz, yaw, side, behind, radius, extraClear) {
-    const clear = (x, z) => footprintClear(x, z, motor.clear, radius) && (!extraClear || extraClear(x, z));
+  const PET_RADIUS = { veer: .95, mochi: .7 };
+  let observedPetClearance = Infinity;
+  function companionActors(pet) {
+    const seated = act && ['sit', 'campfire', 'meditate', 'phone', 'leetcode', 'soak'].includes(act.id);
+    const actors = [{ x: player.root.position.x, z: player.root.position.z, radius: seated ? 1.1 : .72 }];
+    const other = pet === veer ? cat : veer;
+    if (other.placed && other.root.visible) actors.push({ x: other.root.position.x, z: other.root.position.z, radius: other === veer ? PET_RADIUS.veer : PET_RADIUS.mochi });
+    return actors;
+  }
+  function companionTarget(pet, px, pz, yaw, side, behind, radius) {
+    const actors = companionActors(pet);
+    const clear = (x, z) => footprintClear(x, z, motor.clear, radius) && actorsClear(x, z, radius, actors);
     const s = Math.sin(yaw), c = Math.cos(yaw);
     for (const [right, back] of [[side, behind], [-side, behind], [side * 1.5, behind + .6], [-side * 1.5, behind + .6], [side, behind + 1.3]]) {
       const x = px + c * right - s * back, z = pz - s * right - c * back;
       if (clear(x, z)) return { x, z };
     }
-    for (let r = 1; r <= 4; r += .4) for (let i = 0; i < 24; i++) {
+    for (let r = radius + actors[0].radius + .1; r <= 4.5; r += .25) for (let i = 0; i < 24; i++) {
       const a = yaw + i * Math.PI / 12, x = px + Math.sin(a) * r, z = pz + Math.cos(a) * r;
       if (clear(x, z)) return { x, z };
     }
     return null;
   }
   function followCompanion(pet, target, dt, radius) {
-    if (!target) return 0;
-    if (!pet.motor) pet.motor = new CharacterMotor({ clear: motor.clear, ground: (x, z) => groundAt(x, z), radius, slope: 1.25 });
+    if (!pet.motor) pet.motor = new CharacterMotor({ clear: motor.clear, ground: groundAt, radius, slope: 1.25,
+      dynamicClear: (x, z) => actorsClear(x, z, radius, companionActors(pet)) });
     const m = pet.motor;
-    if (!pet.placed || Math.hypot(m.x - target.x, m.z - target.z) > 14) {
+    if (!pet.placed || (target && Math.hypot(m.x - target.x, m.z - target.z) > 14)) {
+      if (!target) { pet.root.visible = false; return 0; }
       m.reset(target.x, target.z); pet.placed = true; pet.route = null;
     }
+    // The player has movement priority. Restore separation even while petting or standing still.
+    if (!m.fits(m.x, m.z)) {
+      const free = separateActor(m.x, m.z, radius, companionActors(pet), (x, z) => {
+        const steps = Math.max(1, Math.ceil(Math.hypot(x - m.x, z - m.z) / .08));
+        for (let i = 1; i <= steps; i++) if (!footprintClear(m.x + (x - m.x) * i / steps, m.z + (z - m.z) * i / steps, motor.clear, radius)) return false;
+        return true;
+      });
+      if (free) m.reset(free.x, free.z);
+      else if (target) m.reset(target.x, target.z);
+      else { pet.root.visible = false; return 0; }
+      pet.route = null; pet.routeTimer = 0;
+    }
+    pet.root.visible = true;
+    if (!target) { m.update(dt, { speed: 0 }); pet.root.position.set(m.x, m.y, m.z); return 0; }
     const from = { x: m.x, y: m.z }, to = { x: target.x, y: target.z };
     const clearLine = (a, b) => m.pathClear(a.x, a.y, b.x, b.y);
     pet.routeTimer = (pet.routeTimer || 0) - dt;
@@ -2754,10 +2783,10 @@ function start() {
     const v = veer, live = act && act.end < 0;
     const lap = live && LAP.has(act.id) && act.t > .5, cuddle = live && act.id === 'pet' && petTarget === 'veer';
     let speed = 0, mode = 'sit';
-    if (voyage) { const f = voyage.fwd; v.root.position.set(px + f.z * .52 - f.x * .85, py, pz - f.x * .52 - f.z * .85); v.yaw = voyage.heading; v.placed = false; }
+    if (voyage) { const f = voyage.fwd; v.root.position.set(px + f.z * 1.8 - f.x * .6, py, pz - f.x * 1.8 - f.z * .6); v.yaw = voyage.heading; v.placed = false; v.root.visible = true; }
     else {
-      const target = companionTarget(px, pz, player.yaw, 1.15, .25, .42);
-      speed = followCompanion(v, target, dt, .42);
+      const target = companionTarget(v, px, pz, player.yaw, 1.9, .65, PET_RADIUS.veer);
+      speed = followCompanion(v, target, dt, PET_RADIUS.veer);
       mode = speed > .15 ? 'walk' : lap ? 'lie' : 'sit';
       if (mode !== 'walk') v.yaw = lerpAngle(v.yaw, Math.atan2(px - v.root.position.x, pz - v.root.position.z), 1 - Math.exp(-dt * 4));
       v.hop = Math.max(0, (v.hop || 0) - dt); v.root.position.y += v.hop > 0 ? Math.sin((1 - v.hop / .7) * Math.PI) * .45 : 0;
@@ -2777,10 +2806,10 @@ function start() {
   // Mochi follows a step behind her, sits when she stops, and purrs when petted.
   function catFrame(dt, t, px, py, pz) {
     const c = cat, petting = act?.id === 'pet' && petTarget === 'mochi';
-    if (voyage) { const f = voyage.fwd; c.root.position.set(px - f.x * 1.5, py, pz - f.z * 1.5); c.yaw = voyage.heading; c.still = 2; c.placed = false; }
+    if (voyage) { const f = voyage.fwd; c.root.position.set(px - f.z * 1.55 - f.x * 1.1, py, pz + f.x * 1.55 - f.z * 1.1); c.yaw = voyage.heading; c.still = 2; c.placed = false; c.root.visible = true; }
     else {
-      const target = companionTarget(px, pz, player.yaw, -.9, 1.2, .25, (x, z) => Math.hypot(x - veer.root.position.x, z - veer.root.position.z) > .85);
-      c.speed = followCompanion(c, petting ? null : target, dt, .25);
+      const target = companionTarget(c, px, pz, player.yaw, -1.65, 1.3, PET_RADIUS.mochi);
+      c.speed = followCompanion(c, petting && c.placed ? null : target, dt, PET_RADIUS.mochi);
       if (c.speed > .1) c.still = 0; else { c.still += dt; c.yaw = lerpAngle(c.yaw, Math.atan2(px - c.root.position.x, pz - c.root.position.z), 1 - Math.exp(-dt * 3)); }
       c.hop = Math.max(0, c.hop - dt); c.root.position.y += c.hop > 0 ? Math.sin((1 - c.hop / .7) * Math.PI) * .4 : 0;
     }

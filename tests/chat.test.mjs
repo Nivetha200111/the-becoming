@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { scryptSync } from 'node:crypto';
 import { configured, checkPassword } from '../lib/auth.mjs';
-import { validateChat, chatStatus, sendRelay, readRelay, liveReply } from '../lib/bot-chat.mjs';
+import { validateChat, chatStatus, sendRelay, readRelay } from '../lib/bot-chat.mjs';
 import { POST, GET } from '../app/api/chat/route.js';
 const id = '00000000-0000-4000-8000-000000000001';
 const env = { NOTION_TOKEN: 'private-test-token-long-enough', NOTION_PARTY_DATABASE_ID: 'a'.repeat(32), NOTION_PARTY_DATA_SOURCE_ID: 'b'.repeat(32) };
@@ -40,17 +40,16 @@ test('bot replies are read from the same shared thread and remain plain text', a
 });
 test('local design and missing credentials never contact external services', async () => {
   const local = { ...env, NODE_ENV: 'development', LOCAL_DESIGN_MODE: 'true' }; let calls = 0;
-  assert.deepEqual(chatStatus(local), { relay: false, live: false, local: true });
+  assert.deepEqual(chatStatus(local), { relay: false, local: true });
   await assert.rejects(sendRelay(input(), local, { fetcher: () => { calls++; } }), /Connect Notion/);
-  await assert.rejects(liveReply(validateChat({ bot: 'gilfoyle', mode: 'live', messages: [{ role: 'user', content: 'Hello' }] }), {}, { generate: () => { calls++; } }), /API key/);
+  assert.throws(() => validateChat({ bot: 'gilfoyle', mode: 'live', messages: [{ role: 'user', content: 'Hello' }] }), /Paid AI connections are disabled/);
   assert.equal(calls, 0);
 });
-test('live replies use server-side roles and authoritative progress and redact provider errors', async () => {
-  const i = validateChat({ bot: 'gilfoyle', mode: 'live', messages: [{ role: 'user', content: 'Next project?' }] });
-  let params; const settings = { XAI_API_KEY: 'private-key-never-return-this' };
-  const r = await liveReply(i, settings, { load: async () => ({ status: 503 }), generate: async p => { params = p; return { text: 'Ship one useful increment.' }; } });
-  assert.equal(r.content, 'Ship one useful increment.'); assert.match(params.system, /Gilfoyle/); assert.match(params.system, /no access to existing Grok app conversations/); assert.match(params.system, /unavailable/);
-  await assert.rejects(liveReply(i, settings, { load: async () => ({ status: 503 }), generate: async () => { throw Error(settings.XAI_API_KEY); } }), e => !e.message.includes(settings.XAI_API_KEY));
+test('the game has no paid AI provider dependency or enabled connection', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(pkg.dependencies.ai, undefined); assert.equal(pkg.dependencies['@ai-sdk/xai'], undefined);
+  assert.deepEqual(chatStatus({ XAI_API_KEY: 'an-old-provider-key-is-ignored' }), { relay: false, local: false });
 });
 test('chat endpoints reject unauthenticated calls and foreign origins', async () => {
   assert.equal((await GET(new Request('https://game.test/api/chat'))).status, 401);

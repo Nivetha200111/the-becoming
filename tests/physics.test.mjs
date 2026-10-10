@@ -1,7 +1,25 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CharacterMotor, footprintClear } from '../public/game/physics.js';
+import { CharacterMotor, footprintClear, actorsClear, separateActor } from '../public/game/physics.js';
 const make = (clear = () => true, ground = () => 0) => new CharacterMotor({ clear, ground });
+test('pets cannot cross through the player or each other at any tested frame rate', () => {
+  const actors = [{ x: 0, z: 0, radius: .72 }, { x: 0, z: 2, radius: .7 }];
+  for (const fps of [30, 60, 144]) {
+    const pet = new CharacterMotor({ clear: () => true, ground: () => 0, radius: .95, dynamicClear: (x, z) => actorsClear(x, z, .95, actors) });
+    pet.reset(-3, 0);
+    assert.equal(pet.pathClear(-3, 0, 3, 0), false);
+    for (let i = 0; i < fps * 3; i++) { pet.update(1 / fps, { x: 1, speed: 8 }); assert.ok(actorsClear(pet.x, pet.z, .95, actors)); }
+    assert.ok(pet.x <= -1.75 + 1e-7);
+  }
+});
+test('overlaps from a player step or seated pose resolve outside all visible bodies', () => {
+  const actors = [{ x: 0, z: 0, radius: 1.1 }, { x: 2.2, z: 0, radius: .7 }];
+  const free = separateActor(0, 0, .95, actors, () => true);
+  assert.ok(free); assert.ok(actorsClear(free.x, free.z, .95, actors));
+  const byWall = separateActor(.5, 0, .95, actors.slice(0, 1), (x, z) => x < 1);
+  assert.ok(byWall); assert.ok(byWall.x < 1); assert.ok(actorsClear(byWall.x, byWall.z, .95, actors.slice(0, 1)));
+  assert.equal(separateActor(0, 0, .95, actors, () => false), null);
+});
 test('movement covers the same distance at 30, 60 and 144 FPS', () => {
   const positions = [30, 60, 144].map(fps => { const m = make(); for (let i = 0; i < fps * 3; i++) m.update(1 / fps, { x: 1 }); return m.x; });
   assert.ok(Math.max(...positions) - Math.min(...positions) < .00001);

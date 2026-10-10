@@ -106,4 +106,6 @@ Veer and Mochi use collision-aware follower motors and choose clear resting foot
 
 ## Chat and fullscreen
 
-Chat opens from the top navigation, the world action bar or a guide's conversation. The dialog uses plain-text message rendering and remains inside the fullscreen world. Fullscreen also keeps settings and quest dialogs accessible and handles rapid repeated toggles. Existing Grok bot messaging and live xAI role chat are labelled separately; unavailable connections do not show pretend replies.
+Chat opens from the top navigation, the world action bar or a guide's conversation. The dialog uses plain-text message rendering and remains inside the fullscreen world. Fullscreen also keeps settings and quest dialogs accessible and handles rapid repeated toggles. Chat is a Notion mailbox for the actual existing Grok bots, with no paid AI API calls. Messages wait for a matching bot Reply and unavailable connections do not show pretend replies.
+
+Companions use conservative circular bounds for the whole visible animal through turns and resting poses. Each pet sweeps against the player and peer, restores separation if the player walks into it, and leaves extra space for seated activities. Their sky ferry has a wider deck so the side-by-side formation stays aboard.

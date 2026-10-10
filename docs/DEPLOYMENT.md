@@ -148,7 +148,7 @@ Your Grok bots write Completions, Missions and Check-ins into a second Notion da
 
 ## Pending integrations
 
-Bot chat is implemented. Live replies require a server-side xAI API key; existing bots communicate through the configured Party HQ inbox. Keep credentials in Vercel Secrets.
+Bot chat uses the configured Notion Party HQ inbox. No paid AI provider is installed or called. Keep the Notion credential in Vercel Secrets.
 
 ## Private access without saving the actual passphrase
 
@@ -156,11 +156,10 @@ Run `npm run access:hash` yourself in a macOS terminal. It reads the passphrase 
 
 ## Chat connections
 
-The authenticated `/api/chat` endpoint has two explicit connections:
+The authenticated `/api/chat` endpoint uses one connection: Nivetha → Notion Party HQ → existing Grok bots → Notion Reply → game.
 
-- **My Grok bots:** uses the existing `NOTION_TOKEN` and `NOTION_PARTY_DATABASE_ID` Secrets. Messages and Replies live in Party HQ with stable UUID keys. Give your actual bots the Message/Reply protocol in `GROK_BOTS.md`. Until a bot reads and responds, chat says waiting; it never manufactures a reply.
-- **Live Grok:** set `XAI_API_KEY` as a Production Secret (not a public variable). Optionally set `GROK_CHAT_MODEL`; the default is the current documented `grok-4.7`. Replies use each roster role and authoritative saved progress when available. It has no action tools and cannot claim XP or mutate Notion. Existing Grok app chats and memory are not connected by this API.
+Set `NOTION_TOKEN` as a Production Secret with read/insert/update access to the active Party HQ only. Set `NOTION_PARTY_DATABASE_ID=56e07643-a9fb-4a40-a642-8691b4843e60` and `NOTION_PARTY_DATA_SOURCE_ID=e42eb197-9855-4a6c-a600-b9526ee2a6d8`, then redeploy. Notion MCP access in a coding agent does not give the deployed game credentials. Messages remain waiting until an actual bot writes a matching Reply. Configure and test a Grok inbox routine using `GROK_BOTS.md`; the game cannot schedule Grok Bot routines.
 
-Local design disables both external connections. Browser chat shows which connection is available. Auth, same-origin POST checks, message/role validation, response-size limits and provider-error redaction keep keys on the server. No credentials belong in the repo or chat transcript.
+Local design disables external chat. Authentication, same-origin POST checks, UUID and message validation, plain-text rendering, and response-size limits keep the mailbox private. No AI API key, AI SDK, or paid model request path exists. Existing Grok plan usage applies to bot routines. Never put credentials in the repo or transcript.
 
 The project was created in the connected Vercel account as `the-becoming` (`prj_PlXkF4RmNrmxbg83QksIhboGwYVI`). Source releases are uploaded directly because the account needs its GitHub login connection before Git integration can be linked. Production alias: https://the-becoming-seven.vercel.app. Configure access and integration secrets directly in Vercel, then redeploy. The code being deployed is pinned to its committed SHA.

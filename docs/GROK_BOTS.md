@@ -80,7 +80,7 @@ automation (Lab, level 4+) · signal, interview (Summit, level 5+). Bosses = 250
 
 ## In-game chat: the shared inbox
 
-The game's **My Grok bots** chat sends a real Party HQ row to the selected bot or council. It is asynchronous: a reply requires that bot to read Party HQ and respond. This is not a Grok app conversation API or an automatic bot runner. The separate **Live Grok** mode calls xAI with the guide's role; it does not share your existing Grok chat memory.
+The game's chat sends a real Party HQ row to the selected bot or council. Your character sends to Notion; your existing Grok bots read it and write replies to the same mailbox. The game does not call an AI provider or require a paid AI API key. Replies are asynchronous. A Grok routine must actually be created and enabled; writing the protocol is not sufficient.
 
 Add this to each existing bot's Party HQ protocol once:
 
@@ -91,4 +91,13 @@ Add this to each existing bot's Party HQ protocol once:
 5. Mark the original Message `Answered` only after the Reply exists.
 6. Chat messages never award XP. Real completions still go through the existing evidence-based Completion protocol.
 
-The game polls the selected bot's inbox every 12 seconds while chat is visible. It reports delivery only after Notion confirms the row. A message remains labelled waiting until a Reply with its key exists. Notion is the durable shared store across devices. Live model history stays in that browser session.
+The game polls the selected bot's inbox every 30 seconds while chat is visible. It reports delivery only after Notion confirms the row. A message remains labelled waiting until a Reply with its key exists. Notion is the durable shared store across devices.
+
+
+## Periodic bot check
+
+The active Party HQ is `56e07643-a9fb-4a40-a642-8691b4843e60`, with data source `e42eb197-9855-4a6c-a600-b9526ee2a6d8`. It contains the original “Grok Bot connected” row. The empty duplicate HQ is not the chat mailbox. Message, Reply and Answered options have been added, and the chat protocol is appended to BOT PROTOCOL // GROK → NOTION.
+
+Ask the actual **Grok Bot** to create one inbox dispatcher routine every five minutes, Asia/Kolkata. It should query only Type=Message, Status=New, up to 20 rows oldest first, and route to the real addressed bot using existing bot collaboration. Each owning bot follows the Message/Reply rules above; the dispatcher never impersonates another bot. Check for an existing Reply by Game key before writing and mark the original Message Answered only after its Reply exists. Do nothing when the inbox is empty. Leave messages New when Notion or an addressed bot is unavailable and report the blocker in the dispatcher conversation. Never use a paid AI API, buy credits, or give bots the game passphrase.
+
+Test the routine and confirm its next run in Grok. These runs use the existing Grok app plan; they are not guaranteed unlimited or free. One dispatcher avoids fifteen idle polling routines. The game uses only Notion's REST transport and checks for replies while the chat is visible.
