@@ -1,5 +1,6 @@
 import { OUTFITS, outfitLook } from './outfits.js';
 import { CharacterMotor, footprintClear, actorsClear, separateActor, MOTOR } from './physics.js';
+import { crossLegPose, armReach } from './pose-rig.js';
 // The Becoming · 3D world (three.js)
 // Progressive enhancement over app.js's 2D map. Quests, saves, travel, keyboard movement and dialogs stay in
 // app.js/party.js on the 1100×720 logical map; this module draws that map as a 3D island, maps pointer input
@@ -687,31 +688,38 @@ function makeCharacter(look) {
   };
   const bone = (parent, x, y, z) => { const b = new THREE.Bone(); b.position.set(x, y, z); parent.add(b); return b; };
   const trunk = body;
-  const knees = [];
+  const knees = [], ankles = [];
   const legs = [-1, 1].map(s => {
     const g = bone(body, s * .085, .86, 0);
     part(g, capsule(.068, .22), look.legs, [0, -.18, 0]);
     const knee = bone(g, 0, -.36, 0); knees.push(knee);
     part(knee, capsule(.062, .22), look.legs, [0, -.18, 0]);
-    part(knee, capsule(.078, .1), look.boots, [0, -.4, .03], { s: [1, 1, 1.25] });
+    const ankle = bone(knee, 0, -.4, 0); ankles.push(ankle);
+    part(ankle, capsule(.078, .1), look.boots, [0, 0, .03], { s: [1, 1, 1.25] });
     return g;
   });
   part(trunk, capsule(.15, .3), look.top, [0, 1.1, 0], { s: [1, 1, .74] });
   part(trunk, capsule(.152, .06), look.shorts || look.legs, [0, .87, 0], { s: [1, 1, .78] });
   part(trunk, new THREE.CylinderGeometry(.05, .056, .14, 12), look.skin, [0, 1.45, 0]);
-  if (look.skirt) part(trunk, new THREE.CylinderGeometry(.165, .25, .42, 22, 1, true), look.skirt, [0, .7, 0], { double: true });
+  const skirt = look.skirt ? bone(trunk, 0, .88, 0) : null;
+  if (skirt) part(skirt, new THREE.CylinderGeometry(.165, .25, .42, 22, 1, true), look.skirt, [0, -.18, 0], { double: true });
   if (look.coat) part(trunk, new THREE.CylinderGeometry(.168, .27, .62, 22, 1, true, Math.PI * .08, Math.PI * 1.84), look.coat, [0, .64, 0], { double: true });
   if (look.belt) part(trunk, new THREE.TorusGeometry(.152, .018, 6, 24), look.belt, [0, .9, 0], { r: [Math.PI / 2, 0, 0], outline: false });
   if (look.apron) { part(trunk, new THREE.BoxGeometry(.27, .62, .02), look.apron, [0, .86, .128]); part(trunk, new THREE.BoxGeometry(.2, .02, .02), look.apron, [0, 1.2, .118], { outline: false }); }
   if (look.coat === '#f3f1e8') for (const s of [-1, 1]) part(trunk, new THREE.BoxGeometry(.07, .46, .03), '#f3f1e8', [s * .07, 1.12, .112], { r: [0, 0, s * .12], outline: false });
   if (look.stripe) for (const s of [-1, 1]) part(trunk, new THREE.BoxGeometry(.02, .5, .2), look.stripe, [s * .145, 1.08, 0], { outline: false });
   if (look.trim) part(trunk, new THREE.SphereGeometry(.035, 12, 8), look.trim, [0, 1.36, .115], { outline: false });
+  const elbows = [], hands = [];
   const arms = [-1, 1].map(s => {
     const g = bone(body, s * .205, 1.33, 0);
     const r = look.athletic ? .062 : .052;
     part(g, new THREE.SphereGeometry(r * 1.3, 14, 10), look.sleeve || look.skin, [0, 0, 0], { outline: false });
-    part(g, capsule(r, .34), look.sleeve || look.skin, [0, -.21, 0]);
-    part(g, new THREE.SphereGeometry(.054, 12, 10), look.skin, [0, -.45, 0]);
+    part(g, capsule(r, .12), look.sleeve || look.skin, [0, -.115, 0]);
+    const elbow = bone(g, 0, -.23, 0); elbows.push(elbow);
+    part(elbow, new THREE.SphereGeometry(r, 12, 10), look.sleeve || look.skin, [0, 0, 0], { outline: false });
+    part(elbow, capsule(r * .92, .12), look.sleeve || look.skin, [0, -.11, 0]);
+    const hand = bone(elbow, 0, -.22, 0); hands.push(hand);
+    part(hand, new THREE.SphereGeometry(.054, 12, 10), look.skin, [0, 0, 0]);
     return g;
   });
   const head = bone(body, 0, look.egg ? 1.7 : 1.63, 0); if (look.egg) head.scale.set(1.28, 1.6, 1.28); else head.scale.setScalar(1.14);
@@ -747,8 +755,8 @@ function makeCharacter(look) {
     part(trunk, new THREE.BoxGeometry(.15, .13, .07), '#8a5a38', [.205, .8, .07], { r: [0, -.35, 0] });
     part(trunk, new THREE.BoxGeometry(.152, .06, .074), '#6e4529', [.205, .845, .073], { r: [0, -.35, 0], outline: false });
     part(trunk, SPHERE, '#f0c565', [.222, .82, .115], { s: [.014, .014, .01], outline: false });
-    part(trunk, new THREE.TorusGeometry(.25, .012, 6, 34).rotateX(Math.PI / 2), '#d5b76e', [0, .5, 0], { outline: false });
-    for (const g of legs) part(g, new THREE.TorusGeometry(.078, .013, 6, 18).rotateX(Math.PI / 2), '#d5b76e', [0, -.66, .01], { outline: false });
+    part(skirt || trunk, new THREE.TorusGeometry(.25, .012, 6, 34).rotateX(Math.PI / 2), '#d5b76e', [0, skirt ? -.38 : .5, 0], { outline: false });
+    for (const g of ankles) part(g, new THREE.TorusGeometry(.078, .013, 6, 18).rotateX(Math.PI / 2), '#d5b76e', [0, .14, .01], { outline: false });
   }
   let cloak = null, cloakMesh = null;
   if (look.cloak || look.cape) {
@@ -768,7 +776,7 @@ function makeCharacter(look) {
   let staff = null, orb = null;
   if (look.staff) {
     // The staff stays a separate mesh (not baked) so she can set it aside for two-handed activities.
-    staff = new THREE.Group(); staff.position.set(0, -.45, .05); arms[0].add(staff);
+    staff = new THREE.Group(); staff.position.set(0, 0, .05); hands[0].add(staff);
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(.018, .024, 1.55, 8), toonMat('#8d6b45')); shaft.position.y = .35; shaft.castShadow = true;
     const ring = new THREE.Mesh(new THREE.TorusGeometry(.07, .014, 8, 20), toonMat('#d5b76e')); ring.position.y = 1.12;
     orb = new THREE.Mesh(new THREE.SphereGeometry(.062, 18, 12), new THREE.MeshStandardMaterial({ color: '#ffd979', emissive: '#ffd979', emissiveIntensity: 4 })); orb.position.y = 1.14;
@@ -799,7 +807,7 @@ function makeCharacter(look) {
     root.add(mesh); mesh.bind(skeleton);
   }
   root.scale.setScalar(1.18);
-  return { root, body, legs, knees, arms, head, eyes, mouth, cloak, cloakMesh, staff, orb, phase: Math.random() * 6, yaw: 0, wave: 0, give: 0, blinkT: 1 + Math.random() * 3, expr: 'normal' };
+  return { root, body, legs, knees, ankles, arms, elbows, hands, skirt, head, eyes, mouth, cloak, cloakMesh, staff, orb, phase: Math.random() * 6, yaw: 0, wave: 0, give: 0, blinkT: 1 + Math.random() * 3, expr: 'normal' };
 }
 function hair(head, look, part) {
   const c = look.hair, style = look.hairStyle;
@@ -829,6 +837,7 @@ function animateCharacter(ch, speed, dt, t, idleSeed = 0) {
   ch.arms[1].rotation.x = swing * .85;
   ch.arms[0].rotation.z = -.07 - breathe;
   ch.arms[1].rotation.z = .07 + breathe;
+  ch.elbows.forEach((e, i) => { e.rotation.x = -.12 - Math.max(0, Math.sin(ch.phase + i * Math.PI)) * .25 * s; });
   if (ch.wave > 0) { ch.wave = Math.max(0, ch.wave - dt); const k = smooth(0, .3, Math.min(ch.wave, 1.8 - ch.wave)); ch.arms[1].rotation.z = .07 + k * 2.55; ch.arms[1].rotation.x = Math.sin(t * 11) * .25 * k; }
   if (ch.give > 0) { ch.give = Math.max(0, ch.give - dt); const k = smooth(0, .25, Math.min(ch.give, 1.5 - ch.give)); ch.arms[1].rotation.x = -1.3 * k; ch.arms[1].rotation.z = .07 + .12 * k; }
   ch.body.position.y = Math.abs(Math.sin(ch.phase)) * .06 * s + breathe * .5;
@@ -2380,7 +2389,7 @@ function start() {
 
   // ───────── Nivetha's day: actions, activities, Mochi the cat, the sky ferry and voyages ─────────
   const PR = makeProps(), tv = new THREE.Vector3();
-  for (const k of ['hammer', 'quill', 'brush', 'wrench', 'phone']) { player.arms[1].add(PR[k]); PR[k].position.set(0, -.47, .06); }
+  for (const k of ['hammer', 'quill', 'brush', 'wrench', 'phone']) { player.hands[1].add(PR[k]); PR[k].position.set(0, -.02, .06); }
   player.body.add(PR.book, PR.ledger); PR.book.position.set(0, 1.12, .34); PR.book.rotation.x = -.95; PR.ledger.position.set(-.1, 1.02, .3); PR.ledger.rotation.set(-1, 0, .35);
   scene.add(PR.anvil);
   const laidStaff = player.staff.clone(true); laidStaff.visible = false; scene.add(laidStaff);
@@ -2422,7 +2431,7 @@ function start() {
   const spotOpen = s => s.realmId ? realm?.R.id === s.realmId : !realm && s.L && E.level(E.total(state)) >= s.area.unlock;
   function nearestSpot(max) { let best = null, bd = max; for (const s of spots) { if (!spotOpen(s)) continue; const d = Math.hypot(s.pos.x - player.root.position.x, s.pos.z - player.root.position.z); if (d < bd) { bd = d; best = s; } } return best; }
   // What she can do. Poses are bone targets blended over the walk/idle animation.
-  const SIT = { by: -.66, bx: -.12, l0x: -1.45, l1x: -1.45, l0z: -.08, l1z: .08, a0x: .55, a1x: .55, a0z: -.35, a1z: .35, cx: .35 };
+  const SIT = crossLegPose();
   const hop = (t, f) => Math.abs(Math.sin(t * f)) * .3;
   const ACTS = {
     wave: { dur: 1.9, expr: 'happy', say: 'Waving hello', start: () => { player.wave = 1.8; } },
@@ -2435,19 +2444,19 @@ function start() {
     hum: { dur: 4.5, expr: 'happy', emote: '♪', say: 'Humming a tune', pose: t => ({ hz: Math.sin(t * 3) * .14, bz: Math.sin(t * 3) * .04 }) },
     yawn: { dur: 3, expr: 'wide', emote: '~', say: 'Getting sleepy', pose: () => ({ a0z: -2.4, a1z: 2.4, a0x: -.6, a1x: -.6, hx: -.4 }) },
     twirl: { dur: 1.5, expr: 'happy', emote: '✿', say: 'Showing off her new cloak', pose: t => ({ bry: smooth(0, 1.3, t) * Math.PI * 2, a0z: -1, a1z: 1, cx: .9 }) },
-    pet: { dur: 4, expr: 'happy', emote: '♥', say: 'Petting Mochi', pose: t => ({ bx: .5, by: -.12, a1x: -1.25 + Math.sin(t * 5) * .15, a1z: .05, hx: .45 }) },
+    pet: { loop: true, expr: 'happy', emote: '♥', say: 'Cuddling Veer', pose: () => ({ ...SIT, bx: petTarget === 'veer' ? .12 : .25, hx: .25 }) },
     campfire: { loop: true, expr: 'happy', say: 'Warming her hands by the fire', pose: t => ({ ...SIT, a0x: -.95, a1x: -.95, a0z: .12, a1z: -.12, hx: .05 + Math.sin(t * .6) * .03 }) },
     hammer: { loop: true, say: 'Working the anvil', prop: ['hammer'], anvil: true, pose: t => { const ph = (t * 1.3) % 1, up = ph < .7 ? smooth(0, .7, ph) : 1 - smooth(.7, .8, ph); return { a1x: -.55 - 1.9 * up, a1z: .12, hx: .35, bx: .1 }; } },
     write: { loop: true, say: 'Writing in her ledger', prop: ['quill', 'ledger'], pose: t => ({ a0x: -1.05, a0z: .5, a1x: -1.1 + Math.sin(t * 9) * .05, a1z: -.28 + Math.sin(t * 3.5) * .07, hx: .42 }) },
     train: { loop: true, emote: '!', say: 'Training: jumping jacks', pose: t => { const k = (1 - Math.cos(t * 2.6 * Math.PI)) / 2; return { by: k * .2, a0z: -.15 - 2.5 * k, a1z: .15 + 2.5 * k, l0z: -.28 * k, l1z: .28 * k }; } },
     read: { loop: true, say: 'Reading a chapter', prop: ['book'], pose: t => ({ a0x: -1.05, a1x: -1.05, a0z: .4, a1z: -.4, hx: .4 + Math.sin(t * .5) * .03, hy: Math.sin(t * .9) * .08 }) },
-    meditate: { loop: true, expr: 'closed', say: 'Meditating', aura: .8, glow: 2, pose: t => ({ by: -.62 + Math.sin(t * 1.1) * .04, l0x: -1.35, l1x: -1.35, l0z: -.8, l1z: .8, a0x: -.5, a1x: -.5, a0z: -.42, a1z: .42, hx: .1, cx: .3 }) },
+    meditate: { loop: true, expr: 'closed', say: 'Meditating', aura: .8, glow: 2, pose: t => ({ ...SIT, hx: .1 + Math.sin(t * 1.1) * .015 }) },
     tinker: { loop: true, say: 'Tinkering with a gadget', prop: ['wrench'], pose: t => ({ a0x: -1, a0z: .3, a1x: -1.15 + Math.sin(t * 6) * .12, a1z: -.25, a1y: Math.sin(t * 6) * .4, hx: .42, bx: .12 }) },
     gaze: { loop: true, say: 'Gazing at the horizon', pose: t => ({ a1x: -2.15, a1z: -.62, hx: -.12, hy: Math.sin(t * .45) * .5 }) },
     paint: { loop: true, say: 'Painting the view', prop: ['brush'], pose: t => ({ a1x: -1.4 + Math.sin(t * 2.1) * .18, a1z: -.12 + Math.cos(t * 1.7) * .22, hx: .05, hy: Math.sin(t * .35) * .15 }) },
-    soak: { loop: true, expr: 'closed', emote: '♨', say: 'Soaking in the hot spring', pose: () => ({ by: -.98, l0x: -1.4, l1x: -1.4, l0z: -.2, l1z: .2, a0x: .3, a1x: .3, a0z: -1.15, a1z: 1.15, hx: -.3, cx: .5 }) },
+    soak: { loop: true, expr: 'closed', emote: '♨', say: 'Soaking in the hot spring', pose: () => ({ by: -.98, l0x: -1.4, l1x: -1.4, k0x: -1.25, k1x: -1.25, a0x: .3, a1x: .3, a0z: -1.15, a1z: 1.15, hx: -.3, cx: .5 }) },
     pray: { loop: true, expr: 'closed', say: 'Making a wish', aura: 1, pose: () => ({ a0x: -1.18, a1x: -1.18, a0z: .64, a1z: -.64, hx: .32, bx: .08 }) },
-    leetcode: { loop: true, emote: '⌨', say: 'Grinding LeetCode at Kobra Kai', pose: t => ({ by: -.6, bx: .14, l0x: 1.45, l1x: 1.45, a0x: -1.15 + Math.sin(t * 14) * .06, a1x: -1.15 + Math.sin(t * 14 + 1.6) * .06, a0z: .28, a1z: -.28, hx: .36 + Math.sin(t * .7) * .04 }) },
+    leetcode: { loop: true, emote: '⌨', say: 'Grinding LeetCode at Kobra Kai', pose: t => ({ by: -.6, bx: .14, l0x: -1.45, l1x: -1.45, k0x: 1.4, k1x: 1.4, a0x: -1.15 + Math.sin(t * 14) * .025, a1x: -1.15 + Math.sin(t * 14 + 1.6) * .025, e0x: -.45, e1x: -.45, a0z: .28, a1z: -.28, hx: .36 + Math.sin(t * .7) * .025 }) },
     kata: { loop: true, emote: '!', say: 'Training kata with Sensei Fletcher', pose: t => { const k = (Math.sin(t * 6) + 1) / 2, kick = (t % 4) > 3.15 ? Math.sin(((t % 4) - 3.15) / .85 * Math.PI) : 0; return { by: -.1, l0z: -.3, l1z: .3, l1x: -1.4 * kick, a0x: -1.55 * k - .35 * (1 - k), a1x: -1.55 * (1 - k) - .35 * k, a0z: .12, a1z: -.12, hx: -.05 }; } },
     phone: { loop: true, expr: 'happy', emote: '♡', say: 'Scrolling her phone in Hush Hollow', prop: ['phone'], pose: t => ({ ...SIT, a1x: -1.6, a1z: -.45, a0x: -.95, a0z: .3, hx: .45 + Math.sin(t * .4) * .04 }) },
   };
@@ -2460,6 +2469,13 @@ function start() {
   function startAct(id, spot) {
     const A = ACTS[id]; if (!A || voyage || talk.on) return;
     act = { id, A, t: 0, end: -1, spot }; A.start?.(); idle = 0;
+    if (id === 'pet') {
+      const pet = petTarget === 'veer' ? veer : cat;
+      const dx = pet.root.position.x - player.root.position.x, dz = pet.root.position.z - player.root.position.z;
+      // Hold this heading throughout the interaction; both actors otherwise chase each other's rotation.
+      act.heading = Math.hypot(dx, dz) > .1 ? Math.atan2(dx, dz) : player.yaw;
+      act.contact = 0;
+    }
     if (A.emote) emote(A.emote, A.loop ? 3 : A.dur);
     if (id === 'pray') pulsePillar(.5);
     status();
@@ -2473,9 +2489,8 @@ function start() {
   }
   function doEmote(id, who = 'veer') {
     if (voyage || talk.on) return;
-    if (act?.id === id && act.A.loop) { stopAct(); return; }
+    if (act?.id === id && act.A.loop && (id !== 'pet' || petTarget === who)) { stopAct(); return; }
     if (id === 'pet') { petTarget = who; ACTS.pet.say = who === 'veer' ? 'Cuddling Veer' : 'Petting Mochi'; }
-    if (id === 'pet' && who === 'mochi') { cat.still = 2; const d = player.root.position.distanceTo(cat.root.position); if (d > 2.4) { tv.set(Math.sin(player.yaw), 0, Math.cos(player.yaw)).multiplyScalar(1.1).add(player.root.position); cat.root.position.set(tv.x, groundAt(tv.x, tv.z), tv.z); } }
     startAct(id);
   }
   const emoteEl = label('w3-emote');
@@ -2625,7 +2640,8 @@ function start() {
   const ctxBtn = bar.querySelector('.w3-ctx'), doingEl = bar.querySelector('#w3Doing');
   ctxBtn.onclick = () => { const s = nearestSpot(7); if (s) doSpot(s); else ferryDialog(); };
   function status() {
-    const text = voyage ? `Sailing to ${voyage.dest ? voyage.dest.R.name : 'the Inner Kingdom'}` : act && act.end < 0 ? act.A.say : travel ? 'On the move' : realm ? `Exploring ${realm.R.name}` : 'Exploring the Inner Kingdom';
+    const petSay = act?.id === 'pet' && (!(act.contact > .7) || act.handGaps?.some(g => g > .08)) ? `Settling in with ${petTarget === 'veer' ? 'Veer' : 'Mochi'}` : act?.A.say;
+    const text = voyage ? `Sailing to ${voyage.dest ? voyage.dest.R.name : 'the Inner Kingdom'}` : act && act.end < 0 ? petSay : travel ? 'On the move' : realm ? `Exploring ${realm.R.name}` : 'Exploring the Inner Kingdom';
     if (doingEl.textContent !== text) doingEl.textContent = text;
     bar.querySelectorAll('[data-emote]').forEach(b => b.classList.toggle('on', act?.id === b.dataset.emote && act.end < 0));
   }
@@ -2669,9 +2685,10 @@ function start() {
     if (outfitId === id) return;
     const previous = player; let next = outfitCache.get(id);
     if (!next) { next = makeCharacter(outfitLook(PLAYER_LOOK, id)); outfitCache.set(id, next); }
-    for (const k of ['hammer', 'quill', 'brush', 'wrench', 'phone']) next.arms[1].add(PR[k]);
+    for (const k of ['hammer', 'quill', 'brush', 'wrench', 'phone']) next.hands[1].add(PR[k]);
     next.body.add(PR.book, PR.ledger);
     next.root.position.copy(previous.root.position); next.root.rotation.copy(previous.root.rotation);
+    next.poseMemory = null; next.contactRadius = previous.contactRadius;
     for (const k of ['yaw', 'phase', 'wave', 'give', 'expr']) next[k] = previous[k];
     previous.root.removeFromParent(); player = next; scene.add(player.root); outfitId = id;
     if (player.cloakMesh) player.cloakMesh.material = toonMat(palettes[state.equipped] || palettes.sage);
@@ -2713,13 +2730,26 @@ function start() {
     }
   };
   // Every frame, after the walk animation: blend her current activity, props, Mochi and effects.
-  hooks.prePose = () => { const b = player; b.body.rotation.y = b.body.rotation.z = 0; for (const l of b.legs) l.rotation.y = l.rotation.z = 0; for (const a of b.arms) a.rotation.y = 0; b.head.rotation.x = b.head.rotation.z = 0; };
+  hooks.prePose = () => {
+    const b = player; b.body.rotation.y = b.body.rotation.z = 0;
+    for (const l of b.legs) l.rotation.y = l.rotation.z = 0;
+    for (const joints of [b.knees, b.ankles, b.elbows, b.hands]) for (const joint of joints) joint.rotation.set(0, 0, 0);
+    for (const a of b.arms) a.rotation.y = 0;
+    b.head.rotation.x = b.head.rotation.z = 0;
+    b.skirt?.scale.set(1, 1, 1); if (b.cloak) b.cloak.scale.y = 1;
+  };
   function applyPose(p, w) {
     const L = (o, k, v) => { if (v !== undefined) o[k] += (v - o[k]) * w; }, b = player;
-    L(b.body.position, 'y', p.by); L(b.body.rotation, 'x', p.bx); L(b.body.rotation, 'y', p.bry); L(b.body.rotation, 'z', p.bz);
-    for (const i of [0, 1]) for (const ax of ['x', 'y', 'z']) { L(b.legs[i].rotation, ax, p[`l${i}${ax}`]); L(b.arms[i].rotation, ax, p[`a${i}${ax}`]); }
-    if (p.l0x !== undefined || p.l1x !== undefined) for (const knee of b.knees) L(knee.rotation, 'x', -1.25);
-    L(b.head.rotation, 'x', p.hx); L(b.head.rotation, 'y', p.hy); L(b.head.rotation, 'z', p.hz); if (b.cloak) L(b.cloak.rotation, 'x', p.cx);
+    const seated = p.skirt === 1;
+    // Fold the legs before lowering the hips, and lift the hips before unfolding.
+    L(b.body.position, 'y', p.by === undefined ? undefined : seated ? p.by * smooth(.15, 1, w) : p.by);
+    L(b.body.rotation, 'x', p.bx); L(b.body.rotation, 'y', p.bry); L(b.body.rotation, 'z', p.bz);
+    for (const i of [0, 1]) for (const ax of ['x', 'y', 'z']) {
+      for (const [prefix, joints] of [['l', b.legs], ['k', b.knees], ['f', b.ankles], ['a', b.arms], ['e', b.elbows]]) L(joints[i].rotation, ax, p[`${prefix}${i}${ax}`]);
+    }
+    L(b.head.rotation, 'x', p.hx); L(b.head.rotation, 'y', p.hy); L(b.head.rotation, 'z', p.hz);
+    if (b.cloak) { L(b.cloak.rotation, 'x', p.cx); L(b.cloak.scale, 'y', p.cy); }
+    if (b.skirt && seated) { L(b.skirt.scale, 'y', .45); L(b.skirt.scale, 'x', 1.65); L(b.skirt.scale, 'z', 1.65); }
   }
   hooks.pose = (dt, t, speed, px, py, pz) => {
     const moving = speed > .5 || keys.size > 0 || !!travel, busy = talk.on || !!voyage || $('#modal').open || screen !== 'world' || !!document.querySelector('.quest-scroll');
@@ -2740,18 +2770,20 @@ function start() {
       act.t += dt; const A = act.A;
       if (A.dur && act.t > A.dur && act.end < 0) act.end = 0;
       if (act.end >= 0) act.end += dt;
-      w = Math.min(1, act.t / .35) * (act.end >= 0 ? Math.max(0, 1 - act.end / .35) : 1);
+      w = smooth(0, .7, act.t) * (act.end >= 0 ? 1 - smooth(0, .5, act.end) : 1);
       pose = A.pose?.(act.t);
-      if (act.end >= .35) { act = null; status(); }
+      if (act.end >= .5) { act = null; status(); }
     }
     if (voyage) { pose = ACTS.gaze.pose(t); w = Math.min(1, voyage.t * 8); player.yaw = voyage.heading; }
     if (pose) applyPose(pose, w);
     if (act?.spot && w > 0) player.yaw = lerpAngle(player.yaw, act.spot.face, 1 - Math.exp(-dt * 6));
-    if (act?.id === 'pet') { const pt = petTarget === 'veer' ? veer.root.position : cat.root.position; player.yaw = lerpAngle(player.yaw, Math.atan2(pt.x - px, pt.z - pz), 1 - Math.exp(-dt * 6)); }
+    if (act?.id === 'pet' && act.end < 0) player.yaw = lerpAngle(player.yaw, act.heading, 1 - Math.exp(-dt * 5));
     player.root.rotation.y = player.yaw;
     player.expr = act && w > .3 ? (act.A.expr || 'normal') : voyage ? 'happy' : 'normal';
     // props and the staff she sets down
     const props = act && w > .25 ? act.A.prop || [] : [];
+    const bodyRadius = act?.id === 'pet' ? .6 : act && ['sit', 'campfire', 'meditate', 'phone', 'leetcode', 'soak'].includes(act.id) ? 1.1 : .72;
+    player.contactRadius = (player.contactRadius ?? .72) + (bodyRadius - (player.contactRadius ?? .72)) * (1 - Math.exp(-dt * 6));
     for (const k of ['book', 'ledger', 'hammer', 'quill', 'brush', 'wrench', 'phone']) PR[k].visible = props.includes(k);
     if (PR.phone.visible) { PR.phoneTex.offset.y -= dt * .05; if (Math.floor(act.t / 4) !== Math.floor((act.t - dt) / 4)) emote(['♡', '☺', '✿', 'ᐢ.ᐢ', '♪'][Math.random() * 5 | 0], 2); }
     const down = !!(act && STAFF_DOWN.has(act.id) && w > .5);
@@ -2769,9 +2801,20 @@ function start() {
     if (player.orb) player.orb.material.emissiveIntensity = 3 + look.glow * 3 + (act?.A.glow ? act.A.glow * w : 0) + (voyage ? 2 : 0) + (pillar.visible ? 3 : 0);
     veerFrame(dt, t, px, py, pz);
     catFrame(dt, t, px, py, pz);
+    settleRig(dt);
+    if (pose?.skirt === 1 && w > .1) {
+      player.root.updateMatrixWorld(true);
+      let lift = 0;
+      for (const ankle of player.ankles) {
+        const sole = ankle.localToWorld(new THREE.Vector3(0, -.128, .03));
+        lift = Math.max(lift, groundAt(sole.x, sole.z) + .005 - sole.y);
+      }
+      player.body.position.y += lift / player.root.scale.y;
+    }
+    if (act?.id === 'pet') contactPet(dt, t, w);
     if (window.LOCAL_DESIGN_MODE) {
       const pets = [veer, cat].map(p => ({ name: p === veer ? 'Veer' : 'Mochi', visible: p.root.visible,
-        clearance: Math.min(...companionActors(p).map(a => Math.hypot(p.root.position.x - a.x, p.root.position.z - a.z) - a.radius - (p === veer ? PET_RADIUS.veer : PET_RADIUS.mochi))) }));
+        clearance: Math.min(...companionActors(p).map(a => Math.hypot(p.root.position.x - a.x, p.root.position.z - a.z) - a.radius - companionRadius(p))) }));
       observedPetClearance = Math.min(observedPetClearance, ...pets.filter(p => p.visible).map(p => p.clearance));
       frameEl.dataset.companions = JSON.stringify({ activity: act?.id || 'idle', sailing: !!voyage, minimumClearance: observedPetClearance, pets });
     }
@@ -2780,12 +2823,52 @@ function start() {
     if ((uiTimer -= dt) <= 0) { uiTimer = .3; status(); const s = !voyage && !talk.on ? nearestSpot(7) : null, nearFerry = !voyage && !talk.on && player.root.position.distanceTo(ferry.g.position) < 9; const label2 = s && act?.spot !== s ? `✦ ${s.label}` : nearFerry ? '⛵ Board the sky ferry' : ''; ctxBtn.hidden = !label2; if (label2 && ctxBtn.textContent !== label2) ctxBtn.textContent = label2; }
   };
   const PET_RADIUS = { veer: .95, mochi: .7 };
+  const selectedPet = pet => act?.id === 'pet' && petTarget === (pet === veer ? 'veer' : 'mochi');
+  const companionRadius = pet => pet.contactRadius ?? (pet === veer ? PET_RADIUS.veer : PET_RADIUS.mochi);
+  function easeCompanionRadius(pet, dt) {
+    const desired = selectedPet(pet) ? (pet === veer ? .55 : .36) : pet === veer ? PET_RADIUS.veer : PET_RADIUS.mochi;
+    pet.contactRadius = companionRadius(pet) + (desired - companionRadius(pet)) * (1 - Math.exp(-dt * 6));
+  }
   let observedPetClearance = Infinity;
+  function settleRig(dt) {
+    const b = player, joints = [b.body, ...b.legs, ...b.knees, ...b.ankles, ...b.arms, ...b.elbows, b.head, b.cloak].filter(Boolean);
+    const blend = 1 - Math.exp(-dt * 18);
+    if (!b.poseMemory) b.poseMemory = joints.map(j => ({ q: j.quaternion.clone(), p: j.position.clone(), s: j.scale.clone() }));
+    joints.forEach((j, i) => {
+      const memory = b.poseMemory[i];
+      memory.q.slerp(j.quaternion, blend); memory.p.lerp(j.position, blend); memory.s.lerp(j.scale, blend);
+      j.quaternion.copy(memory.q); j.position.copy(memory.p); j.scale.copy(memory.s);
+    });
+  }
+  function contactPet(dt, t, weight) {
+    const pet = petTarget === 'veer' ? veer : cat;
+    player.root.updateMatrixWorld(true); pet.root.updateMatrixWorld(true);
+    const head = pet.head.getWorldPosition(new THREE.Vector3());
+    const localHead = player.body.worldToLocal(head.clone());
+    const nearby = pet.root.visible && pet.motor?.speed < .25 && localHead.z > .05 && localHead.z < .85;
+    const desired = act.end < 0 && nearby ? 1 : 0;
+    act.contact += (desired - act.contact) * (1 - Math.exp(-dt * 5));
+    act.handGaps = [];
+    for (const i of [0, 1]) {
+      // One hand holds the cheek; the other strokes from crown to neck, slowly.
+      const stroke = i ? Math.sin(t * 1.9) * (reduceMotion.matches ? .01 : .035) : 0;
+      const point = new THREE.Vector3(i ? -.025 : .095, i ? .13 + stroke : -.02, i ? .065 : .095);
+      const target = player.body.worldToLocal(pet.head.localToWorld(point));
+      const shoulder = player.arms[i].position;
+      const reach = armReach(shoulder, target, new THREE.Vector3(i ? .7 : -.7, .9, .15));
+      if (!reach) continue;
+      const contact = act.contact * weight * (1 - smooth(.03, .16, reach.gap));
+      player.arms[i].quaternion.slerp(reach.upper, contact);
+      player.elbows[i].quaternion.slerp(reach.lower, contact);
+      act.handGaps.push(reach.gap);
+    }
+    act.contactTargets = [new THREE.Vector3(.095, -.02, .095), new THREE.Vector3(-.025, .13 + Math.sin(t * 1.9) * (reduceMotion.matches ? .01 : .035), .065)].map(p => pet.head.localToWorld(p).toArray());
+    player.head.rotation.y *= 1 - act.contact;
+  }
   function companionActors(pet) {
-    const seated = act && ['sit', 'campfire', 'meditate', 'phone', 'leetcode', 'soak'].includes(act.id);
-    const actors = [{ x: player.root.position.x, z: player.root.position.z, radius: seated ? 1.1 : .72 }];
+    const actors = [{ x: player.root.position.x, z: player.root.position.z, radius: player.contactRadius ?? .72 }];
     const other = pet === veer ? cat : veer;
-    if (other.placed && other.root.visible) actors.push({ x: other.root.position.x, z: other.root.position.z, radius: other === veer ? PET_RADIUS.veer : PET_RADIUS.mochi });
+    if (other.placed && other.root.visible) actors.push({ x: other.root.position.x, z: other.root.position.z, radius: companionRadius(other) });
     return actors;
   }
   function companionTarget(pet, px, pz, yaw, side, behind, radius) {
@@ -2806,6 +2889,8 @@ function start() {
     if (!pet.motor) pet.motor = new CharacterMotor({ clear: motor.clear, ground: groundAt, radius, slope: 1.25,
       dynamicClear: (x, z) => actorsClear(x, z, radius, companionActors(pet)) });
     const m = pet.motor;
+    m.radius = radius;
+    m.dynamicClear = (x, z) => actorsClear(x, z, radius, companionActors(pet));
     if (!pet.placed || (target && Math.hypot(m.x - target.x, m.z - target.z) > 14)) {
       if (!target) { pet.root.visible = false; return 0; }
       m.reset(target.x, target.z); pet.placed = true; pet.route = null;
@@ -2833,7 +2918,7 @@ function start() {
       while (pet.route?.length) { const [x, z] = posW(pet.route[0].x, pet.route[0].y); if (Math.hypot(x - m.x, z - m.z) < .25) pet.route.shift(); else { waypoint = { x, z }; break; } }
       if (!pet.route?.length) waypoint = { x: m.x, z: m.z };
     } else pet.route = null;
-    const dx = waypoint.x - m.x, dz = waypoint.z - m.z, distance = Math.hypot(dx, dz), speed = distance > .12 ? Math.min(8, distance * 3.2) : 0;
+    const dx = waypoint.x - m.x, dz = waypoint.z - m.z, distance = Math.hypot(dx, dz), speed = distance > (selectedPet(pet) ? .018 : .12) ? Math.min(8, distance * 3.2) : 0;
     m.update(dt, { x: distance ? dx / distance : 0, z: distance ? dz / distance : 0, speed, distance });
     pet.root.position.set(m.x, m.y, m.z);
     if (m.speed > .1) pet.yaw = lerpAngle(pet.yaw, Math.atan2(m.vx, m.vz), 1 - Math.exp(-dt * 10));
@@ -2841,14 +2926,16 @@ function start() {
   }
   function veerFrame(dt, t, px, py, pz) {
     const v = veer, live = act && act.end < 0;
-    const lap = live && LAP.has(act.id) && act.t > .5, cuddle = live && act.id === 'pet' && petTarget === 'veer';
+    easeCompanionRadius(v, dt);
+    const lap = live && LAP.has(act.id) && act.t > .5, cuddle = selectedPet(v);
     let speed = 0, mode = 'sit';
     if (voyage) { const f = voyage.fwd; v.root.position.set(px + f.z * 1.8 - f.x * .6, py, pz - f.x * 1.8 - f.z * .6); v.yaw = voyage.heading; v.placed = false; v.root.visible = true; }
     else {
-      const target = companionTarget(v, px, pz, player.yaw, 1.9, .65, PET_RADIUS.veer);
-      speed = followCompanion(v, target, dt, PET_RADIUS.veer);
+      const heading = cuddle ? act.heading : player.yaw, radius = companionRadius(v);
+      const target = companionTarget(v, px, pz, heading, cuddle ? 0 : 1.9, cuddle ? -1.17 : .65, radius);
+      speed = followCompanion(v, target, dt, radius);
       mode = speed > .15 ? 'walk' : lap ? 'lie' : 'sit';
-      if (mode !== 'walk') v.yaw = lerpAngle(v.yaw, Math.atan2(px - v.root.position.x, pz - v.root.position.z), 1 - Math.exp(-dt * 4));
+      if (mode !== 'walk') v.yaw = lerpAngle(v.yaw, cuddle ? act.heading + Math.PI : Math.atan2(px - v.root.position.x, pz - v.root.position.z), 1 - Math.exp(-dt * 4));
       v.hop = Math.max(0, (v.hop || 0) - dt); v.root.position.y += v.hop > 0 ? Math.sin((1 - v.hop / .7) * Math.PI) * .45 : 0;
     }
     v.root.rotation.y = v.yaw;
@@ -2856,21 +2943,24 @@ function start() {
     v.phase += dt * (2 + speed * 3.6); const sw = Math.sin(v.phase) * .7 * Math.min(1, speed / 2);
     v.sit += ((mode === 'walk' ? 0 : 1) - v.sit) * Math.min(1, dt * 4); v.lie += ((mode === 'lie' ? 1 : 0) - v.lie) * Math.min(1, dt * 2.5);
     v.legs[0].rotation.x = sw + .45 * v.sit - 1.4 * v.lie; v.legs[1].rotation.x = -sw + .45 * v.sit - 1.4 * v.lie; v.legs[2].rotation.x = -sw - .9 * v.sit; v.legs[3].rotation.x = sw - .9 * v.sit;
-    v.body.rotation.x = -.45 * v.sit * (1 - v.lie); v.body.position.y = -.06 * v.sit - .12 * v.lie;
-    v.head.rotation.x = (.38 * v.sit - (mode === 'sit' ? .25 : 0)) * (1 - v.lie) + .28 * v.lie; v.head.rotation.z = cuddle ? Math.sin(t * 3) * .18 : 0;
-    v.tail.forEach((sg, j) => { sg.rotation.z = Math.sin(t * (happy ? 15 : 6) + j) * (happy ? .55 : .25); });
+    v.cuddleBlend = (v.cuddleBlend || 0) + ((cuddle ? 1 : 0) - (v.cuddleBlend || 0)) * (1 - Math.exp(-dt * 4));
+    v.body.rotation.x = (-.45 + .5 * v.cuddleBlend) * v.sit * (1 - v.lie); v.body.position.y = -.06 * v.sit - .12 * v.lie;
+    v.head.rotation.x = (.38 * v.sit - (mode === 'sit' ? .25 : 0)) * (1 - v.lie) + .28 * v.lie; v.head.rotation.z = cuddle ? Math.sin(t * 1.9) * .035 * (act.contact || 0) : 0;
+    v.tail.forEach((sg, j) => { sg.rotation.z = Math.sin(t * (happy ? 5 : 3) + j) * (happy ? .35 : .18) * (reduceMotion.matches ? .4 : 1); });
     v.blink = (v.blink ?? 2) - dt; if (v.blink < -.14) v.blink = 2 + Math.random() * 4;
     for (const e of v.eyes) e.scale.y = (lap && act.t > 4) || cuddle ? .004 : v.blink < 0 ? .005 : .024;
     v.tongue.visible = happy || speed > 2;
   }
   // Mochi follows a step behind her, sits when she stops, and purrs when petted.
   function catFrame(dt, t, px, py, pz) {
-    const c = cat, petting = act?.id === 'pet' && petTarget === 'mochi';
+    const c = cat, petting = selectedPet(c);
+    easeCompanionRadius(c, dt);
     if (voyage) { const f = voyage.fwd; c.root.position.set(px - f.z * 1.55 - f.x * 1.1, py, pz + f.x * 1.55 - f.z * 1.1); c.yaw = voyage.heading; c.still = 2; c.placed = false; c.root.visible = true; }
     else {
-      const target = companionTarget(c, px, pz, player.yaw, -1.65, 1.3, PET_RADIUS.mochi);
-      c.speed = followCompanion(c, petting && c.placed ? null : target, dt, PET_RADIUS.mochi);
-      if (c.speed > .1) c.still = 0; else { c.still += dt; c.yaw = lerpAngle(c.yaw, Math.atan2(px - c.root.position.x, pz - c.root.position.z), 1 - Math.exp(-dt * 3)); }
+      const heading = petting ? act.heading : player.yaw, radius = companionRadius(c);
+      const target = companionTarget(c, px, pz, heading, petting ? 0 : -1.65, petting ? -.98 : 1.3, radius);
+      c.speed = followCompanion(c, target, dt, radius);
+      if (c.speed > .1) c.still = 0; else { c.still += dt; c.yaw = lerpAngle(c.yaw, petting ? act.heading + Math.PI : Math.atan2(px - c.root.position.x, pz - c.root.position.z), 1 - Math.exp(-dt * 3)); }
       c.hop = Math.max(0, c.hop - dt); c.root.position.y += c.hop > 0 ? Math.sin((1 - c.hop / .7) * Math.PI) * .4 : 0;
     }
     c.root.rotation.y = c.yaw;
@@ -2878,8 +2968,9 @@ function start() {
     const sw = Math.sin(c.phase) * .7 * Math.min(1, sp / 3);
     c.sit += ((c.still > 1.2 ? 1 : 0) - c.sit) * Math.min(1, dt * 4);
     c.legs[0].rotation.x = sw + .45 * c.sit; c.legs[1].rotation.x = -sw + .45 * c.sit; c.legs[2].rotation.x = -sw - .9 * c.sit; c.legs[3].rotation.x = sw - .9 * c.sit;
-    c.body.rotation.x = -.45 * c.sit; c.body.position.y = -.06 * c.sit; c.head.rotation.x = .38 * c.sit - (petting ? .1 : 0);
-    c.head.rotation.z = petting ? Math.sin(t * 3) * .15 : 0;
+    c.cuddleBlend = (c.cuddleBlend || 0) + ((petting ? 1 : 0) - (c.cuddleBlend || 0)) * (1 - Math.exp(-dt * 4));
+    c.body.rotation.x = (-.45 + .5 * c.cuddleBlend) * c.sit; c.body.position.y = -.06 * c.sit; c.head.rotation.x = .38 * c.sit - (petting ? .1 : 0);
+    c.head.rotation.z = petting ? Math.sin(t * 1.9) * .035 * (act.contact || 0) : 0;
     c.tail.forEach((s, i) => { s.rotation.x = (sp > .5 ? -.25 : -.5 + c.sit * .3) + (i ? .12 : 0); s.rotation.z = Math.sin(t * (sp > .5 ? 6 : 2.2) + i * .7) * (.18 + i * .04); });
     c.blink = (c.blink ?? 2) - dt; if (c.blink < -.14) c.blink = 2 + Math.random() * 4;
     for (const e of c.eyes) e.scale.y = petting ? .004 : c.blink < 0 ? .006 : .028;
@@ -2922,7 +3013,12 @@ function start() {
     if (cam.intro > 0) cam.intro = Math.max(0, cam.intro - dt / 3.2);
     const ease = cam.intro * cam.intro * (3 - 2 * cam.intro);
     let wantDist = cam.dist + ease * 38, wantPitch = cam.pitch + ease * .45, wantYaw = cam.yaw + ease * .7;
-    worldPos.set(px, py + 1.3, pz);
+    worldPos.set(px, py + 1.3 + player.body.position.y * .85, pz);
+    if (act?.id === 'pet') {
+      const pet = petTarget === 'veer' ? veer : cat;
+      const focus = (act.contact || 0) * .35;
+      worldPos.x += (pet.root.position.x - px) * focus; worldPos.z += (pet.root.position.z - pz) * focus;
+    }
     if (talk.on) {
       const g = talk.target.ch ? talk.target.ch.root.position : talk.target.pos, dx = g.x - px, dz = g.z - pz, sep = Math.hypot(dx, dz), side = Math.atan2(dx, dz);
       const a1 = side + Math.PI / 2, a2 = side - Math.PI / 2, near = Math.abs(lerpAngle(cam.yaw, a1, 1) - cam.yaw) <= Math.abs(lerpAngle(cam.yaw, a2, 1) - cam.yaw) ? a1 : a2;

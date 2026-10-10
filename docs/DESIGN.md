@@ -88,7 +88,11 @@ Saves: Treasury redemptions are also packed into hidden `custom-reward-*` custom
 
 ## Veer
 
-Veer is Nivetha's Kombai: a tan-red coat, black muzzle, folded rose ears, a curled tail, and a red collar with a gold tag. He is built with `makeDog(..., { muzzle, ears: 'rose', collar, scale })` and driven by `veerFrame()`. He follows on her right everywhere, including the realms and the ferry. When she stops he sits and looks up at her, and when she sits down (rest, campfire, phone, meditation, LeetCode) he lies down with his head on her lap. "Pet Veer" (key 6) gives him a cuddle, and Mochi can still be petted by clicking her. He also appears in her portrait.
+Veer is Nivetha's Kombai: a tan-red coat, black muzzle, folded rose ears, a curled tail, and a red collar with a gold tag. He is built with `makeDog(..., { muzzle, ears: 'rose', collar, scale })` and driven by `veerFrame()`. He follows on her right everywhere, including the realms and the ferry. When she stops he sits and looks up at her, and during rest, campfire and phone activities he lies beside her. "Pet Veer" (key 6) gives him a cuddle, and Mochi can still be petted by clicking her. He also appears in her portrait.
+
+Sitting, meditation and floor activities use `pose-rig.js`'s cross-legged pose: open knees, crossed ankles and level soles. Knee targets are explicit per activity; walking, dancing and training no longer inherit a seated knee bend. Elbow and wrist joints support hand props and two-segment arm reach. Skirt and cloak fold above the floor when seated. Activity entry/exit is eased, the rig uses time-based damping, and boot soles remain above the terrain while leaning.
+
+Cuddling holds a fixed interaction heading and brings the selected pet to a collision-checked footprint in front of her. Hands reach its actual cheek and crown, with gentle strokes only when the surface is reachable; the actors no longer chase each other's heading or pet empty air. Mochi walks into place too. Contact clearances ease back to normal when leaving, and walking or tapping Pet again ends the interaction. Camera framing follows her seated height. `tests/pose.test.mjs` checks limb reach and crossed feet; `tests/movement-browser.mjs` verifies contact, grounded soles, stable heading and walk-away in both motion preferences.
 
 ## Full screen
 
