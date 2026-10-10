@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { scryptSync } from 'node:crypto';
 import { configured, checkPassword } from '../lib/auth.mjs';
-import { validateChat, chatStatus, sendRelay, readRelay } from '../lib/bot-chat.mjs';
+import { validateChat, chatStatus, sendRelay, readRelay, pingGrokWebhook } from '../lib/bot-chat.mjs';
 import { POST, GET } from '../app/api/chat/route.js';
 const id = '00000000-0000-4000-8000-000000000001';
 const env = { NOTION_TOKEN: 'private-test-token-long-enough', NOTION_PARTY_DATABASE_ID: 'a'.repeat(32), NOTION_PARTY_DATA_SOURCE_ID: 'b'.repeat(32) };
@@ -58,4 +58,18 @@ test('chat endpoints reject unauthenticated calls and foreign origins', async ()
   process.env.NODE_ENV = 'development'; process.env.LOCAL_DESIGN_MODE = 'true'; delete process.env.VERCEL;
   try { assert.equal((await POST(new Request('https://game.test/api/chat', { method: 'POST', headers: { origin: 'https://evil.test' } }))).status, 403); }
   finally { for (const [k, v] of [['NODE_ENV', before.node], ['LOCAL_DESIGN_MODE', before.local], ['VERCEL', before.vercel]]) if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+});
+test('a new Message row pings the Grok webhook once; failures and missing config never break sending', async () => {
+  const pages = [], hooks = [];
+  const fetcher = async (url, init) => { const body = JSON.parse(init.body || '{}');
+    if (url.endsWith('/query')) return Response.json({ results: pages });
+    pages.push({ id: 'page-xyz', properties: body.properties }); return Response.json(pages[0]); };
+  const hookEnv = { ...env, GROK_WEBHOOK_URL: 'https://hook.test/x', GROK_WEBHOOK_AUTH: 'Bearer t' };
+  const webhookFetcher = async (url, init) => { hooks.push({ url, init }); return new Response('ok'); };
+  await sendRelay(input(), hookEnv, { fetcher, webhookFetcher }); await sendRelay(input(), hookEnv, { fetcher, webhookFetcher });
+  assert.equal(hooks.length, 1); assert.equal(hooks[0].init.headers.Authorization, 'Bearer t');
+  assert.deepEqual(JSON.parse(hooks[0].init.body), { gameKey: `chat:gilfoyle:${id}`, bot: 'Gilfoyle', notionPageId: 'page-xyz' });
+  pages.length = 0;
+  const r = await sendRelay(input(), hookEnv, { fetcher, webhookFetcher: async () => { throw Error('down'); } }); assert.equal(r.delivered, true);
+  let called = 0; assert.equal(await pingGrokWebhook({}, env, { webhookFetcher: () => { called++; } }), false); assert.equal(called, 0);
 });

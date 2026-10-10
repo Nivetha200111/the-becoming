@@ -55,3 +55,7 @@ Live Notion sync is not implemented in this migration. Hosting on Vercel permits
 ## Verification
 
 Tests cover concurrent progress merging, duplicate XP, offline undo, stale-device deletions, reward reconciliation, session expiry and tampering, production rejection of local design mode, and credential isolation in the save bridge. The production Next.js build passes. Full device/browser QA is pending. See the final handoff for the actual published GitHub commit and Vercel deployment outcome.
+
+## Grok Bot webhook (optional)
+
+After the chat API (`lib/bot-chat.mjs`, used by `app/api/chat/route.js`) creates a `Type=Message` row in Party HQ, the server POSTs `{"gameKey","bot","notionPageId"}` to `GROK_WEBHOOK_URL` with `Authorization: GROK_WEBHOOK_AUTH` so the Grok Bot routine dispatches it instantly. Set both as server-side Vercel environment variables (never `NEXT_PUBLIC_`). The ping times out after ~3s, failures are ignored, and it is skipped when either variable is unset.
