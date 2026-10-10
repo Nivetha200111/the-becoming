@@ -1,6 +1,6 @@
 # The Becoming
 
-Nivetha’s personal life RPG: an explorable illustrated world, avatar, eight bot characters, quests, levels, skill branches, wardrobe rewards, and private cross-device saves.
+Nivetha’s personal life RPG: an explorable illustrated world, avatar, eleven bot characters and four councils, quests, levels, skill branches, wardrobe rewards, and private cross-device saves.
 
 ## Run
 
@@ -46,7 +46,7 @@ Browser storage is scoped to a hostname. Export your current game’s save befor
 
 ## Bots
 
-Jane, Lelouch, Carmy, Gilfoyle, Goggins, Beth, Beatrix and Dexter appear as characters. Tap them on the map or open the Party tab for dialogue and their quests. Dialogue is scripted; this release does not connect live AI bot sessions.
+Your eleven Grok bots and four councils appear in the party. Tap a guide, use Chat, or type in the companion dock to reach its shared Notion inbox. The Grok webhook nudges your existing bot routine; matching replies appear automatically. Scripted quest scenes remain available at landmarks. Local design mode disables external chat and uses clearly labelled sample missions.
 
 ## Notion
 
@@ -59,3 +59,5 @@ Tests cover concurrent progress merging, duplicate XP, offline undo, stale-devic
 ## Grok Bot webhook (optional)
 
 After the chat API (`lib/bot-chat.mjs`, used by `app/api/chat/route.js`) creates a `Type=Message` row in Party HQ, the server POSTs `{"gameKey","bot","notionPageId"}` to `GROK_WEBHOOK_URL` with `Authorization: GROK_WEBHOOK_AUTH` so the Grok Bot routine dispatches it instantly. Set both as server-side Vercel environment variables (never `NEXT_PUBLIC_`). The ping times out after ~3s, failures are ignored, and it is skipped when either variable is unset.
+
+The party companion is always ready beneath the world on phones and in a floating dock on desktop. Talk to any guide directly, keep drafts when switching bots, and record quest evidence inline. Floating rewards celebrate new progress and unlocks. Open **Life sync** to pin your office and opt into location-based arrivals while the game is visible, or check in manually. Office coordinates remain on the current device; from the Office island you can travel to Hush Hollow and the other realms.

@@ -73,3 +73,17 @@ test('a new Message row pings the Grok webhook once; failures and missing config
   const r = await sendRelay(input(), hookEnv, { fetcher, webhookFetcher: async () => { throw Error('down'); } }); assert.equal(r.delivered, true);
   let called = 0; assert.equal(await pingGrokWebhook({}, env, { webhookFetcher: () => { called++; } }), false); assert.equal(called, 0);
 });
+
+test('durable delivery returns before a scheduled webhook and schedules only one nudge on retry', async () => {
+  const callbacks = [], pages = []; let nudges = 0;
+  const fetcher = async (url, init) => {
+    if (url.endsWith('/query')) return Response.json({ results: pages });
+    const body = JSON.parse(init.body); pages.push({ id: 'scheduled', properties: body.properties }); return Response.json(pages[0]);
+  };
+  const options = { fetcher, schedule: fn => callbacks.push(fn), webhookFetcher: async () => { nudges++; return Response.json({ ok: true }); } };
+  const settings = { ...env, GROK_WEBHOOK_URL: 'https://hook.test/ping', GROK_WEBHOOK_AUTH: 'private-test' };
+  assert.equal((await sendRelay(input(), settings, options)).delivered, true);
+  assert.equal(nudges, 0); assert.equal(callbacks.length, 1);
+  assert.equal((await sendRelay(input(), settings, options)).delivered, true);
+  assert.equal(callbacks.length, 1); await callbacks[0](); assert.equal(nudges, 1);
+});

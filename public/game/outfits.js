@@ -1,5 +1,6 @@
 // Arena outfits change the silhouette as well as colour. The earned cloak palette stays yours.
 export const OUTFITS = [
+  { id: 'office', name: 'Office Day', arena: 'The Office', color: '#345e69', look: { top: '#eee4cf', sleeve: '#eee4cf', coat: '#345e69', legs: '#364851', boots: '#55463c', cloak: false, skirt: null } },
   { id: 'camp', name: 'Wayfarer', arena: 'Basecamp', color: '#547b68', look: { top: '#efe4c8', sleeve: '#efe4c8', skirt: '#efe4c8', legs: '#4a4843', cloak: true } },
   { id: 'forge', name: 'Forge Artisan', arena: 'Engineering Forge', color: '#9a6240', look: { top: '#ece3d0', sleeve: '#ece3d0', apron: '#9a6240', legs: '#343c43', boots: '#4a3326', cloak: false, skirt: null } },
   { id: 'citadel', name: 'Citadel Envoy', arena: 'Contract Citadel', color: '#365873', look: { top: '#365873', sleeve: '#365873', legs: '#253548', coat: '#365873', trim: '#d5b76e', cloak: false, skirt: null } },
