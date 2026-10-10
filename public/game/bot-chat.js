@@ -4,16 +4,27 @@
   const dock = document.createElement('aside'); dock.className = 'bot-chat companion-dock';
   dock.setAttribute('aria-label', 'Party companion');
   dock.innerHTML = `<div class="chat-heading"><div><div class="eyebrow">PARTY COMPANION</div><h2 id="chatTitle">A little company.</h2></div><button type="button" class="chat-close" aria-label="Expand conversation" aria-expanded="false">⌃</button></div><label class="chat-select" for="chatBot">Talk to<select id="chatBot"></select></label><div class="chat-tools"><button type="button" data-prompt="What should I focus on next?">Next move</button><button type="button" data-prompt="Help me close out today.">Closeout</button><button type="button" id="chatQuests" aria-expanded="false">Quests</button><button type="button" id="chatLocation">⌖ Life sync</button></div><div class="chat-content" hidden><div class="chat-log" role="log" aria-label="Conversation" aria-live="polite"></div></div><div class="chat-quests" hidden></div><p class="chat-status" role="status">Connecting your party…</p><form class="chat-compose"><label class="sr-only" for="chatText">Your message</label><textarea id="chatText" maxlength="2000" rows="1" placeholder="Tell Grok what’s on your mind…" required></textarea><div><small>Enter to send</small><button type="submit" class="primary">Send →</button></div></form>`;
+  const panel = document.createElement('div'); panel.className = 'chat-panel'; panel.id = 'companionPanel';
+  panel.append(...dock.childNodes); dock.append(panel);
+  const actions = document.createElement('div'); actions.className = 'chat-heading-actions';
+  actions.append(panel.querySelector('.chat-close')); panel.querySelector('.chat-heading').append(actions);
+  const minimize = document.createElement('button'); minimize.type = 'button'; minimize.className = 'chat-minimize';
+  minimize.textContent = '−'; minimize.title = 'Minimize to a heart'; minimize.setAttribute('aria-label', 'Minimize companion'); minimize.setAttribute('aria-controls', panel.id); actions.append(minimize);
+  const heart = document.createElement('button'); heart.type = 'button'; heart.className = 'chat-heart'; heart.hidden = true;
+  heart.title = 'Open your companion'; heart.setAttribute('aria-label', 'Open companion'); heart.setAttribute('aria-controls', panel.id);
+  heart.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 21s-9-5.5-9-12a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.5-9 12-9 12Z"/></svg>';
+  dock.prepend(heart);
   document.querySelector('.world-frame').after(dock);
   const select = dock.querySelector('#chatBot'), text = dock.querySelector('#chatText'), log = dock.querySelector('.chat-log');
   const status = dock.querySelector('.chat-status'), send = dock.querySelector('[type=submit]'), contentEl = dock.querySelector('.chat-content');
   const questPanel = dock.querySelector('.chat-quests'), toggle = dock.querySelector('.chat-close');
   GameRoster.ALL.forEach(b => { const o = document.createElement('option'); o.value = b.id; o.textContent = b.name; select.append(o); });
   const STORE = 'becoming-companion-session-v1', FAST_MS = 1500;
-  let config = { relay: false }, configPromise, expanded = false, generation = 0, timer, refreshController, round = 0;
+  let config = { relay: false }, configPromise, expanded = false, minimized = false, generation = 0, timer, refreshController, round = 0;
   const threads = new Map(), drafts = new Map(), pending = new Map(), sending = new Set();
   try {
     const saved = JSON.parse(sessionStorage.getItem(STORE));
+    minimized = saved?.minimized === true;
     if (GameRoster.find(saved?.bot)) select.value = saved.bot;
     for (const [bot, value] of saved?.drafts || []) if (GameRoster.find(bot) && typeof value === 'string') drafts.set(bot, value.slice(0, 2000));
     for (const [bot, rows] of saved?.pending || []) if (GameRoster.find(bot) && Array.isArray(rows)) {
@@ -22,7 +33,7 @@
     }
   } catch {}
   function remember() {
-    try { sessionStorage.setItem(STORE, JSON.stringify({ bot: select.value, drafts: [...drafts], pending: [...pending] })); } catch {}
+    try { sessionStorage.setItem(STORE, JSON.stringify({ bot: select.value, minimized, drafts: [...drafts], pending: [...pending] })); } catch {}
   }
   const botName = bot => GameRoster.find(bot)?.name || 'Your bot';
   const rowsFor = bot => {
@@ -35,6 +46,18 @@
     toggle.setAttribute('aria-label', value ? 'Collapse conversation' : 'Expand conversation');
     if (value) log.scrollTop = log.scrollHeight;
   }
+  function setMinimized(value) {
+    minimized = value; panel.hidden = value; heart.hidden = !value; dock.classList.toggle('minimized', value);
+    heart.setAttribute('aria-expanded', String(!value)); minimize.setAttribute('aria-expanded', String(!value));
+    drafts.set(select.value, text.value); remember();
+    if (value && dock.contains(document.activeElement)) canvas.focus({ preventScroll: true });
+  }
+  minimize.onclick = () => setMinimized(true);
+  heart.onclick = () => {
+    setMinimized(false);
+    if (!text.disabled) text.focus({ preventScroll: true }); else select.focus({ preventScroll: true });
+    if (!document.querySelector('.world-frame.immersive') && !document.fullscreenElement && !document.webkitFullscreenElement && matchMedia('(max-width:760px)').matches) dock.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+  };
   function render() {
     const bot = select.value, rows = rowsFor(bot); log.replaceChildren();
     for (const r of rows) {
@@ -82,7 +105,7 @@
     const rows = pending.get(bot) || [], keep = [];
     for (const row of rows) {
       if (remote.some(r => r.role === 'assistant' && r.key === row.key)) {
-        if (bot !== select.value || !expanded) {
+        if (bot !== select.value || !expanded || minimized) {
           status.textContent = `${botName(bot)} replied.`;
           toast(`${botName(bot)} replied · open the companion history to read it.`);
         }
@@ -147,7 +170,7 @@
   text.onkeydown = e => {
     e.stopPropagation();
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); dock.querySelector('.chat-compose').requestSubmit(); }
-    if (e.key === 'Escape') { expand(false); canvas.focus({ preventScroll: true }); }
+    if (e.key === 'Escape') setMinimized(true);
   };
   // Nested quest forms must not bubble into the message sender.
   questPanel.addEventListener('submit', e => e.stopPropagation());
@@ -165,8 +188,8 @@
   dock.querySelectorAll('[data-prompt]').forEach(b => b.onclick = () => { text.value = b.dataset.prompt; drafts.set(select.value, text.value); remember(); text.focus(); });
   toggle.onclick = () => expand(!expanded);
   window.BotChat = {
-    isOpen: () => expanded,
-    isFocused: () => dock.contains(document.activeElement),
+    isOpen: () => expanded && !minimized,
+    isFocused: () => !minimized && dock.contains(document.activeElement),
     mount(parent) { const home = document.querySelector('#worldScreen'); if (parent === document.body) { if (dock.parentNode !== home) document.querySelector('.world-frame').after(dock); } else if (dock.parentNode !== parent) parent.append(dock); window.RewardMoments?.mount(); },
     open(bot = select.value) {
       if (screen !== 'world') showScreen('world');
@@ -174,7 +197,7 @@
       if (GameRoster.find(bot) && bot !== selected) switchBot(bot);
       keys.clear();
       const parent = document.fullscreenElement || document.webkitFullscreenElement || document.querySelector('.world-frame.immersive') || document.body;
-      BotChat.mount(parent); expand(true); render(); connect(); wake(); if (parent === document.body && matchMedia('(max-width:760px)').matches) dock.scrollIntoView({ block: 'nearest', behavior: 'auto' }); if (!text.disabled) text.focus({ preventScroll: true });
+      BotChat.mount(parent); setMinimized(false); expand(true); render(); connect(); wake(); if (parent === document.body && matchMedia('(max-width:760px)').matches) dock.scrollIntoView({ block: 'nearest', behavior: 'auto' }); if (!text.disabled) text.focus({ preventScroll: true });
     },
   };
   document.querySelector('#partyChat')?.addEventListener('click', () => BotChat.open());
@@ -183,5 +206,5 @@
   window.addEventListener('online', () => { connectionUI(); wake(); }); window.addEventListener('offline', connectionUI);
   // Keep world shortcuts out of bot selectors, buttons and forms.
   dock.addEventListener('keydown', e => e.stopPropagation());
-  text.value = drafts.get(select.value) || ''; render(); connectionUI(); connect().then(wake);
+  text.value = drafts.get(select.value) || ''; setMinimized(minimized); render(); connectionUI(); connect().then(wake);
 })();
