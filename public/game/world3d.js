@@ -850,6 +850,10 @@ function animateCharacter(ch, speed, dt, t, idleSeed = 0) {
 const NIGHT_GLOW = [];
 const nightGlow = (c, k = 1) => { const m = std('nglow' + c + k, { color: c, emissive: c, emissiveIntensity: 1 }); if (!NIGHT_GLOW.includes(m)) { m.userData.k = k; NIGHT_GLOW.push(m); } return m; };
 const REALMS = [
+  { id: 'office', name: 'The Office', sub: 'Your working day, made a little warmer', glyph: '▣', at: [175, 150], rx: 22, rz: 18, H: 1.3, base: 0, seed: 89, labelH: 12,
+    palette: { g1: '#8eb26e', g2: '#628d58', g3: '#b9c688', sand: '#e5d3ad', seabed: '#a59878', rock: '#8b887c', pave: '#dfcfad' },
+    pads: [[0, -4, 9, 1.3, 1], [0, 7, 4, 1.3, 1]], paths: [[0, 5, -12, -8, 2]],
+    arrive: 'Welcome to your office. Settle into your day, or head to Hush Hollow for a breather.', build: buildOffice },
   { id: 'florentia', name: 'Florentia', sub: 'City of the Renaissance', glyph: '⛫', at: [40, -205], rx: 31, rz: 23, H: 1.3, base: 0, seed: 11, labelH: 21,
     palette: { g1: '#93b25c', g2: '#6f9a48', g3: '#c6c972', sand: '#ead5a3', seabed: '#a99a72', rock: '#9a8f7e', pave: '#dccaa6' },
     pads: [[0, 2, 10, 1.3, 1], [0, -10, 7.6, 1.3, 1], [8.5, -9, 2.6, 1.3, 1], [-12, 3, 5, 1.3, 1], [15, 8.5, 3, 1.35, 1]], paths: [[0, 11, -3, 21, 2.2], [3, 4, 15, 8.5, 1.4]],
@@ -959,6 +963,38 @@ function domeParts(k, r, hgt, y, z, terra, rib) {
   const prof = []; for (let i = 0; i <= 14; i++) { const yy = i / 14 * hgt; prof.push(new THREE.Vector2(r * Math.max(0, 1 - (yy / hgt) ** 1.55) ** .58, yy)); }
   k.add(new THREE.LatheGeometry(prof, 8), terra, 0, y, z);
   for (let s = 0; s < 8; s++) { const ph = s / 8 * Math.PI * 2, pts = prof.map(p => new THREE.Vector3(Math.sin(ph) * p.x * 1.012, p.y, Math.cos(ph) * p.x * 1.012)); k.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 18, .085, 5), rib, 0, y, z); }
+}
+function buildOffice(R, F) {
+  const k = kit(), dyn = new THREE.Group(), Y = 1.3;
+  const wall = solid('#eee0c6', .85), teal = solid('#345e69', .6), wood = solid('#a77a4e', .8), glass = solid('#a9d5d8', .35);
+  // An open-front studio. The camera can see the desks and the player can walk inside.
+  k.box(15, .12, 11, M.stone, 0, Y - .07, -3);
+  k.box(15, 4.1, .3, wall, 0, Y + 2.05, -8.5);
+  for (const x of [-7.4, 7.4]) {
+    k.box(.25, 4.1, 11, wall, x, Y + 2.05, -3);
+    k.box(.28, 1.8, 5.5, glass, x, Y + 2.35, -2.5);
+  }
+  k.box(15.6, .35, .55, teal, 0, Y + 4.25, 2.6);
+  for (const x of [-6.8, 6.8]) k.box(.25, 4.3, .25, teal, x, Y + 2.15, 2.5);
+  for (const x of [-3.8, 3.8]) {
+    k.box(3.1, .16, 1.3, wood, x, Y + 1.1, -4);
+    for (const dx of [-1.3, 1.3]) k.box(.12, 1.1, .9, teal, x + dx, Y + .55, -4);
+    k.box(1.05, .7, .08, teal, x, Y + 1.7, -4.35);
+    k.box(.91, .56, .05, glow('#b2e4e3', .6), x, Y + 1.7, -4.29);
+    k.box(.18, .2, .15, teal, x, Y + 1.27, -4.35);
+    k.box(.8, .03, .32, M.paper, x, Y + 1.2, -3.7);
+    k.box(.75, .13, .7, teal, x, Y + .55, -2.4);
+    k.box(.75, .9, .12, teal, x, Y + 1, -2.1);
+  }
+  k.box(4, 2.2, .65, wood, 0, Y + 1.1, -8.1);
+  for (const x of [-1.5, -.5, .5, 1.5]) k.box(.45, .75, .4, M.paper, x, Y + 1.45, -7.95);
+  k.box(2.5, .45, .8, wood, -4.5, Y + .5, 6);
+  for (const x of [-7, 7]) { k.cyl(.4, .55, .7, wood, x, Y + .35, 4); k.ball(.85, solid('#699153', .9), x, Y + 1.2, 4); }
+  const text = canvasTexture(256, (g, n) => { g.fillStyle = '#345e69'; g.fillRect(0, 0, n, n); g.fillStyle = '#f6e4b8'; g.font = '36px Georgia'; g.textAlign = 'center'; g.fillText('THE OFFICE', n / 2, n / 2 + 12); });
+  k.add(new THREE.PlaneGeometry(3.4, 1.1), new THREE.MeshStandardMaterial({ map: text }), 0, Y + 3.5, -8.32);
+  return { stat: k.g, dyn, obstacles: [[-3.8, -4, 1.8], [3.8, -4, 1.8], [0, -8, 2], [-4.5, 6, 1.3]],
+    spots: [{ u: 0, v: -2, face: 0, act: 'write', label: 'Settle into your workday' }, { u: 2.5, v: 7, face: Math.PI, act: 'sit', label: 'Take a little break' }],
+    trees: [], treeKinds: [['cypress', 8], ['oak', 4]] };
 }
 function buildFlorentia(R, F) {
   const k = kit(), dyn = new THREE.Group(), Y = R.base + 1.3, marble = marbleM(), green = solid('#4f7a62', .45), rose = solid('#d6a19a', .5), terra = roofMat('#c0623e');
@@ -1907,7 +1943,7 @@ function start() {
   const overlaps = (r, list) => list.some(q => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1]);
   function measureHud() {
     const box = canvas.getBoundingClientRect();
-    hudRects = [...frameEl.querySelectorAll('.map-caption span,.map-caption button,.w3-compass,.w3-clock,.map-hint,.touch-controls')].map(e => e.getBoundingClientRect()).filter(r => r.width && r.height)
+    hudRects = [...frameEl.querySelectorAll('.map-caption span,.map-caption button,.w3-compass,.w3-clock,.map-hint,.touch-controls,.companion-dock')].map(e => e.getBoundingClientRect()).filter(r => r.width && r.height)
       .map(r => [r.left - box.left - 6, r.top - box.top - 6, r.right - box.left + 6, r.bottom - box.top + 6]);
   }
   function layoutLabels() {
@@ -2012,13 +2048,13 @@ function start() {
       bubble.style.setProperty('--who', sp.color || '#d5b76e');
       bubble.innerHTML = `<b class="who">${esc(sp.name)}${lv ? ` <em>Lv ${lv}</em>` : ''}</b><p></p>${choices ? `<div class="choices">${choices.map((c, i) => `<button type="button" data-choice="${i}">${esc(c.label)}</button>`).join('')}</div>` : '<span class="more" aria-hidden="true">▸</span>'}`;
       bubble.hidden = false; talk.anchor = sp;
-      const p = bubble.querySelector('p'); let shown = 0, done = false, timer = 0;
-      const finish = v => { clearInterval(typer); clearTimeout(timer); talk.advance = talk.abort = null; resolve(v); };
-      const complete = () => { done = true; clearInterval(typer); p.textContent = text; bubble.classList.add('done'); if (choices) bubble.querySelector('[data-choice]')?.focus({ preventScroll: true }); else timer = setTimeout(finish, 2200 + text.length * 40); };
-      const typer = setInterval(() => { shown += 2; p.textContent = text.slice(0, shown); if (shown >= text.length) complete(); }, 26);
-      if (reduceMotion.matches) complete();
-      talk.advance = () => { if (!done) complete(); else if (!choices) finish(); };
-      talk.abort = () => { clearInterval(typer); clearTimeout(timer); talk.advance = talk.abort = null; reject(new Error('abort')); };
+      const p = bubble.querySelector('p'); p.textContent = text; bubble.classList.add('done');
+      let timer = 0, settled = false;
+      const finish = v => { if (settled) return; settled = true; clearTimeout(timer); talk.advance = talk.abort = null; resolve(v); };
+      if (choices) bubble.querySelector('[data-choice]')?.focus({ preventScroll: true });
+      else timer = setTimeout(finish, reduceMotion.matches ? 100 : 900);
+      talk.advance = () => { if (!choices) finish(); };
+      talk.abort = () => { settled = true; clearTimeout(timer); talk.advance = talk.abort = null; reject(new Error('abort')); };
       if (choices) bubble.querySelectorAll('[data-choice]').forEach(b => b.onclick = e => { e.stopPropagation(); finish(choices[+b.dataset.choice].value); });
     });
   }
@@ -2120,8 +2156,8 @@ function start() {
   // Guides talk in the world; the original dialog cards remain for the 2D map and the "all quests" list.
   const cardTalk = botTalk, cardCouncil = councilTalk, cardRegion = regionDialog;
   const hostFor = r => bots.find(o => o.b.home === r.id && (o.b.regions || []).includes(r.id) && partyUnlocked(o.b)) || councils.find(o => o.c.home === r.id && partyUnlocked(o.c));
-  botTalk = b => { if (!active) return cardTalk(b); if (b.council) return councilTalk(b); const o = bots.find(o => o.b.id === b.id); if (!o) return cardTalk(b); if (screen !== 'world') showScreen('world'); converse(o); };
-  councilTalk = c => { if (!active) return cardCouncil(c); const o = councils.find(o => o.c.id === c.id); if (!o) return cardCouncil(c); if (screen !== 'world') showScreen('world'); converse(o); };
+  botTalk = b => { endTalk(); if (window.BotChat) { BotChat.open(b.id); return; } cardTalk(b); };
+  councilTalk = c => { endTalk(); if (window.BotChat) { BotChat.open(c.id); return; } cardCouncil(c); };
   regionDialog = r => { if (!active) return cardRegion(r); const host = hostFor(r); if (host) converse(host); else cardRegion(r); };
   window.addEventListener('keydown', e => {
     if (!talk.on || $('#modal').open || document.querySelector('.quest-scroll')) return;
@@ -2217,7 +2253,7 @@ function start() {
     if (state !== prevState || !prev || Math.hypot(p.x - prev.x, p.y - prev.y) > 1) {
       prevState = state; Object.assign(p, safePosition(p)); motor.reset(...posW(p.x, p.y)); prev = { ...p };
     }
-    if (screen !== 'world' || $('#modal').open || talk.on || voyage || window.BotChat?.isOpen()) {
+    if (screen !== 'world' || $('#modal').open || talk.on || voyage || window.BotChat?.isFocused()) {
       motor.vx = motor.vz = motor.accumulator = 0; return;
     }
     let x = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0);
@@ -2243,7 +2279,7 @@ function start() {
     prev = { ...p };
   };
   canvas.addEventListener('keydown', e => {
-    if ($('#modal').open || talk.on || voyage || window.BotChat?.isOpen()) return;
+    if ($('#modal').open || talk.on || voyage || window.BotChat?.isFocused()) return;
     if (e.key === ' ' || e.key === 'Shift') { e.preventDefault(); keys.add(e.key.toLowerCase()); }
   });
   const jumpButton = document.createElement('button'); jumpButton.type = 'button'; jumpButton.className = 'w3-jump'; jumpButton.textContent = 'Jump'; jumpButton.setAttribute('aria-label', 'Jump (Space)');
@@ -2518,6 +2554,29 @@ function start() {
     if (realm) skyRef = realm.R.sky || skyRef;
     if (opts.leetcode && realm) { for (const n of npcs) if (n.realm === realm) n.ch.wave = 1.8; setTimeout(() => { const s = realm?.spots.find(x => x.act === 'leetcode'); if (s) doSpot(s); }, 900); }
   }
+  window.WorldTravel = {
+    office() {
+      if (!active) return false;
+      endTalk();
+      if ($('#modal').open) $('#modal').close();
+      const dest = realms.find(r => r.R.id === 'office');
+      if (!dest) return false;
+      stopAct(); travel = null; keys.clear();
+      showScreen('world'); arrive(dest);
+      // Spawn on the welcoming terrace, clear of desks, walls and pets.
+      state.position = safePosition({ x: 550, y: 447.5 }); prev = null; save();
+      return true;
+    },
+    to(id) {
+      if (!active) return false;
+      const dest = id === 'home' ? null : realms.find(r => r.R.id === id);
+      if (id !== 'home' && !dest) return false;
+      endTalk(); if ($('#modal').open) $('#modal').close();
+      if (voyage) { toast('The ferry is on its way. Choose your next stop after arrival.'); return false; }
+      sail(dest); return true;
+    },
+    current: () => realm?.R.id || 'home',
+  };
   async function ferryDialog() {
     if (talk.on || voyage || !active) return;
     const b = realm ? realm.board : homeBoard;
@@ -2543,7 +2602,7 @@ function start() {
   }
   // Leaving a realm for anything that lives on the home island (areas, guides, the camp button).
   const leaveRealm = fn => (...a) => { if (realm && !voyage) arrive(null); return fn(...a); };
-  visit = leaveRealm(visit); botTalk = leaveRealm(botTalk); councilTalk = leaveRealm(councilTalk); regionDialog = leaveRealm(regionDialog);
+  visit = leaveRealm(visit); regionDialog = leaveRealm(regionDialog);
   frameEl.addEventListener('click', e => {
     if (!active) return;
     if (e.target.closest('#home') && (realm || voyage)) { e.preventDefault(); e.stopPropagation(); if (!voyage) sail(null); }
@@ -2582,8 +2641,9 @@ function start() {
     starfall: '<path d="M0 50 Q40 40 120 50 V60 H0Z" fill="#4f8a52"/><path d="M52 50 L60 22 L68 50z" fill="#e2e4d8"/><circle cx="60" cy="18" r="5" fill="#e2e4d8"/><circle cx="60" cy="8" r="4" fill="#7fe3ff"/><circle cx="20" cy="12" r="1.5" fill="#fff"/><circle cx="96" cy="10" r="1.5" fill="#fff"/><circle cx="104" cy="22" r="1" fill="#fff"/>',
   };
   ART.kobra = '<path d="M0 50 Q50 42 120 50 V60 H0Z" fill="#4f6e3a"/><rect x="34" y="28" width="44" height="20" fill="#1b1918"/><path d="M28 29 L56 16 L84 29z" fill="#2b2725"/><rect x="34" y="28" width="44" height="2" fill="#e3c35c"/><circle cx="56" cy="38" r="6" fill="#121212" stroke="#e3c35c" stroke-width="1.5"/><ellipse cx="56" cy="37" rx="2.4" ry="3" fill="#e3c35c"/><rect x="88" y="34" width="3" height="16" fill="#7a1f1a"/><rect x="97" y="34" width="3" height="16" fill="#7a1f1a"/>';
+  ART.office = '<path d="M0 48 Q60 40 120 48 V60 H0Z" fill="#82a467"/><rect x="32" y="18" width="52" height="30" fill="#e9dfc8"/><rect x="36" y="22" width="44" height="16" fill="#6b9ea7"/><rect x="55" y="38" width="8" height="10" fill="#354f62"/><path d="M27 18 H89" stroke="#b78d4e" stroke-width="4"/>' ;
   ART.hollow = '<path d="M0 48 Q60 38 120 48 V60 H0Z" fill="#8cba5c"/><circle cx="22" cy="34" r="12" fill="#5f9a46"/><circle cx="100" cy="32" r="13" fill="#e79ab5"/><circle cx="60" cy="16" r="6" fill="#ffe0a0"/><rect x="48" y="47" width="18" height="5" fill="#ffd2dc"/><circle cx="40" cy="50" r="2.4" fill="#f6e7cc"/><circle cx="74" cy="50" r="2.6" fill="#d9894a"/><path d="M84 22 l3 -2 l0 4z M88 18 l3 -2 l0 4z" fill="#fff"/>';
-  const SKY = { kobra: ['#2a2a3a', '#d98a5a'], hollow: ['#e98bb0', '#ffc28a'], home: ['#bfe0f2', '#fdf2d6'], florentia: ['#f6c98e', '#fde9c4'], skygarden: ['#8fc6ee', '#e3f3ff'], bathhouse: ['#2b3a6a', '#d9877a'], starfall: ['#141f3a', '#3b4f8a'] };
+  const SKY = { office: ['#b9d8e5', '#fff0ce'], kobra: ['#2a2a3a', '#d98a5a'], hollow: ['#e98bb0', '#ffc28a'], home: ['#bfe0f2', '#fdf2d6'], florentia: ['#f6c98e', '#fde9c4'], skygarden: ['#8fc6ee', '#e3f3ff'], bathhouse: ['#2b3a6a', '#d9877a'], starfall: ['#141f3a', '#3b4f8a'] };
   function renderRealmCards() {
     const list = [{ id: 'home', name: 'The Inner Kingdom', sub: 'Home island', r: null }, ...realms.map(r => ({ id: r.R.id, name: r.R.name, sub: r.R.sub, r }))];
     realmStrip.innerHTML = list.map(c => { const here = (c.r || null) === realm; return `<button type="button" class="realm-card${here ? ' here' : ''}" data-realm="${c.id}" aria-label="${esc(c.name)}${here ? ', you are here' : ', sail there'}"><svg viewBox="0 0 120 60" aria-hidden="true" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sky-${c.id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${SKY[c.id][0]}"/><stop offset="1" stop-color="${SKY[c.id][1]}"/></linearGradient></defs><rect width="120" height="60" fill="url(#sky-${c.id})"/>${ART[c.id]}</svg><span class="realm-text"><strong>${esc(c.name)}</strong><small>${here ? '✦ You are here' : esc(c.sub)}</small></span></button>`; }).join('');
@@ -2930,7 +2990,7 @@ function start() {
     if (err) console.error('3D world stopped; showing the 2D map.', err);
     active = false; movementDriver = null; draw = draw2d;
     endTalk(); glCanvas.remove(); layer.remove(); compass.remove(); clock.remove(); bubble.remove(); bars.remove();
-    botTalk = cardTalk; councilTalk = cardCouncil; regionDialog = cardRegion; frameEl.classList.remove('is-3d');
+    delete window.WorldTravel; botTalk = cardTalk; councilTalk = cardCouncil; regionDialog = cardRegion; frameEl.classList.remove('is-3d');
     canvas.setAttribute('aria-label', label2d); if (hint) hint.textContent = hint2d; resize();
   }
   draw = t => { try { render(t); } catch (err) { fallback2d(err); draw2d(t); } };
