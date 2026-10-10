@@ -570,3 +570,9 @@ body.world-full{overflow:hidden}
 @media(prefers-reduced-motion:reduce){.thinking-orb{animation:none}.reward-float{animation:none}}
 @media(max-width:760px){body:not(.world-full)>.toast{top:14px;bottom:auto;max-width:calc(100% - 28px);width:max-content;font-size:12px;padding:12px 18px}}
 @media(min-width:761px) and (max-width:1100px){.topbar .brand,.topbar .settings{flex-shrink:0}.topbar nav{flex:1;min-width:0;overflow-x:auto;white-space:nowrap}.topbar .nav{flex-shrink:0}}
+.chat-heading-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}.chat-minimize{display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:50%;background:#efe4cf;color:#54432d;font:24px var(--ui);cursor:pointer}
+.companion-dock.minimized{position:fixed;right:18px;bottom:18px;width:56px;height:56px;max-height:none;margin:0;padding:0;border:0;background:transparent;backdrop-filter:none;box-shadow:none;overflow:visible;z-index:12}
+.chat-heart{display:grid;place-items:center;width:56px;height:56px;padding:12px;border:1px solid #c49a45;border-radius:50%;background:linear-gradient(145deg,#fff8e8,#efdfb8);color:#b44952;box-shadow:0 5px 18px #101c3a35;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}.chat-heart svg{width:30px;height:30px;fill:currentColor;filter:drop-shadow(0 2px 1px #8a333320)}.chat-heart:hover{transform:scale(1.06);box-shadow:0 7px 22px #101c3a45}.chat-heart:focus-visible,.chat-minimize:focus-visible{outline:3px solid #39578c;outline-offset:4px}
+.world-full .companion-dock.minimized{position:absolute;right:14px;bottom:90px;width:56px;height:56px;max-height:none;padding:0}
+@media(max-width:760px){.world-full .companion-dock.minimized{right:8px;bottom:105px}}
+@media(prefers-reduced-motion:reduce){.chat-heart{transition:none}.chat-heart:hover{transform:none}}
