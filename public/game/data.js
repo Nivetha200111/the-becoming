@@ -6,7 +6,7 @@ window.WORLD=[
 {id:'tower',name:'SPM Tower',subtitle:'Knowledge you can demonstrate.',bot:'Beth Harmon',icon:'△',x:715,y:175,unlock:1,color:'#7d8b55',stat:'INT',description:'Climb by recalling, explaining and applying concepts. Exam readiness comes from evidence of understanding.'},
 {id:'temple',name:'Claude Temple',subtitle:'Reason. Test. Understand.',bot:'Beatrix',icon:'◇',x:900,y:285,unlock:1,color:'#9e7089',stat:'INT',description:'Explore architecture, tool use and model behavior through worked examples and your own explanations.'},
 {id:'lab',name:'Automation Lab',subtitle:'Give tomorrow some time back.',bot:'Dexter',icon:'⚙',x:330,y:540,unlock:4,color:'#73827b',stat:'BUILD',description:'Replace recurring friction with tested systems. Make a small improvement that keeps working after you leave.'},
-{id:'summit',name:'Opportunity Summit',subtitle:'Let your work travel further.',bot:'Gilfoyle & Fletcher',icon:'✦',x:950,y:130,unlock:5,color:'#bd9b55',stat:'LEVERAGE',description:'Make your engineering visible: clear case studies, substantive conversations, applications and interview practice.'}
+{id:'summit',name:'Opportunity Summit',subtitle:'Let your work travel further.',bot:'Gilfoyle & Kreese',icon:'✦',x:950,y:130,unlock:5,color:'#bd9b55',stat:'LEVERAGE',description:'Make your engineering visible: clear case studies, substantive conversations, applications and interview practice.'}
 ];
 window.QUESTS=[
 {id:'focus',region:'camp',title:'Protect one focus block',detail:'Finish 25 minutes on one chosen task. Write down the concrete output. Planning alone does not count.',xp:20,stat:'FOCUS',repeat:true,unlock:1},

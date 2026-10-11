@@ -32,7 +32,7 @@ window.PartyFeed=(function(){
  }
  // Local design mode never contacts Notion; it shows a labelled sample so the party can be designed.
  const SAMPLE={missions:[{key:'party:sample-fletcher',bot:'fletcher',title:'LC 20 Valid Parentheses in Java',detail:'Sample mission (local design only). Lunch slot, stacks first. Record the pattern and one edge case.',xp:40,stat:'INT',sample:true},{key:'party:sample-beatrix',bot:'beatrix',title:'CCDF mock under exam conditions',detail:'Sample mission (local design only). Timed, without notes; review every miss against the docs.',xp:60,stat:'INT',sample:true}],
-  checkins:[{id:'sample-bossman',bot:'bossman',title:'Lineup',message:'Sample check-in. Three priorities: one CCDF block with Beatrix, lunch LeetCode with Fletcher, and today\'s WHOOP call with Goggins.',date:'',at:''},{id:'sample-goggins',bot:'goggins',title:'NORMAL',message:'Sample check-in. Recovery is fine: one hour of cardio, one hour of strength.',date:'',at:''}]};
+  checkins:[{id:'sample-bossman',bot:'bossman',title:'Lineup',message:'Sample check-in. Three priorities: one CCDF block with Beatrix, lunch LeetCode with Kreese, and today\'s WHOOP call with Goggins.',date:'',at:''},{id:'sample-goggins',bot:'goggins',title:'NORMAL',message:'Sample check-in. Recovery is fine: one hour of cardio, one hour of strength.',date:'',at:''}]};
  function init(){
   if(window.LOCAL_DESIGN_MODE){say('Party HQ sample · local design');apply(SAMPLE);return;}
   poll(true);setInterval(()=>{if(document.visibilityState==='visible')poll();},POLL_MS);

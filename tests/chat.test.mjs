@@ -38,6 +38,43 @@ test('bot replies are read from the same shared thread and remain plain text', a
   const fetcher = async () => Response.json({ results: [page('Reply', '<script>malicious()</script>', 2), page('Message', 'Hello', 1)] });
   const r = await readRelay('gilfoyle', env, { fetcher }); assert.deepEqual(r.messages.map(m => m.role), ['user', 'assistant']); assert.equal(r.messages[1].content, '<script>malicious()</script>');
 });
+test('Kreese preserves the existing mailbox, webhook address and mixed-name chat history', async () => {
+  const message = validateChat({ bot: 'fletcher', mode: 'relay', text: 'Next Java problem?', id });
+  assert.equal(message.bot.name, 'Kreese');
+  const pages = [], hooks = [];
+  const key = `chat:fletcher:${id}`;
+  const fetcher = async (url, init) => {
+    const body = JSON.parse(init.body);
+    if (url.endsWith('/pages')) {
+      const page = { id: 'message', properties: body.properties }; pages.push(page); return Response.json(page);
+    }
+    const matches = (page, filter) => {
+      if (filter.and) return filter.and.every(f => matches(page, f));
+      if (filter.or) return filter.or.some(f => matches(page, f));
+      const prop = page.properties[filter.property];
+      if (filter.select) return prop?.select?.name === filter.select.equals;
+      const value = prop?.rich_text?.[0]?.text.content || '';
+      return filter.rich_text.equals ? value === filter.rich_text.equals : value.startsWith(filter.rich_text.starts_with);
+    };
+    const depth = f => f.and || f.or ? 1 + Math.max(...(f.and || f.or).map(depth)) : 0;
+    assert.ok(depth(body.filter) <= 2, 'Notion compound filter depth');
+    return Response.json({ results: pages.filter(p => matches(p, body.filter)).reverse() });
+  };
+  await sendRelay(message, { ...env, GROK_WEBHOOK_URL: 'https://hook.test/ping', GROK_WEBHOOK_AUTH: 'test' }, {
+    fetcher, webhookFetcher: async (_, init) => { hooks.push(JSON.parse(init.body)); return Response.json({ ok: true }); },
+  });
+  assert.equal(pages[0].properties.Name.title[0].text.content, 'Nivetha → Kreese');
+  assert.equal(pages[0].properties.Bot.select.name, 'Fletcher');
+  assert.deepEqual(hooks, [{ gameKey: key, bot: 'Fletcher', notionPageId: 'message' }]);
+  const reply = (bot, content, suffix = id) => ({ id: content, properties: {
+    Bot: { select: { name: bot } }, Type: { select: { name: 'Reply' } },
+    'Game key': { rich_text: [{ text: { content: `chat:fletcher:${suffix}` } }] },
+    Details: { rich_text: [{ text: { content } }] },
+  } });
+  pages.push(reply('Fletcher', 'Earlier reply'), reply('Kreese', 'New reply', 'next'), reply('Gilfoyle', 'Other bot'));
+  const history = await readRelay('fletcher', env, { fetcher });
+  assert.deepEqual(history.messages.map(m => m.content), ['Next Java problem?', 'Earlier reply', 'New reply']);
+});
 test('local design and missing credentials never contact external services', async () => {
   const local = { ...env, NODE_ENV: 'development', LOCAL_DESIGN_MODE: 'true' }; let calls = 0;
   assert.deepEqual(chatStatus(local), { relay: false, local: true });

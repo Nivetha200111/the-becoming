@@ -48,6 +48,16 @@ function fakeStore(state=Engine.fresh()){
 const opts=n=>({fetcher:n.fetcher,sleep:async()=>{},today:TODAY});
 const claim=(s,id,note='done',date=TODAY)=>Engine.award(s,builtInQuests().find(q=>q.id===id),note,date);
 
+test('Kreese and legacy Fletcher completions retain one bot identity and XP total',async()=>{
+ assert.equal(Roster.find('Kreese').id,'fletcher');assert.equal(Roster.find('Fletcher'),Roster.find('Kreese'));
+ const n=fakeNotion(),store=fakeStore();
+ n.row({name:'Old-name problem',bot:'Fletcher',xp:40,stat:'INT',details:'Java stacks explained',date:TODAY});
+ n.row({name:'New-name problem',bot:'Kreese',xp:40,stat:'INT',details:'Java queue edge cases explained',date:TODAY});
+ const out=await syncParty(env,opts(n),store);
+ assert.equal(out.imported,2);assert.equal(Roster.stats(store.state).fletcher.xp,80);
+ assert.deepEqual(store.state.entries.map(e=>e.bot),['fletcher','fletcher']);
+});
+
 test('a bot-logged completion becomes exactly one entry with XP for you and the bot',async()=>{
  const n=fakeNotion(),store=fakeStore();const r=n.row({name:'Zone 2 walk, 35 min',bot:'Goggins',xp:75,details:'WHOOP strain 9.4, recovery 71%',date:TODAY});
  const out=await syncParty(env,opts(n),store);
@@ -152,7 +162,7 @@ test('one scoreboard row tells the bots your level, XP and the next threshold',a
  const n=fakeNotion(),store=fakeStore(claim(claim(Engine.fresh(),'pattern','LC 20 Valid Parentheses'),'train','NORMAL day, 45 min'));
  await syncParty(env,opts(n),store);
  let boards=n.pages.filter(p=>!p.in_trash&&rowRecord(p).type==='Scoreboard');assert.equal(boards.length,1);
- const text=rowRecord(boards[0]).details;assert.match(text,/^Level 1 · 80 XP · next level at 500 XP \(420 to go\)/);assert.match(text,/Today 2026-10-09: 2 claims, 80 XP/);assert.match(text,/Fletcher L1/);assert.equal(rowRecord(boards[0]).bot,'Bossman');
+ const text=rowRecord(boards[0]).details;assert.match(text,/^Level 1 · 80 XP · next level at 500 XP \(420 to go\)/);assert.match(text,/Today 2026-10-09: 2 claims, 80 XP/);assert.match(text,/Kreese L1/);assert.equal(rowRecord(boards[0]).bot,'Bossman');
  const before=n.writes().length;await syncParty(env,opts(n),store);assert.equal(n.writes().length,before,'unchanged numbers are not rewritten');
  claim(store.state,'ccdf-mock','Mock 2: 86%');store.revision++;n.row({name:'dup',bot:'Bossman',type:'Scoreboard'});
  await syncParty(env,opts(n),store);boards=n.pages.filter(p=>!p.in_trash&&rowRecord(p).type==='Scoreboard');
