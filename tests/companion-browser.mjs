@@ -32,6 +32,7 @@ await page.route('**/api/chat**', async route => {
   } else if (url.searchParams.has('bot')) await route.fulfill({ json: { messages: mailbox.get(url.searchParams.get('bot')) || [] } });
   else await route.fulfill({ json: { relay: true, local: false } });
 });
+await page.route('**/api/office', route => route.fulfill({ json: { preset: null } }));
 await page.goto('http://127.0.0.1:3000/api/game');
 await page.waitForFunction(() => window.WorldTravel && window.world3d);
 await page.locator('#chatText').fill('Help me choose one thing.');
