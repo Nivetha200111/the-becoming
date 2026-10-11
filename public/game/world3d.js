@@ -675,7 +675,7 @@ function lookFor(b) {
     default: return { ...base, hairStyle: 'neat', legs: '#3d4a5a', eyes: '#3d2c22' };
   }
 }
-const PLAYER_LOOK = { skin: '#c58c65', hair: '#2a2321', hairStyle: 'long', eyes: '#6b4430', top: '#efe4c8', sleeve: '#efe4c8', legs: '#4a4843', boots: '#5b4636', skirt: '#efe4c8', belt: '#d5b76e', cloak: true, staff: true, blush: true, flair: true };
+const PLAYER_LOOK = { skin: '#c58c65', hair: '#2a2321', hairStyle: 'pixie', eyes: '#6b4430', top: '#efe4c8', sleeve: '#efe4c8', legs: '#4a4843', boots: '#5b4636', skirt: '#efe4c8', belt: '#d5b76e', cloak: true, staff: true, blush: true, flair: true };
 
 function makeCharacter(look) {
   const root = new THREE.Group(), body = new THREE.Bone(), parts = [];
@@ -742,14 +742,16 @@ function makeCharacter(look) {
   if (look.glasses) { for (const s of [-1, 1]) part(head, new THREE.TorusGeometry(.034, .006, 6, 18), '#1e2420', [s * .062, -.012, .168], { basic: true }); part(head, new THREE.BoxGeometry(.04, .006, .006), '#1e2420', [0, -.006, .172], { basic: true }); }
   hair(head, look, part);
   if (look.flair) {
-    // Nivetha's details: a gold flower hairpin, earrings, a side braid, a collar, a satchel and gold trims.
+    // Nivetha's details: a gold flower hairpin, earrings, a collar, a satchel and gold trims.
     const pin = new THREE.Group(); pin.position.set(.152, .085, .045); pin.rotation.y = .9; head.add(pin);
     for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; part(pin, SPHERE, '#f0c565', [Math.cos(a) * .026, Math.sin(a) * .026, 0], { s: [.021, .021, .011], outline: false }); }
     part(pin, SPHERE, '#fff6e6', [0, 0, .008], { s: [.015, .015, .015], outline: false });
     part(pin, SPHERE, '#b4492f', [-.026, -.042, 0], { s: [.011, .011, .011], outline: false });
     for (const s of [-1, 1]) part(head, SPHERE, '#f0c565', [s * .166, -.068, .006], { s: [.011, .017, .011], outline: false });
-    for (let i = 0; i < 7; i++) part(head, SPHERE, look.hair, [-.148 - i * .003, -.07 - i * .05, .075 - i * .004], { s: [.034 - i * .0016, .036, .032 - i * .0016] });
-    part(head, new THREE.TorusGeometry(.024, .008, 6, 14).rotateX(Math.PI / 2), '#f0c565', [-.17, -.41, .05], { outline: false });
+    if (look.hairStyle === 'long') {
+      for (let i = 0; i < 7; i++) part(head, SPHERE, look.hair, [-.148 - i * .003, -.07 - i * .05, .075 - i * .004], { s: [.034 - i * .0016, .036, .032 - i * .0016] });
+      part(head, new THREE.TorusGeometry(.024, .008, 6, 14).rotateX(Math.PI / 2), '#f0c565', [-.17, -.41, .05], { outline: false });
+    }
     part(trunk, new THREE.TorusGeometry(.108, .017, 6, 24).rotateX(Math.PI / 2 + .3), '#f0c565', [0, 1.385, .012], { outline: false });
     part(trunk, new THREE.TorusGeometry(.172, .013, 6, 30).rotateX(Math.PI / 2).rotateZ(.62), '#7a5236', [0, 1.06, 0], { s: [1, 1, .82], outline: false });
     part(trunk, new THREE.BoxGeometry(.15, .13, .07), '#8a5a38', [.205, .8, .07], { r: [0, -.35, 0] });
@@ -814,6 +816,13 @@ function hair(head, look, part) {
   if (style === 'bald') return;
   part(head, new THREE.SphereGeometry(.182, 28, 18, 0, Math.PI * 2, 0, 1.55), c, [0, .006, -.006], { r: [-.46, 0, 0] });
   const bangs = (n, len, spread) => { for (let i = 0; i < n; i++) { const a = (i / (n - 1) - .5) * spread; part(head, SPHERE, c, [Math.sin(a) * .16, .125 - Math.abs(a) * .045, Math.cos(a) * .16 - .012], { s: [.058, len, .034], r: [-.42, a, -a * .5] }); } };
+  if (style === 'pixie') {
+    // Close-cropped nape and sides leave the ears and neck clear; soft locks sweep across the forehead.
+    part(head, SPHERE, c, [0, .012, -.12], { s: [.145, .125, .069] });
+    for (const s of [-1, 1]) part(head, SPHERE, c, [s * .153, .062, -.034], { s: [.033, .078, .095], r: [0, 0, s * -.18] });
+    for (let i = 0; i < 5; i++) part(head, SPHERE, c, [-.107 + i * .046, .116 + i * .009, .126 - i * .014], { s: [.036, .075 - i * .006, .037], r: [-.38, -.2, -.65] });
+    part(head, SPHERE, c, [.048, .164, .035], { s: [.12, .043, .105], r: [-.2, 0, -.2] });
+  }
   if (style === 'long') { bangs(5, .07, 1.5); part(head, capsule(.15, .42), c, [0, -.22, -.085], { s: [1.08, 1, .55] }); for (const s of [-1, 1]) part(head, capsule(.042, .3), c, [s * .142, -.15, .035], { r: [0, 0, s * .08] }); }
   if (style === 'bob' || style === 'shoulder') {
     bangs(4, .07, 1.3);
