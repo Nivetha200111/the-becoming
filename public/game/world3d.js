@@ -826,24 +826,47 @@ function hair(head, look, part) {
   if (style === 'neat') { bangs(3, .055, 1.0); part(head, SPHERE, c, [.05, .12, .1], { s: [.11, .05, .07], r: [-.5, 0, -.3] }); }
   if (look.beard) { part(head, SPHERE, c, [0, -.12, .085], { s: [.115, .085, .075] }); part(head, SPHERE, c, [0, -.07, .155], { s: [.05, .012, .015], outline: false }); }
 }
-function animateCharacter(ch, speed, dt, t, idleSeed = 0) {
+function animateCharacter(ch, speed, dt, t, idleSeed = 0, movement = null) {
   const s = clamp(speed / 5.5, 0, 1), still = reduceMotion.matches ? .3 : 1;
-  ch.phase += speed * dt * Math.PI * 2 / 1.8; // cadence follows distance, so feet stop when movement stops
-  const swing = Math.sin(ch.phase) * .75 * s;
+  const runTarget = movement ? clamp((speed - MOTOR.walk + .2) / (MOTOR.run - MOTOR.walk), 0, 1) : 0;
+  ch.runBlend = (ch.runBlend || 0) + (runTarget - (ch.runBlend || 0)) * (1 - Math.exp(-dt * 10));
+  const running = ch.runBlend;
+  ch.phase += speed * dt * Math.PI * 2 / (1.8 + running * .5); // cadence follows distance, so feet stop when movement stops
+  const swing = Math.sin(ch.phase) * (.75 + .3 * running) * s;
   ch.legs[0].rotation.x = swing; ch.legs[1].rotation.x = -swing;
-  ch.knees.forEach((k, i) => { k.rotation.x = -Math.max(0, Math.sin(ch.phase + i * Math.PI + .55)) * .85 * s; });
+  ch.knees.forEach((k, i) => { k.rotation.x = -Math.max(0, Math.sin(ch.phase + i * Math.PI + .55)) * (.85 + .45 * running) * s; });
   const breathe = Math.sin(t * 1.8 + idleSeed) * .012 * still;
   ch.arms[0].rotation.x = -swing * .7 * (ch.cloak && !ch.wave ? .5 : 1);
   ch.arms[1].rotation.x = swing * .85;
   ch.arms[0].rotation.z = -.07 - breathe;
   ch.arms[1].rotation.z = .07 + breathe;
-  ch.elbows.forEach((e, i) => { e.rotation.x = -.12 - Math.max(0, Math.sin(ch.phase + i * Math.PI)) * .25 * s; });
+  ch.elbows.forEach((e, i) => { e.rotation.x = -.12 - .75 * running - Math.max(0, Math.sin(ch.phase + i * Math.PI)) * .25 * s; });
   if (ch.wave > 0) { ch.wave = Math.max(0, ch.wave - dt); const k = smooth(0, .3, Math.min(ch.wave, 1.8 - ch.wave)); ch.arms[1].rotation.z = .07 + k * 2.55; ch.arms[1].rotation.x = Math.sin(t * 11) * .25 * k; }
   if (ch.give > 0) { ch.give = Math.max(0, ch.give - dt); const k = smooth(0, .25, Math.min(ch.give, 1.5 - ch.give)); ch.arms[1].rotation.x = -1.3 * k; ch.arms[1].rotation.z = .07 + .12 * k; }
   ch.body.position.y = Math.abs(Math.sin(ch.phase)) * .06 * s + breathe * .5;
-  ch.body.rotation.x = .1 * s;
+  ch.body.rotation.x = (.1 + .14 * running) * s;
+  if (movement) ch.body.rotation.y = Math.sin(ch.phase) * .08 * running;
   ch.head.rotation.y = Math.sin(t * .4 + idleSeed) * .18 * (1 - s) * still;
   if (ch.cloak) ch.cloak.rotation.x = .08 + .32 * s + Math.sin(t * 2.2 + idleSeed) * .03 * still;
+  if (movement) {
+    ch.airBlend = (ch.airBlend || 0) + ((!movement.grounded ? 1 : 0) - (ch.airBlend || 0)) * (1 - Math.exp(-dt * 20));
+    const air = ch.airBlend, tuck = 1 - clamp(Math.abs(movement.vy) / MOTOR.jump, 0, 1);
+    const blend = (joint, axis, value, weight) => { joint.rotation[axis] += (value - joint.rotation[axis]) * weight; };
+    ch.legs.forEach((leg, i) => blend(leg, 'x', i ? -.2 - .15 * tuck : -.55 - .55 * tuck, air));
+    ch.knees.forEach((knee, i) => blend(knee, 'x', i ? .8 + .4 * tuck : 1.3 + .35 * tuck, air));
+    ch.ankles.forEach(ankle => blend(ankle, 'x', -.25, air));
+    ch.arms.forEach((arm, i) => { blend(arm, 'x', -.55, air); blend(arm, 'z', i ? .35 : -.35, air); });
+    ch.elbows.forEach(elbow => blend(elbow, 'x', -.8, air));
+    blend(ch.body, 'x', .12, air); ch.body.position.y *= 1 - air;
+    ch.landing = Math.max(0, (ch.landing || 0) - dt);
+    if (movement.grounded && ch.landing > 0) {
+      const weight = Math.sin(Math.PI * ch.landing / .24), angle = .6 * weight;
+      ch.legs.forEach(leg => blend(leg, 'x', -angle, weight));
+      ch.knees.forEach(knee => blend(knee, 'x', angle * 2, weight));
+      ch.ankles.forEach(ankle => blend(ankle, 'x', -angle, weight));
+      ch.body.position.y += (.128 + .76 * Math.cos(angle) - .86) * weight;
+    }
+  }
   // Faces: everyone blinks every few seconds; expressions squint the eyes and shape the mouth.
   ch.blinkT -= dt;
   let lid = 1; if (ch.blinkT < 0) { lid = Math.min(1, Math.abs(ch.blinkT + .07) / .07); if (ch.blinkT < -.14) ch.blinkT = 2 + Math.random() * 3.5; }
@@ -1972,9 +1995,9 @@ function start() {
     }
   }
   frameEl.classList.add('is-3d');
-  const hint = frameEl.querySelector('.map-hint'), hint2d = hint?.textContent; if (hint) hint.textContent = touch ? 'Tap to travel · Drag to look · Pinch to zoom' : 'Click to travel · Drag or Q / R to look around · Scroll to zoom · WASD to walk · E to enter';
+  const hint = frameEl.querySelector('.map-hint'), hint2d = hint?.textContent; if (hint) hint.textContent = touch ? 'Left thumb to move · Run / Jump on the right · Drag the world to look' : 'Click to travel · Drag or Q / R to look around · Scroll to zoom · WASD to walk · Shift to run · Space to jump · E to enter';
   const label2d = canvas.getAttribute('aria-label');
-  canvas.setAttribute('aria-label', 'Explorable 3D world. Use arrow keys or WASD to walk, E to visit the nearest area, Q and R to turn the camera, plus and minus to zoom. Use the area buttons below as an alternative.');
+  canvas.setAttribute('aria-label', 'Explorable 3D world. Use arrow keys or WASD to walk, hold Shift to run, Space to jump, E to visit the nearest area, Q and R to turn the camera, plus and minus to zoom. Use the area buttons below as an alternative.');
 
   // Camera orbit around the avatar.
   const cam = { yaw: 0, pitch: .36, dist: 15.5, target: new THREE.Vector3(), intro: reduceMotion.matches ? 0 : 1 };
@@ -2263,11 +2286,12 @@ function start() {
       prevState = state; Object.assign(p, safePosition(p)); motor.reset(...posW(p.x, p.y)); prev = { ...p };
     }
     if (screen !== 'world' || $('#modal').open || talk.on || voyage || window.BotChat?.isFocused()) {
-      motor.vx = motor.vz = motor.accumulator = 0; return;
+      window.MovementInput?.reset(); motor.vx = motor.vz = motor.accumulator = motor.speed = 0; return;
     }
     let x = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0);
     let z = (keys.has('s') || keys.has('arrowdown') ? 1 : 0) - (keys.has('w') || keys.has('arrowup') ? 1 : 0);
-    const len = Math.hypot(x, z); if (len) { x /= len; z /= len; const c = Math.cos(cam.yaw), s = Math.sin(cam.yaw); [x, z] = [x * c + z * s, -x * s + z * c]; }
+    const touchInput = window.MovementInput; x += touchInput?.x || 0; z += touchInput?.z || 0;
+    const len = Math.hypot(x, z); if (len) { if (len > 1) { x /= len; z /= len; } const c = Math.cos(cam.yaw), s = Math.sin(cam.yaw); [x, z] = [x * c + z * s, -x * s + z * c]; }
     let distance, speed;
     const journey = travel;
     if (journey) {
@@ -2275,7 +2299,9 @@ function start() {
       if (distance) { x /= distance; z /= distance; }
       speed = Math.min(MOTOR.walk, Math.sqrt(2 * MOTOR.braking * distance));
     }
-    motor.update(dt, { x, z, speed, distance, run: keys.has('shift'), jump: keys.has(' ') && !journey });
+    const wasGrounded = motor.grounded;
+    motor.update(dt, { x, z, speed, distance, run: keys.has('shift') || touchInput?.run, jump: (keys.has(' ') || touchInput?.takeJump()) && !journey });
+    if (!wasGrounded && motor.grounded) player.landing = .24;
     [p.x, p.y] = posL(motor.x, motor.z);
     if (journey && travel === journey) {
       const d = Math.hypot(p.x - journey.x, p.y - journey.y) * SCALE;
@@ -2289,12 +2315,9 @@ function start() {
   };
   canvas.addEventListener('keydown', e => {
     if ($('#modal').open || talk.on || voyage || window.BotChat?.isFocused()) return;
-    if (e.key === ' ' || e.key === 'Shift') { e.preventDefault(); keys.add(e.key.toLowerCase()); }
+    if (e.key === ' ' || e.key === 'Shift') { e.preventDefault(); keys.add(e.key.toLowerCase()); if (e.key === ' ') travel = null; }
   });
-  const jumpButton = document.createElement('button'); jumpButton.type = 'button'; jumpButton.className = 'w3-jump'; jumpButton.textContent = 'Jump'; jumpButton.setAttribute('aria-label', 'Jump (Space)');
-  jumpButton.addEventListener('pointerdown', e => { e.preventDefault(); jumpButton.setPointerCapture(e.pointerId); keys.add(' '); });
-  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) jumpButton.addEventListener(type, () => keys.delete(' '));
-  frameEl.querySelector('.touch-controls').append(jumpButton);
+  window.MovementInput?.enableJump();
 
   // ───────── Solid ground: a collision mask traced from the real buildings, and paths around them ─────────
   // Every landmark triangle that reaches between knee and head height is rasterised onto a 25 cm grid, so walls,
@@ -2635,13 +2658,15 @@ function start() {
   bar.innerHTML = `<div class="w3-who"><b>Nivetha <i>with Veer &amp; Mochi</i></b><small id="w3Doing" role="status">Exploring</small></div><div class="w3-emotes">${EMOTES.map(([id, ic, name], i) => `<button type="button" data-emote="${id}" title="${name} (${i + 1})"><i aria-hidden="true">${ic}</i><span>${name}</span></button>`).join('')}</div><button type="button" class="w3-lc" title="Tell Gilfoyle you’re doing LeetCode"><i aria-hidden="true">⚔</i>LeetCode</button><button type="button" class="w3-ctx" hidden></button>`;
   const chatAction = document.createElement('button'); chatAction.type = 'button'; chatAction.className = 'w3-chat-action'; chatAction.textContent = 'Chat'; chatAction.onclick = () => { endTalk(); const b = realm?.R.id === 'kobra' ? { id: 'fletcher' } : [...PARTY].sort((a, b) => Math.hypot(a.x - state.position.x, a.y - state.position.y) - Math.hypot(b.x - state.position.x, b.y - state.position.y))[0]; window.BotChat?.open(b?.id || 'grok'); }; bar.append(chatAction);
   frameEl.after(bar);
+  new ResizeObserver(() => frameEl.style.setProperty('--action-bar-height', `${Math.ceil(bar.getBoundingClientRect().height) + 24}px`)).observe(bar);
   bar.querySelectorAll('[data-emote]').forEach(b => b.onclick = () => doEmote(b.dataset.emote));
   bar.querySelector('.w3-lc').onclick = () => leetcodeCall();
   const ctxBtn = bar.querySelector('.w3-ctx'), doingEl = bar.querySelector('#w3Doing');
   ctxBtn.onclick = () => { const s = nearestSpot(7); if (s) doSpot(s); else ferryDialog(); };
   function status() {
     const petSay = act?.id === 'pet' && (!(act.contact > .7) || act.handGaps?.some(g => g > .08)) ? `Settling in with ${petTarget === 'veer' ? 'Veer' : 'Mochi'}` : act?.A.say;
-    const text = voyage ? `Sailing to ${voyage.dest ? voyage.dest.R.name : 'the Inner Kingdom'}` : act && act.end < 0 ? petSay : travel ? 'On the move' : realm ? `Exploring ${realm.R.name}` : 'Exploring the Inner Kingdom';
+    const movementText = !motor.grounded ? (motor.vy > 0 ? 'Jumping' : 'Landing') : motor.speed > MOTOR.walk + .3 ? 'Running' : motor.speed > .3 ? 'Walking' : '';
+    const text = voyage ? `Sailing to ${voyage.dest ? voyage.dest.R.name : 'the Inner Kingdom'}` : act && act.end < 0 ? petSay : movementText || (travel ? 'On the move' : realm ? `Exploring ${realm.R.name}` : 'Exploring the Inner Kingdom');
     if (doingEl.textContent !== text) doingEl.textContent = text;
     bar.querySelectorAll('[data-emote]').forEach(b => b.classList.toggle('on', act?.id === b.dataset.emote && act.end < 0));
   }
@@ -2689,7 +2714,7 @@ function start() {
     next.body.add(PR.book, PR.ledger);
     next.root.position.copy(previous.root.position); next.root.rotation.copy(previous.root.rotation);
     next.poseMemory = null; next.contactRadius = previous.contactRadius;
-    for (const k of ['yaw', 'phase', 'wave', 'give', 'expr']) next[k] = previous[k];
+    for (const k of ['yaw', 'phase', 'wave', 'give', 'expr', 'runBlend', 'airBlend', 'landing']) next[k] = previous[k];
     previous.root.removeFromParent(); player = next; scene.add(player.root); outfitId = id;
     if (player.cloakMesh) player.cloakMesh.material = toonMat(palettes[state.equipped] || palettes.sage);
     wardrobe.querySelectorAll('[data-outfit]').forEach(b => { b.classList.toggle('on', b.dataset.outfit === id); b.setAttribute('aria-pressed', String(b.dataset.outfit === id)); });
@@ -2752,7 +2777,7 @@ function start() {
     if (b.skirt && seated) { L(b.skirt.scale, 'y', .45); L(b.skirt.scale, 'x', 1.65); L(b.skirt.scale, 'z', 1.65); }
   }
   hooks.pose = (dt, t, speed, px, py, pz) => {
-    const moving = speed > .5 || keys.size > 0 || !!travel, busy = talk.on || !!voyage || $('#modal').open || screen !== 'world' || !!document.querySelector('.quest-scroll');
+    const moving = speed > .5 || keys.size > 0 || !!travel || !motor.grounded || Math.hypot(window.MovementInput?.x || 0, window.MovementInput?.z || 0) > 0, busy = talk.on || !!voyage || $('#modal').open || screen !== 'world' || !!document.querySelector('.quest-scroll');
     if (moving && act && !voyage) stopAct();
     idle = moving || busy ? 0 : idle + dt;
     if (!act && !busy && !moving) {
@@ -2775,6 +2800,7 @@ function start() {
       if (act.end >= .5) { act = null; status(); }
     }
     if (voyage) { pose = ACTS.gaze.pose(t); w = Math.min(1, voyage.t * 8); player.yaw = voyage.heading; }
+    if (!motor.grounded && !voyage) w = 0;
     if (pose) applyPose(pose, w);
     if (act?.spot && w > 0) player.yaw = lerpAngle(player.yaw, act.spot.face, 1 - Math.exp(-dt * 6));
     if (act?.id === 'pet' && act.end < 0) player.yaw = lerpAngle(player.yaw, act.heading, 1 - Math.exp(-dt * 5));
@@ -2802,7 +2828,7 @@ function start() {
     veerFrame(dt, t, px, py, pz);
     catFrame(dt, t, px, py, pz);
     settleRig(dt);
-    if (pose?.skirt === 1 && w > .1) {
+    if ((pose?.skirt === 1 && w > .1) || (!voyage && !talk.on && motor.grounded)) {
       player.root.updateMatrixWorld(true);
       let lift = 0;
       for (const ankle of player.ankles) {
@@ -2996,8 +3022,9 @@ function start() {
       if (k >= 1) { talk.flight = null; scrollProp.visible = false; fl.resolve(); }
     }
     hooks.prePose?.();
-    animateCharacter(player, voyage ? 0 : moved < 5 ? moved / dt : 0, dt, t);
-    hooks.pose?.(dt, t, voyage ? 0 : moved < 5 ? moved / dt : 0, px, py, pz);
+    const playerSpeed = voyage ? 0 : motor.speed;
+    animateCharacter(player, playerSpeed, dt, t, 0, voyage ? null : motor);
+    hooks.pose?.(dt, t, playerSpeed, px, py, pz);
     U.player.value.set(px, py, pz);
     for (const o of bots) {
       if (!o.ch.root.visible) continue;

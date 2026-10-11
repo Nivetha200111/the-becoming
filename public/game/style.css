@@ -576,3 +576,26 @@ body.world-full{overflow:hidden}
 .world-full .companion-dock.minimized{position:absolute;right:14px;bottom:90px;width:56px;height:56px;max-height:none;padding:0}
 @media(max-width:760px){.world-full .companion-dock.minimized{right:8px;bottom:105px}}
 @media(prefers-reduced-motion:reduce){.chat-heart{transition:none}.chat-heart:hover{transform:none}}
+
+/* Two thumbs: steer on the left, jump / run / interact on the right. */
+.world-frame .touch-controls{left:16px;right:16px;bottom:24px;justify-content:space-between;align-items:end;pointer-events:none;gap:20px}
+.world-frame .touch-controls>div{display:flex;flex-direction:column;gap:8px}
+.world-frame .touch-controls button{pointer-events:auto;min-width:52px;min-height:52px;margin:0;font:800 13px var(--ui);-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.world-frame .touch-controls #touchJoystick{position:relative;width:116px;height:116px;padding:0;border:1px solid #e2c68299;background:radial-gradient(circle,#253d62aa,#16243bcc);overflow:hidden}
+.stick-direction{position:absolute;color:#ffeac0;font:700 16px var(--ui);pointer-events:none}.stick-n{top:5px;left:calc(50% - 6px)}.stick-s{bottom:5px;left:calc(50% - 6px)}.stick-w{left:7px;top:calc(50% - 10px)}.stick-e{right:7px;top:calc(50% - 10px)}
+.stick-knob{position:absolute;width:48px;height:48px;left:calc(50% - 24px);top:calc(50% - 24px);border-radius:50%;background:linear-gradient(145deg,#fff4d6,#c9a966);box-shadow:0 3px 12px #0007,inset 0 0 0 2px #fff6;transform:translate(var(--stick-x,0px),var(--stick-y,0px));pointer-events:none}
+#touchJoystick.held{box-shadow:0 0 0 2px #ffe2a4,0 0 18px #f6d68844}.touch-steering small{color:#fff0d2;font:700 10px var(--ui);text-shadow:0 1px 4px #000}
+.world-frame .touch-actions{display:grid!important;grid-template-columns:56px 56px}
+.world-frame .touch-actions #touchJump{grid-column:2;grid-row:1 / 3;width:60px;height:80px;border-radius:24px;background:linear-gradient(180deg,#ffedc4,#caa66a);color:#27334b}
+.world-frame .touch-actions #touchRun[aria-pressed="true"]{background:#e5c17d;color:#172940;box-shadow:0 0 0 2px #fff0bd}
+.world-frame:has(>.w3-actions) .touch-controls{bottom:calc(var(--action-bar-height,82px) + 14px)}
+.world-frame.talking .touch-controls button,.world-frame.voyaging .touch-controls button{pointer-events:none}
+@media(any-pointer:coarse){.world-frame .touch-controls{display:flex}}
+.world-frame.has-touch .touch-controls{display:flex}
+.world-frame.has-touch #map{aspect-ratio:4/3;min-height:340px}
+.world-frame.has-touch:fullscreen #map,.world-frame.has-touch.immersive #map{aspect-ratio:auto;min-height:0}
+@media(max-width:600px){.world-frame .touch-controls{left:12px;right:12px}.world-frame .touch-controls #touchJoystick{width:104px;height:104px}.world-frame .touch-controls #touchJump{width:56px}.world-frame .touch-actions{grid-template-columns:52px 52px}}
+@media(max-height:500px){.world-frame:fullscreen .touch-controls,.world-frame.immersive .touch-controls{bottom:calc(var(--action-bar-height,60px) + 6px)}.world-frame .touch-controls #touchJoystick{width:96px;height:96px}}
+.touch-layout:not(.world-full) .companion-dock:not(.minimized){position:relative;right:auto;bottom:auto;width:100%;max-height:none;margin:14px 0 18px;padding:14px;z-index:2;box-shadow:0 5px 20px #101c3a18}
+.touch-layout.world-full .companion-dock.minimized{top:max(14px,env(safe-area-inset-top));left:50%;right:auto;bottom:auto;transform:translateX(-50%)}
+@media(min-width:761px){.touch-layout:not(.world-full) .companion-dock.minimized{top:90px;bottom:auto}}

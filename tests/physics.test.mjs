@@ -65,3 +65,13 @@ test('walking off a ledge falls under gravity rather than snapping to the lower 
   for (let i = 0; i < 120; i++) m.update(1 / 120, { x: 1 });
   assert.equal(m.grounded, true); assert.equal(m.y, 0);
 });
+
+test('running is faster without diagonal boosts and keeps collision sweeps', () => {
+  const walk = make(), run = make(), diagonal = make();
+  for (let i = 0; i < 120; i++) { walk.update(1 / 120, { x: 1 }); run.update(1 / 120, { x: 1, run: true }); diagonal.update(1 / 120, { x: 1, z: 1, run: true }); }
+  assert.ok(run.x > walk.x * 1.5);
+  assert.ok(Math.abs(run.x - Math.hypot(diagonal.x, diagonal.z)) < .001);
+  const wall = make(x => x < 1 || x > 1.05);
+  for (let i = 0; i < 120; i++) wall.update(1 / 120, { x: 1, run: true, jump: true });
+  assert.ok(wall.x < .77, 'running jumps cannot tunnel through a fence');
+});
