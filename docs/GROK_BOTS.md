@@ -28,15 +28,17 @@ This needs the bots to have **write** access to Party HQ and read access to the 
 | Patrick Jane | Life OS: personal tasks, attention, open loops, decisions | Basecamp | Focus, open-loop and real-life quests |
 | Goggins | Training and recovery: daily WHOOP call | Recovery Grove | `train`, `recover` |
 | Gilfoyle | Career OS: strategy, skills, certs, achievements | Engineering Forge and Opportunity Summit | Builds, shipping, career signal |
-| Fletcher | Interview prep: Java DSA, mocks (hatched by dr eggbot) | Engineering Forge | `pattern` (lunch LeetCode), `interview` |
+| Kreese | Interview prep: Java DSA, mocks (hatched by dr eggbot) | Engineering Forge | `pattern` (lunch LeetCode), `interview` |
 | Beatrix | CCDF prep | Claude Temple | `claude`, `ccdf-mock`, `ccdf-pass`, `claude-boss` |
 | Beth Harmon | CIS-SPM prep, test-first | SPM Tower | `spm`, `spm-errors`, `spm-boss`, `spm-pass` |
 | Dexter | Systems OS: automation, subscriptions, devices | Automation Lab | `automation` |
 | dr eggbot | Bot designer | Basecamp, in the hatchery | What it logs |
-| The War Room | Weekly planning, moderated by Patrick Jane | Council room | Jane, Carmen, Gilfoyle, Fletcher, Beatrix, Beth Harmon |
-| Career Council | Career decisions and exam priority | Council room | Gilfoyle, Fletcher, Beatrix, Beth Harmon |
+| The War Room | Weekly planning, moderated by Patrick Jane | Council room | Jane, Carmen, Gilfoyle, Kreese, Beatrix, Beth Harmon |
+| Career Council | Career decisions and exam priority | Council room | Gilfoyle, Kreese, Beatrix, Beth Harmon |
 | Exam Bunker | Cert time split; Gilfoyle decides | Council room | Gilfoyle, Beatrix, Beth Harmon |
 | Control Room | Sleep, routines, errands, devices, subscriptions | Council room | Jane, Goggins, Dexter, plus `lights-out` |
+
+Kreese keeps the stable `fletcher` save and chat ID. Existing Fletcher rows still resolve to Kreese; the Notion mailbox and webhook keep the `Fletcher` routing name so the existing Grok dispatcher continues to deliver replies. Chat reads accept either label.
 
 Bot names are matched loosely: "Carmy", "Beth", "Jane", "Bea", "Grok", "eggbot" and "War Room" all work.
 
@@ -64,7 +66,7 @@ automation (Lab, level 4+) · signal, interview (Summit, level 5+). Bosses = 250
 
 - **Bossman (lineup and closeout):** "In the morning lineup, read the Scoreboard and yesterday's Quest log, post a Check-in titled 'Lineup' with today's three priorities, and post them as Missions under the owning bot's name. In the evening closeout, post a Check-in titled 'Closeout' with what got done (from the Quest log) and what moves to tomorrow. Relay Rejected rows to their bot."
 - **Goggins:** "After the daily call, a PUSH, NORMAL or LIGHT session done = Quest ID `train`. A RECOVER call or rest day followed = `recover`. Never log training on a RECOVER day."
-- **Fletcher:** "One solved problem = Quest ID `pattern`, with Details = problem number and name plus the pattern. A missed day is never doubled. A timed mock = `interview`."
+- **Kreese:** "One solved problem = Quest ID `pattern`, with Details = problem number and name plus the pattern. A missed day is never doubled. A timed mock = `interview`."
 - **Beatrix:** "A study block = `claude`. A mock at 80% or more = `ccdf-mock`, with the score in Details. The exam passed = `ccdf-pass`."
 - **Beth Harmon:** "A drill = `spm`, with the score in Details. Errors reworked = `spm-errors`. The exam passed = `spm-pass`."
 - **Control Room / Patrick Jane:** "Lights out by the set time = `lights-out`. A closed open loop = `loop`."

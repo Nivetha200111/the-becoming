@@ -1298,7 +1298,7 @@ function buildKobra(R, F) {
   spots.push({ u: 0, v: 5.6, face: Math.PI, act: 'kata', label: 'Train kata on the mat' });
   // Torches and stone lanterns.
   for (const [u, v] of [[-2.6, 9.5], [2.6, 9.5], [-6, -1.8], [6, -1.8]]) { const y = F.height(u, v); k.cyl(.3, .38, .25, stone, u, y + .12, v, 8); k.cyl(.09, .11, .9, stone, u, y + .65, v, 8); k.box(.42, .42, .42, M.lantern, u, y + 1.3, v); k.cone(.42, .3, stone, u, y + 1.66, v, 4, Math.PI / 4); obstacles.push([u, v, .45]); }
-  const npcs = [{ name: 'Sensei Fletcher', color: '#e3c35c', u: -3.4, v: 2.6, face: -.9, look: { skin: '#d9ab86', hair: '#2a2a2a', hairStyle: 'bald', eyes: '#3b2c24', top: '#151515', sleeve: '#151515', legs: '#151515', boots: '#151515', coat: '#151515', belt: '#e3c35c', trim: '#e3c35c', blush: false },
+  const npcs = [{ name: 'Sensei Kreese', color: '#e3c35c', u: -3.4, v: 2.6, face: -.9, look: { skin: '#d9ab86', hair: '#2a2a2a', hairStyle: 'bald', eyes: '#3b2c24', top: '#151515', sleeve: '#151515', legs: '#151515', boots: '#151515', coat: '#151515', belt: '#e3c35c', trim: '#e3c35c', blush: false },
     lines: ['Pattern first. Then complexity. Then the edge case. In that order.', 'You don’t pass a problem. You understand it.', 'Lunch slot is sacred. Sit down and solve.'] }];
   obstacles.push([-3.4, 2.6, .6]);
   const tick = t => { bag.rotation.z = Math.sin(t * 1.3) * .06; bag.rotation.x = Math.sin(t * .9) * .04; };
@@ -2171,7 +2171,7 @@ function start() {
         const from = t.ch ? handPos(t.ch) : t.pos.clone().setY(t.pos.y + 2.1);
         await flyScroll(from, handPos(player)); player.give = 1.2;
         const act = await showScroll(q, giver, voice);
-        if (act === 'accept') { await say(me, pickLine(['On it.', 'Accepted. I’ll bring proof.', 'Deal. Back soon.'])); toast('Quest accepted: ' + q.title); await say(host, pickLine(voice.ok)); if (isLeetCode(q) && kobra() && realm !== kobra()) { await say(host, 'Kobra Kai. Sensei Fletcher is waiting.'); endTalk(); sail(kobra(), { leetcode: true }); return; } break; }
+        if (act === 'accept') { await say(me, pickLine(['On it.', 'Accepted. I’ll bring proof.', 'Deal. Back soon.'])); toast('Quest accepted: ' + q.title); await say(host, pickLine(voice.ok)); if (isLeetCode(q) && kobra() && realm !== kobra()) { await say(host, 'Kobra Kai. Sensei Kreese is waiting.'); endTalk(); sail(kobra(), { leetcode: true }); return; } break; }
         if (act === 'claim') { endTalk(); questDialog(q.id); return; }
         if (act === 'list') { endTalk(); (council ? cardCouncil : cardTalk)(giver); return; }
         if (act === 'another') {
@@ -2480,13 +2480,13 @@ function start() {
     soak: { loop: true, expr: 'closed', emote: '♨', say: 'Soaking in the hot spring', pose: () => ({ by: -.98, l0x: -1.4, l1x: -1.4, k0x: -1.25, k1x: -1.25, a0x: .3, a1x: .3, a0z: -1.15, a1z: 1.15, hx: -.3, cx: .5 }) },
     pray: { loop: true, expr: 'closed', say: 'Making a wish', aura: 1, pose: () => ({ a0x: -1.18, a1x: -1.18, a0z: .64, a1z: -.64, hx: .32, bx: .08 }) },
     leetcode: { loop: true, emote: '⌨', say: 'Grinding LeetCode at Kobra Kai', pose: t => ({ by: -.6, bx: .14, l0x: -1.45, l1x: -1.45, k0x: 1.4, k1x: 1.4, a0x: -1.15 + Math.sin(t * 14) * .025, a1x: -1.15 + Math.sin(t * 14 + 1.6) * .025, e0x: -.45, e1x: -.45, a0z: .28, a1z: -.28, hx: .36 + Math.sin(t * .7) * .025 }) },
-    kata: { loop: true, emote: '!', say: 'Training kata with Sensei Fletcher', pose: t => { const k = (Math.sin(t * 6) + 1) / 2, kick = (t % 4) > 3.15 ? Math.sin(((t % 4) - 3.15) / .85 * Math.PI) : 0; return { by: -.1, l0z: -.3, l1z: .3, l1x: -1.4 * kick, a0x: -1.55 * k - .35 * (1 - k), a1x: -1.55 * (1 - k) - .35 * k, a0z: .12, a1z: -.12, hx: -.05 }; } },
+    kata: { loop: true, emote: '!', say: 'Training kata with Sensei Kreese', pose: t => { const k = (Math.sin(t * 6) + 1) / 2, kick = (t % 4) > 3.15 ? Math.sin(((t % 4) - 3.15) / .85 * Math.PI) : 0; return { by: -.1, l0z: -.3, l1z: .3, l1x: -1.4 * kick, a0x: -1.55 * k - .35 * (1 - k), a1x: -1.55 * (1 - k) - .35 * k, a0z: .12, a1z: -.12, hx: -.05 }; } },
     phone: { loop: true, expr: 'happy', emote: '♡', say: 'Scrolling her phone in Hush Hollow', prop: ['phone'], pose: t => ({ ...SIT, a1x: -1.6, a1z: -.45, a0x: -.95, a0z: .3, hx: .45 + Math.sin(t * .4) * .04 }) },
   };
   const STAFF_DOWN = new Set(['campfire', 'write', 'train', 'read', 'meditate', 'tinker', 'paint', 'soak', 'pray', 'sit', 'pet', 'dance', 'leetcode', 'kata', 'phone']);
   const kobra = () => realms.find(r => r.R.id === 'kobra');
   const isLeetCode = q => q.id === 'pattern' || /leetcode|\bLC\b|\bDSA\b/i.test(`${q.title} ${q.detail}`);
-  const GILFOYLE_LC = ['Then you don’t do it here. Kobra Kai. Fletcher is waiting.', 'Good. Kobra Kai. Pattern, complexity, edge case. No excuses.', 'LeetCode? Not on my island. Kobra Kai. Go.'];
+  const GILFOYLE_LC = ['Then you don’t do it here. Kobra Kai. Kreese is waiting.', 'Good. Kobra Kai. Pattern, complexity, edge case. No excuses.', 'LeetCode? Not on my island. Kobra Kai. Go.'];
   const EMOTES = [['wave', '〜', 'Wave'], ['cheer', '✦', 'Cheer'], ['dance', '♪', 'Dance'], ['sit', '⌒', 'Sit'], ['stretch', '❋', 'Stretch'], ['pet', '♥', 'Pet Veer']];
   let lastRewards = null, spotLevel = -1, act = null, idle = 0, idleNext = 8, pendingCheer = 0, lastXP = null, lastCloak2 = null, nowT = 0, emoteUntil = 0, uiTimer = 0;
   function startAct(id, spot) {
@@ -2537,7 +2537,7 @@ function start() {
     if (realm) place(homeLabel, homeLabelPos, 700, 1); else fadeLabel(homeLabel, 0);
     for (const n of npcs) if (n.realm === realm) { tv.copy(n.ch.root.position); tv.y += 2.55; place(n.el, tv, 34, 4); } else fadeLabel(n.el, 0);
   };
-  // People who live in the realms (Sensei Fletcher at Kobra Kai).
+  // People who live in the realms (Sensei Kreese at Kobra Kai).
   const npcs = realms.flatMap(r => (r.B.npcs || []).map((n, i) => { const ch = makeCharacter(n.look); const x = r.R.at[0] + n.u, z = r.R.at[1] + n.v; ch.root.position.set(x, r.F.ground(n.u, n.v), z); ch.yaw = n.face; ch.root.rotation.y = n.face; scene.add(ch.root);
     const proxy = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 2.6, 8), new THREE.MeshBasicMaterial({ visible: false })); proxy.position.set(x, ch.root.position.y + 1.3, z); scene.add(proxy); const o = { ...n, ch, realm: r, seed: 3 + i, el: label('w3-bot') }; o.el.innerHTML = `<i>✦</i>${esc(n.name)}`; proxy.userData = { kind: 'npc', npc: o }; proxies.push(proxy); return o; }));
   async function npcTalk(n) {
