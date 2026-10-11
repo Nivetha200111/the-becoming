@@ -56,7 +56,7 @@
   heart.onclick = () => {
     setMinimized(false);
     if (!text.disabled) text.focus({ preventScroll: true }); else select.focus({ preventScroll: true });
-    if (!document.querySelector('.world-frame.immersive') && !document.fullscreenElement && !document.webkitFullscreenElement && matchMedia('(max-width:760px)').matches) dock.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+    if (!document.querySelector('.world-frame.immersive') && !document.fullscreenElement && !document.webkitFullscreenElement && (matchMedia('(max-width:760px)').matches || document.body.classList.contains('touch-layout'))) dock.scrollIntoView({ block: 'nearest', behavior: 'auto' });
   };
   function render() {
     const bot = select.value, rows = rowsFor(bot); log.replaceChildren();
@@ -188,6 +188,7 @@
   dock.querySelectorAll('[data-prompt]').forEach(b => b.onclick = () => { text.value = b.dataset.prompt; drafts.set(select.value, text.value); remember(); text.focus(); });
   toggle.onclick = () => expand(!expanded);
   window.BotChat = {
+    minimize: () => setMinimized(true),
     isOpen: () => expanded && !minimized,
     isFocused: () => !minimized && dock.contains(document.activeElement),
     mount(parent) { const home = document.querySelector('#worldScreen'); if (parent === document.body) { if (dock.parentNode !== home) document.querySelector('.world-frame').after(dock); } else if (dock.parentNode !== parent) parent.append(dock); window.RewardMoments?.mount(); },
@@ -195,9 +196,9 @@
       if (screen !== 'world') showScreen('world');
       if ($('#modal').open) $('#modal').close();
       if (GameRoster.find(bot) && bot !== selected) switchBot(bot);
-      keys.clear();
+      keys.clear(); window.MovementInput?.reset();
       const parent = document.fullscreenElement || document.webkitFullscreenElement || document.querySelector('.world-frame.immersive') || document.body;
-      BotChat.mount(parent); setMinimized(false); expand(true); render(); connect(); wake(); if (parent === document.body && matchMedia('(max-width:760px)').matches) dock.scrollIntoView({ block: 'nearest', behavior: 'auto' }); if (!text.disabled) text.focus({ preventScroll: true });
+      BotChat.mount(parent); setMinimized(false); expand(true); render(); connect(); wake(); if (parent === document.body && (matchMedia('(max-width:760px)').matches || document.body.classList.contains('touch-layout'))) dock.scrollIntoView({ block: 'nearest', behavior: 'auto' }); if (!text.disabled) text.focus({ preventScroll: true });
     },
   };
   document.querySelector('#partyChat')?.addEventListener('click', () => BotChat.open());
