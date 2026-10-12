@@ -69,6 +69,17 @@ Three villains lurk near Basecamp: the Procrastination Monster (a slumped purple
 
 The rules are pure and live in `villains.js` (`Villains.status`, `counters`, `strength`, `tally`), with tests in `tests/villains.test.mjs`. Everything is derived from the claimed entries: nothing is stored in the save and a villain never adds or removes XP. A villain left unchallenged grows a little each day (up to five), counted from the first claim onwards. On a recovery day all three sleep. Clicking one opens its card with a taunt, how to banish it and the open quests that would. When a claim banishes one it spins away and a card announces it; the daily line under the header counts how many are still lurking.
 
+### Bronze and the Armoury
+
+Every claimed quest also earns bronze, 1 for every 2 XP. Like coins and gold it is derived from the claimed entries and never stored. Bronze is spent in the Armoury, which sits under the cloaks on the Wardrobe screen and is linked from each villain's card:
+
+| Gear | Cost in bronze | Effect |
+| --- | --- | --- |
+| Shield of the First Step, of Stillness, of Wonder | 60, 90, 120 | That shield's villain no longer grows while unchallenged |
+| Wooden Practice Sword, Bronze Dagger, Focus Bow, Lapis Blade, Horizon Lance | 50, 120, 250, 450, 800 | 2, 3, 5, 8 and 12 damage each time a villain is banished; bare hands deal 1 |
+
+Weapons are forged in order. Each villain has forms with 10, 25 and 50 health, then endless forms of 100; a day on which it is banished deals the damage of the best weapon owned that day, and wearing a form down brings on the next. Gear is permanent and lives in the save's optional `armory` list. Undoing a claim hands gear back, dearest weapon first, if the bronze no longer covers it (`Engine.settleGear`). Catalogue and prices are `SHIELDS` and `WEAPONS` in engine.js; the fight is `Villains.battle`; the shop is `renderArmoury()` in app.js.
+
 In world3d.js the bodies are built in `makeVillain()`, their places are `FOE_SPOTS`, and the block marked "Villains" handles state, animation, name tags and the card. While present they are solid, like the guides. The 2D fallback map does not draw them; the daily line still reports them.
 
 ## Responsive review
