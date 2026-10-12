@@ -1377,13 +1377,34 @@ function buildHollow(R, F) {
   // Every frame: animals wander and nap, and gather round when she's on the blanket.
   const frame = (dt, t, me) => {
     const gather = me?.act === 'phone' || me?.act === 'sit';
+    // Solid things an animal steps round instead of through: her, Veer and Mochi, then the old tree, poles and pond.
+    const solids = [...(me ? [me, ...me.pets] : []).map(b => ({ ...b, alive: true })), ...obstacles.map(o => ({ u: o[0], v: o[1], r: o[2] - .2 }))];
     animals.forEach((a, i) => {
       a.timer -= dt;
-      if (gather && me) { const ang = i / animals.length * Math.PI * 2 + .3, rr = 1.3 + (i % 3) * .55; a.tu = me.u + Math.cos(ang) * rr; a.tv = me.v + Math.sin(ang) * rr; if (Math.hypot(a.tu - a.u, a.tv - a.v) < .3) a.mode = i % 3 ? 'sit' : 'lie'; else a.mode = 'walk'; }
+      const pad = a.dog ? .4 : .3;
+      if (gather && me) {
+        const ang = i / animals.length * Math.PI * 2 + .3, rr = Math.max(1.3, me.r + pad + .12) + (i % 3) * .55; a.tu = me.u + Math.cos(ang) * rr; a.tv = me.v + Math.sin(ang) * rr;
+        // Settled animals stay put; one whose place is taken by Veer or Mochi settles just beside it.
+        const away = Math.hypot(a.tu - a.u, a.tv - a.v); a.settled = away < (a.blocked ? .9 : .3) || (a.settled && away < 1.2);
+        a.mode = a.settled ? (i % 3 ? 'sit' : 'lie') : 'walk';
+      }
       else if (a.timer <= 0) { const r = hr(); if (r < .45) { const ang = hr() * Math.PI * 2, rr = 2 + hr() * 10; a.tu = Math.cos(ang) * rr; a.tv = Math.sin(ang) * rr; a.mode = 'walk'; a.timer = 6 + hr() * 6; } else { a.mode = r < .75 ? 'sit' : 'lie'; a.timer = 4 + hr() * 8; } }
       let speed = 0;
       if (a.mode === 'walk') { const dx = a.tu - a.u, dz = a.tv - a.v, d = Math.hypot(dx, dz); if (d > .2 && R.sdf(a.tu, a.tv) > 2.5 && obstacles.every(o => Math.hypot(a.tu - o[0], a.tv - o[1]) > o[2] + .3)) { speed = Math.min(1.6, d * 1.5); a.u += dx / d * speed * dt; a.v += dz / d * speed * dt; a.yaw = lerpAngle(a.yaw, Math.atan2(dx, dz), 1 - Math.exp(-dt * 6)); } else if (!gather) { a.mode = 'sit'; a.timer = 2 + hr() * 3; } }
       else if (me && Math.hypot(me.u - a.u, me.v - a.v) < 5) a.yaw = lerpAngle(a.yaw, Math.atan2(me.u - a.u, me.v - a.v), 1 - Math.exp(-dt * 2));
+      a.blocked = false; if (!gather) a.settled = false;
+      for (const b of solids) {
+        const ox = a.u - b.u, oz = a.v - b.v, od = Math.hypot(ox, oz), min = b.r + pad;
+        if (od >= min) continue;
+        const nx = od > 1e-4 ? ox / od : Math.cos(i * 2.4), nz = od > 1e-4 ? oz / od : Math.sin(i * 2.4);
+        a.u = b.u + nx * min; a.v = b.v + nz * min; a.blocked = true;
+        if (a.mode === 'walk') {
+          // Slide along the edge, the shorter way round to where it was going.
+          const side = nx * (a.tv - a.v) - nz * (a.tu - a.u) >= 0 ? 1 : -1, slide = Math.max(speed, .8) * dt;
+          a.u -= nz * side * slide; a.v += nx * side * slide; speed = Math.max(speed, .8);
+          a.yaw = lerpAngle(a.yaw, Math.atan2(-nz * side, nx * side), 1 - Math.exp(-dt * 6));
+        } else if (b.alive && !gather) { a.mode = 'walk'; a.tu = b.u + nx * (min + .9); a.tv = b.v + nz * (min + .9); a.timer = 3; } // she walked into a napper: it scoots aside
+      }
       a.root.position.set(a.u, F.height(a.u, a.v), a.v); a.root.rotation.y = a.yaw;
       a.phase = (a.phase || 0) + dt * (2 + speed * 4);
       const sw = Math.sin(a.phase) * .7 * Math.min(1, speed / 1.2), still = a.mode === 'walk' ? 0 : 1, lie = a.mode === 'lie' ? 1 : 0;
@@ -1397,7 +1418,7 @@ function buildHollow(R, F) {
   };
   const sky = { zenith: '#e98bb0', horizon: '#ffb27a', sunColor: '#ffc690', hemiSky: '#ffc6b8', hemiGround: '#7d6a5c', cloudLight: '#ffe0cc', cloudShadow: '#d68aa6' };
   R.sky = { c: Object.fromEntries(Object.entries(sky).map(([k, v]) => [k, C(v)])) };
-  return { stat: k.g, dyn, obstacles, spots, trees, tick, frame, treeKinds: [['oak', 34], ['sakura', 18], ['birch', 14]] };
+  return { stat: k.g, dyn, obstacles, spots, trees, tick, frame, animals, treeKinds: [['oak', 34], ['sakura', 18], ['birch', 14]] };
 }
 // The painter's easel: the canvas fills with dabs of colour while Nivetha paints.
 function makeEasel() {
@@ -2879,7 +2900,7 @@ function start() {
       frameEl.dataset.companions = JSON.stringify({ activity: act?.id || 'idle', sailing: !!voyage, minimumClearance: observedPetClearance, pets });
     }
     for (const n of npcs) { const near = n.realm === realm && Math.hypot(px - n.ch.root.position.x, pz - n.ch.root.position.z) < 7; n.ch.yaw = lerpAngle(n.ch.yaw, near ? Math.atan2(px - n.ch.root.position.x, pz - n.ch.root.position.z) : n.face, 1 - Math.exp(-dt * 3)); n.ch.root.rotation.y = n.ch.yaw; animateCharacter(n.ch, 0, dt, t, n.seed); }
-    for (const r of realms) if (r.B.frame) r.B.frame(dt, t, r === realm && !voyage ? { u: px - r.R.at[0], v: pz - r.R.at[1], act: act && act.end < 0 ? act.id : null } : null);
+    for (const r of realms) if (r.B.frame) r.B.frame(dt, t, r === realm && !voyage ? { u: px - r.R.at[0], v: pz - r.R.at[1], act: act && act.end < 0 ? act.id : null, r: Math.max(.45, (player.contactRadius ?? .72) - .3), pets: [veer, cat].filter(p => p.root.visible).map(p => ({ u: p.root.position.x - r.R.at[0], v: p.root.position.z - r.R.at[1], r: p === veer ? .5 : .35 })) } : null);
     if ((uiTimer -= dt) <= 0) { uiTimer = .3; status(); const s = !voyage && !talk.on ? nearestSpot(7) : null, nearFerry = !voyage && !talk.on && player.root.position.distanceTo(ferry.g.position) < 9; const label2 = s && act?.spot !== s ? `✦ ${s.label}` : nearFerry ? '⛵ Board the sky ferry' : ''; ctxBtn.hidden = !label2; if (label2 && ctxBtn.textContent !== label2) ctxBtn.textContent = label2; }
   };
   const PET_RADIUS = { veer: .95, mochi: .7 };
