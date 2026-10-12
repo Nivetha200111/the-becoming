@@ -1425,6 +1425,8 @@ function buildStarfall(R, F) {
   const tick = t => { orb.position.y = Y + 6.45 + Math.sin(t * 1.4) * .08; crystal.rotation.y = t * .8; wp.position.y = F.height(5, 3) + 2 + Math.sin(t * 1.2) * .15; rings[0].rotation.set(t * .7, t * .4, 0); rings[1].rotation.set(-t * .5, 0, t * .6); };
   return { stat: k.g, dyn, obstacles, spots, trees, tick, treeKinds: [['pine', 8], ['birch', 6]] };
 }
+// The dojo's floor desk, in metres: the height of its top and of the cushion she sits on.
+const DESK = { top: .44, cushion: .08 };
 // Kobra Kai: the LeetCode dojo. Gilfoyle sends her here whenever she says she's doing LeetCode.
 function emblemTexture() {
   return canvasTexture(256, (g, s) => {
@@ -1481,17 +1483,22 @@ function buildKobra(R, F) {
     ck.add(new THREE.SphereGeometry(1, 16, 10), gold, 0, 2.2, .08).scale.set(.32, .4, .09); ck.add(new THREE.SphereGeometry(1, 12, 8), gold, 0, 2.42, .22).scale.set(.12, .08, .17);
     for (const e of [-1, 1]) ck.ball(.025, glow('#ff3b2f', 2), e * .05, 2.46, .36, 6);
     ck.g.position.set(sx * 1.9 - 4.5, Y, 11.2); ck.g.rotation.y = .65; k.g.add(ck.g); obstacles.push([sx * 1.9 - 4.5, 11.2, .7]); }
-  // The LeetCode desk under a little pavilion: a cushion, a low table and a laptop showing today's solution.
-  const px = -6.2, pz = .6;
+  // The LeetCode desk under a little pavilion: a floor cushion, a low desk her knees fit under and a laptop showing
+  // today's solution. She sits at `seat`; the keys are within reach of her hands from there.
+  const px = -6.2, pz = .6, seat = pz + .45;
   for (const [x, z] of [[-1.3, -1.1], [1.3, -1.1], [-1.3, 1.3], [1.3, 1.3]]) { k.cyl(.08, .09, 2.6, red, px + x, Y + 1.3, pz + z, 8); obstacles.push([px + x, pz + z, .25]); }
   k.prism(3.4, 1, 3.2, tiles, px, Y + 2.6, pz + .1, Math.PI / 2);
-  k.box(1.1, .32, .6, M.woodDark, px, Y + .16, pz - .35); k.box(.75, .07, .75, red, px, Y + .035, pz + .55);
-  const laptop = new THREE.Group(); laptop.position.set(px, Y + .33, pz - .4);
+  k.box(1.3, .05, .6, M.woodDark, px, Y + DESK.top - .025, seat - .58);
+  for (const sx of [-1, 1]) k.box(.06, DESK.top - .05, .5, M.woodDark, px + sx * .6, Y + (DESK.top - .05) / 2, seat - .58);
+  k.box(.95, DESK.cushion, .85, red, px, Y + DESK.cushion / 2, seat - .1); obstacles.push([px, seat - .66, .36]);
+  const laptop = new THREE.Group(); laptop.position.set(px, Y + DESK.top + .0125, seat - .5);
+  const keys = new THREE.Object3D(); keys.position.y = .0125; laptop.add(keys);
   const lb = new THREE.Mesh(new THREE.BoxGeometry(.46, .025, .32), solid('#2b2b2f', .4)); laptop.add(lb);
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(.44, .29), new THREE.MeshBasicMaterial({ map: codeScreen(), toneMapped: false })); screen.position.set(0, .15, -.16); screen.rotation.x = -.25; laptop.add(screen);
   const lid = new THREE.Mesh(new THREE.BoxGeometry(.46, .31, .015), solid('#2b2b2f', .4)); lid.position.set(0, .15, -.17); lid.rotation.x = -.25; laptop.add(lid); dyn.add(laptop);
-  dyn.add(particles(22, 1, { size: .06, speed: .5, rise: 1.1, spread: .5, origin: [px, Y + .6, pz - .4], color: '#7dffb2', boost: 2.2 }));
-  spots.push({ u: px, v: pz + .55, face: Math.PI, act: 'leetcode', label: 'Grind a LeetCode problem' });
+  dyn.add(particles(22, 1, { size: .06, speed: .5, rise: 1.1, spread: .5, origin: [px, Y + DESK.top + .3, seat - .6], color: '#7dffb2', boost: 2.2 }));
+  // `reach` (logical units) makes her walk onto the cushion itself: the desk is only under her hands from there.
+  spots.push({ u: px, v: seat, face: Math.PI, act: 'leetcode', label: 'Grind a LeetCode problem', reach: 1, keys });
   spots.push({ u: 0, v: 5.6, face: Math.PI, act: 'kata', label: 'Train kata on the mat' });
   // Torches and stone lanterns.
   for (const [u, v] of [[-2.6, 9.5], [2.6, 9.5], [-6, -1.8], [6, -1.8]]) { const y = F.height(u, v); k.cyl(.3, .38, .25, stone, u, y + .12, v, 8); k.cyl(.09, .11, .9, stone, u, y + .65, v, 8); k.box(.42, .42, .42, M.lantern, u, y + 1.3, v); k.cone(.42, .3, stone, u, y + 1.66, v, 4, Math.PI / 4); obstacles.push([u, v, .45]); }
@@ -2823,7 +2830,7 @@ function start() {
     paint: { loop: true, expr: 'focus', say: 'Painting the view', prop: ['brush'], pose: t => ({ a1x: -1.4 + Math.sin(t * 2.1) * .18, a1z: -.12 + Math.cos(t * 1.7) * .22, hx: .05, hy: Math.sin(t * .35) * .15 }) },
     soak: { loop: true, expr: 'closed', emote: '♨', say: 'Soaking in the hot spring', pose: () => ({ by: -.98, l0x: -1.4, l1x: -1.4, k0x: -1.25, k1x: -1.25, a0x: .3, a1x: .3, a0z: -1.15, a1z: 1.15, hx: -.3, cx: .5 }) },
     pray: { loop: true, expr: 'closed', say: 'Making a wish', aura: 1, pose: () => ({ a0x: -1.18, a1x: -1.18, a0z: .64, a1z: -.64, hx: .32, bx: .08 }) },
-    leetcode: { loop: true, expr: 'focus', emote: '⌨', say: 'Grinding LeetCode at Kobra Kai', pose: t => ({ by: -.6, bx: .14, l0x: -1.45, l1x: -1.45, k0x: 1.4, k1x: 1.4, a0x: -1.15 + Math.sin(t * 14) * .025, a1x: -1.15 + Math.sin(t * 14 + 1.6) * .025, e0x: -.45, e1x: -.45, a0z: .28, a1z: -.28, hx: .36 + Math.sin(t * .7) * .025 }) },
+    leetcode: { loop: true, expr: 'focus', emote: '⌨', say: 'Grinding LeetCode at Kobra Kai', pose: t => ({ ...SIT, by: SIT.by + DESK.cushion / player.root.scale.y, bx: .09, a0x: -.7, a1x: -.7, a0z: .1, a1z: -.1, e0x: -.9, e1x: -.9, hx: .34 + Math.sin(t * .7) * .025 }) },
     kata: { loop: true, expr: 'determined', emote: '!', say: 'Training kata with Sensei Kreese', pose: t => { const k = (Math.sin(t * 6) + 1) / 2, kick = (t % 4) > 3.15 ? Math.sin(((t % 4) - 3.15) / .85 * Math.PI) : 0; return { by: -.1, l0z: -.3, l1z: .3, l1x: -1.4 * kick, a0x: -1.55 * k - .35 * (1 - k), a1x: -1.55 * (1 - k) - .35 * k, a0z: .12, a1z: -.12, hx: -.05 }; } },
     phone: { loop: true, expr: 'happy', emote: '♡', say: 'Scrolling her phone in Hush Hollow', prop: ['phone'], pose: t => ({ ...SIT, a1x: -1.6, a1z: -.45, a0x: -.95, a0z: .3, hx: .45 + Math.sin(t * .4) * .04 }) },
   };
@@ -2862,10 +2869,12 @@ function start() {
     status();
   }
   const stopAct = () => { if (act && act.end < 0) act.end = 0; };
+  // Most activities can start a step away from their marker; a spot with furniture sets its own `reach`.
+  const onSpot = s => Math.hypot(state.position.x - s.L.x, state.position.y - s.L.y) < (s.reach ?? 14);
   function doSpot(s) {
     if (voyage || talk.on || !spotOpen(s)) return;
     if (act?.spot === s) { stopAct(); return; }
-    if (Math.hypot(state.position.x - s.L.x, state.position.y - s.L.y) < 14) startAct(s.act, s);
+    if (onSpot(s)) startAct(s.act, s);
     else { stopAct(); goTo(s.L.x, s.L.y, () => startAct(s.act, s)); }
   }
   function doEmote(id, who = 'veer') {
@@ -3213,7 +3222,7 @@ function start() {
       else if (idle > idleNext) {
         // Only where she already stands on the spot (the same reach as doSpot). A few metres away the pose has nothing
         // under it: soaking beside the hot spring sank her into the paving.
-        const s = nearestSpot(14 * SCALE), catNear = veer.root.position.distanceTo(player.root.position) < 3 && cuddleHeading(petTarget === 'veer' ? veer : cat, player.root.position.x, player.root.position.z, player.yaw) !== null, night = look.glow > .6;
+        const near = nearestSpot(14 * SCALE), s = near && onSpot(near) ? near : null, catNear = veer.root.position.distanceTo(player.root.position) < 3 && cuddleHeading(petTarget === 'veer' ? veer : cat, player.root.position.x, player.root.position.z, player.yaw) !== null, night = look.glow > .6;
         if (s) startAct(s.act, s);
         else if (idle > 40) startAct('sit');
         else startAct(['stretch', 'look', 'staff', 'hum', catNear ? 'pet' : 'look', night ? 'yawn' : 'hum', 'wave'][Math.random() * 7 | 0]);
@@ -3273,6 +3282,7 @@ function start() {
       player.body.position.y += lift / player.root.scale.y + (posed ? 0 : (player.runBlend || 0) * Math.sin(player.phase) ** 2 * .055 * clamp(speed / MOTOR.run, 0, 1));
     }
     if (act?.id === 'pet') contactPet(dt, t, w);
+    else if (act?.id === 'leetcode') typeAtDesk(act.t, w);
     if (window.LOCAL_DESIGN_MODE) {
       const pets = [veer, cat].map(p => ({ name: p === veer ? 'Veer' : 'Mochi', visible: p.root.visible,
         clearance: Math.min(...companionActors(p).map(a => Math.hypot(p.root.position.x - a.x, p.root.position.z - a.z) - a.radius - companionRadius(p))) }));
@@ -3332,6 +3342,26 @@ function start() {
     }
     act.contactTargets = [new THREE.Vector3(.095, -.02, .095), new THREE.Vector3(-.025, .13 + Math.sin(t * 1.9) * (reduceMotion.matches ? .01 : .035), .065)].map(p => pet.head.localToWorld(p).toArray());
     player.head.rotation.y *= 1 - act.contact;
+  }
+  // At the dojo desk her wrists rest over the laptop and her fingers work the keys, instead of typing in the air.
+  const keyAt = new THREE.Vector3();
+  function typeAtDesk(t, weight) {
+    const keys = act.spot?.keys; if (!keys) return;
+    player.root.updateMatrixWorld(true); keys.updateWorldMatrix(true, false);
+    const k = reduceMotion.matches ? 0 : 1;
+    player.root.worldToLocal(keys.getWorldPosition(keyAt));
+    for (const i of [0, 1]) {
+      const side = i ? 1 : -1, tap = Math.sin(t * 13 + i * 2.1), drift = Math.sin(t * 1.7 + i * 1.3) * .02 * k;
+      // Wrists hover just above and behind the keys; each hand wanders its own half of the keyboard.
+      const wrist = new THREE.Vector3(keyAt.x + side * .095 + drift, keyAt.y + .045 + Math.max(0, tap) * .01 * k, keyAt.z - .09 + Math.sin(t * 1.1 + i) * .008 * k);
+      const target = player.body.worldToLocal(player.root.localToWorld(wrist));
+      const reach = armReach(player.arms[i].position, target, new THREE.Vector3(side * .5, .75, -.25));
+      if (!reach) continue;
+      const contact = weight * (1 - smooth(.03, .16, reach.gap));
+      player.arms[i].quaternion.slerp(reach.upper, contact);
+      player.elbows[i].quaternion.slerp(reach.lower, contact);
+      player.hands[i].rotation.x = (.3 + tap * .1 * k) * contact;
+    }
   }
   function companionActors(pet) {
     const actors = [{ x: player.root.position.x, z: player.root.position.z, radius: player.contactRadius ?? .72 }];
