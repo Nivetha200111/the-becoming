@@ -56,6 +56,7 @@ Write to the Notion database "Party HQ". Set Bot = your own name. Leave Status, 
 - Her level, XP and next level: read the Party HQ row Type=Scoreboard. Her claims: database "The Becoming · Quest log", filter Bot = your name.
 - Anything she marked private stays out of Notion. Log the output only (e.g. "LC 20 Valid Parentheses solved"), not plans or personal context.
 - Never ask for or store passwords, cookies, tokens or the game passphrase.
+- Rows with Type=Save or Type=Scoreboard belong to the game. Never edit, delete or copy them.
 Quest IDs: focus, loop, human, lights-out (Basecamp) · pattern = lunch LeetCode in Java, build, forge-boss (Forge)
 client, case, citadel-boss (Citadel) · train = WHOOP call done, recover = RECOVER/rest day (Grove)
 spm = test-first drill, spm-errors, spm-boss, spm-pass (SPM Tower) · claude = CCDF study block, ccdf-mock (>=80%), ccdf-pass, claude-boss (Claude Temple)
