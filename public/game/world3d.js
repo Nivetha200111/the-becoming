@@ -669,11 +669,19 @@ function taper(r0, r1, len) {
   for (let i = 0; i <= n; i++) { const a = i / n * Math.PI / 2; pts.push(new THREE.Vector2(Math.max(1e-4, Math.cos(a) * r0), len / 2 + Math.sin(a) * r0)); }
   return new THREE.LatheGeometry(pts, 16);
 }
+// A head that is not a ball: the skull narrows below the cheekbones into a jaw and a chin.
+const HEAD = (() => {
+  const g = new THREE.SphereGeometry(.165, 30, 22), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const y = p.getY(i); if (y >= 0) continue; const k = (-y / .165) ** 1.6; const z = p.getZ(i); p.setXYZ(i, p.getX(i) * (1 - .25 * k), y * 1.07, z > 0 ? z * (1 - .03 * k) + .024 * k : z * (1 - .2 * k)); }
+  g.computeVertexNormals(); return g;
+})();
+// Her own figure: a narrower waist and fuller hips than the shared torso.
+const TORSO_F = new THREE.LatheGeometry([[.001, .8], [.115, .815], [.152, .865], [.146, .93], [.122, 1.0], [.118, 1.05], [.134, 1.14], [.148, 1.24], [.15, 1.31], [.128, 1.37], [.082, 1.41], [.056, 1.44], [.001, 1.45]].map(([x, y]) => new THREE.Vector2(x, y)), 22);
 // A torso turned from a silhouette: hips, a waist, a ribcage and shoulders that slope into the neck.
 const TORSO = new THREE.LatheGeometry([[.001, .8], [.11, .815], [.146, .86], [.142, .93], [.128, 1.0], [.126, 1.05], [.14, 1.14], [.154, 1.24], [.158, 1.31], [.135, 1.37], [.085, 1.41], [.058, 1.44], [.001, 1.45]].map(([x, y]) => new THREE.Vector2(x, y)), 22);
 // Rimless lenses stay separate, see-through meshes on the head bone; only their wire is baked into the face.
 const roundedRect = (w, h, r) => { const p = new THREE.Shape(), x = w / 2, y = h / 2; p.moveTo(-x + r, -y); p.lineTo(x - r, -y); p.quadraticCurveTo(x, -y, x, -y + r); p.lineTo(x, y - r); p.quadraticCurveTo(x, y, x - r, y); p.lineTo(-x + r, y); p.quadraticCurveTo(-x, y, -x, y - r); p.lineTo(-x, -y + r); p.quadraticCurveTo(-x, -y, -x + r, -y); return new THREE.ShapeGeometry(p, 6); };
-const LENS_SHAPE = roundedRect(.096, .088, .034), GLINT_SHAPE = roundedRect(.03, .005, .0024), WIRE = '#f3dfa6';
+const LENS_SHAPE = roundedRect(.086, .062, .026), GLINT_SHAPE = roundedRect(.026, .0045, .0022), WIRE = '#f3dfa6';
 const LENS = new THREE.MeshBasicMaterial({ color: '#f4fbff', transparent: true, opacity: .13, depthWrite: false, side: THREE.DoubleSide });
 const GLINT = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: .75, depthWrite: false, side: THREE.DoubleSide });
 
@@ -694,7 +702,9 @@ function lookFor(b) {
     default: return { ...base, hairStyle: 'neat', legs: '#3d4a5a', eyes: '#3d2c22' };
   }
 }
-const PLAYER_LOOK = { skin: '#c58c65', hair: '#2a2321', hairStyle: 'pixie', glasses: 'rimless', eyes: '#6b4430', top: '#efe4c8', sleeve: '#efe4c8', legs: '#4a4843', boots: '#5b4636', skirt: '#efe4c8', belt: '#d5b76e', cloak: true, staff: true, blush: true, flair: true };
+// Where a foot touches the ground, in its ankle's space: under the arch, the heel, the toes.
+const SOLE = [[0, -.128, .03], [0, -.115, -.045], [0, -.106, .15]];
+const PLAYER_LOOK = { figure: 'f', skin: '#c58c65', hair: '#2a2321', hairStyle: 'pixie', glasses: 'rimless', eyes: '#6b4430', top: '#efe4c8', sleeve: '#efe4c8', legs: '#4a4843', boots: '#5b4636', skirt: '#efe4c8', belt: '#d5b76e', cloak: true, staff: true, blush: true, flair: true };
 
 function makeCharacter(look) {
   const root = new THREE.Group(), body = new THREE.Bone(), parts = [];
@@ -721,7 +731,8 @@ function makeCharacter(look) {
     part(ankle, SPHERE, look.boots, [0, -.082, .046], { s: [.058, .046, .118] });
     return g;
   });
-  part(trunk, TORSO, look.top, [0, 0, 0], { s: [1, 1, .72] });
+  part(trunk, look.figure === 'f' ? TORSO_F : TORSO, look.top, [0, 0, 0], { s: [1, 1, .72] });
+  if (look.figure === 'f') part(trunk, SPHERE, look.top, [0, 1.215, .058], { s: [.118, .062, .068], outline: false });
   part(trunk, capsule(.152, .06), look.shorts || look.legs, [0, .87, 0], { s: [1, 1, .78] });
   part(trunk, new THREE.CylinderGeometry(.05, .056, .14, 12), look.skin, [0, 1.45, 0]);
   const skirt = look.skirt ? bone(trunk, 0, .88, 0) : null;
@@ -743,34 +754,60 @@ function makeCharacter(look) {
     const hand = bone(elbow, 0, -.22, 0); hands.push(hand);
     // A hand: palm, closed fingers and a thumb turned forward.
     part(hand, SPHERE, look.skin, [0, -.03, 0], { s: [.034, .046, .022] });
-    part(hand, SPHERE, look.skin, [0, -.072, .002], { s: [.029, .034, .019], outline: false });
+    part(hand, SPHERE, look.skin, [0, -.062, .002], { s: [.03, .022, .019], outline: false });
+    for (let f = 0; f < 4; f++) part(hand, capsule(.0072, .026 - Math.abs(f - 1.4) * .004), look.skin, [(f - 1.5) * .0145, -.088, .006], { r: [.3, 0, (f - 1.5) * -.06], outline: false });
     part(hand, SPHERE, look.skin, [-s * .012, -.028, .026], { s: [.013, .028, .014], r: [.5, 0, s * .35], outline: false });
     return g;
   });
-  const head = bone(body, 0, look.egg ? 1.7 : 1.63, 0); if (look.egg) head.scale.set(1.28, 1.6, 1.28); else head.scale.setScalar(1.14);
-  part(head, new THREE.SphereGeometry(.165, 28, 20), look.skin, [0, 0, 0], { s: [1, 1.04, 1] });
-  for (const s of [-1, 1]) part(head, SPHERE, look.skin, [s * .162, -.015, -.005], { s: [.025, .042, .032], outline: false });
-  const eyes = [];
+  // Faces. The egg and the android keep their simple masks; everyone else has the structure of a face: a jaw and
+  // chin, a nose with a bridge, lidded almond eyes, brows, and lips.
+  const human = !look.egg && !look.visor, tone = (k, to, a) => { const c = new THREE.Color(look.skin).multiplyScalar(k); if (to) c.lerp(new THREE.Color(to), a); return '#' + c.getHexString(); };
+  const head = bone(body, 0, look.egg ? 1.7 : 1.63, 0); if (look.egg) head.scale.set(1.28, 1.6, 1.28); else head.scale.setScalar(human ? 1.08 : 1.14);
+  part(head, human ? HEAD : new THREE.SphereGeometry(.165, 28, 20), look.skin, [0, 0, 0], { s: human ? [.98, 1.03, 1] : [1, 1.04, 1] });
+  for (const s of [-1, 1]) { part(head, SPHERE, look.skin, [s * .158, -.018, -.006], { s: [.024, .042, .03], outline: false }); if (human) part(head, SPHERE, tone(.7), [s * .164, -.02, .004], { s: [.008, .022, .014], basic: true }); }
+  const eyes = [], brow = look.hair === '#c6a574' ? '#9b7a4c' : '#2b211d', lip = tone(.96, '#b4465a', .48);
   for (const s of [-1, 1]) {
-    const e = bone(head, s * .06, -.012, .149); e.rotation.y = s * .36; eyes.push(e);
-    part(e, SPHERE, '#ffffff', [0, 0, 0], { s: [.031, .041, .012], basic: true });
-    part(e, SPHERE, look.eyes, [0, -.004, .006], { s: [.023, .032, .01], basic: true });
-    part(e, SPHERE, '#1a1210', [0, -.003, .011], { s: [.011, .017, .008], basic: true });
-    part(e, SPHERE, '#ffffff', [-.008 * s, .011, .016], { s: [.0065, .0065, .004], basic: true });
-    part(e, new THREE.BoxGeometry(.068, .012, .012), '#1d1513', [0, .039, .004], { r: [0, 0, -s * .12], basic: true });
-    part(head, new THREE.BoxGeometry(.05, .01, .012), look.hair === '#c6a574' ? '#9b7a4c' : '#2b211d', [s * .062, .072, .152], { r: [0, s * .3, s * .1], basic: true });
-    if (look.blush) part(head, SPHERE, '#f0a093', [s * .096, -.052, .136], { s: [.026, .013, .006], r: [0, s * .55, 0], basic: true });
+    const e = bone(head, s * .058, -.01, .15); e.rotation.y = s * .34; eyes.push(e);
+    if (human) {
+      part(e, SPHERE, '#fdfaf5', [0, 0, 0], { s: [.03, .0225, .011], basic: true });
+      part(e, SPHERE, look.eyes, [0, -.001, .006], { s: [.0175, .0195, .0095], basic: true });
+      part(e, SPHERE, '#1a1210', [0, -.001, .011], { s: [.0085, .0105, .008], basic: true });
+      part(e, SPHERE, '#ffffff', [-.006 * s, .007, .016], { s: [.005, .005, .004], basic: true });
+      part(e, new THREE.BoxGeometry(.062, .0058, .012), '#1d1513', [0, .0238, .006], { r: [0, 0, -s * .05], basic: true });      // upper lash line
+      part(e, new THREE.BoxGeometry(.013, .0052, .012), '#1d1513', [s * .033, .0262, .003], { r: [0, 0, s * .5], basic: true }); // its outer flick
+      part(e, new THREE.BoxGeometry(.046, .003, .01), tone(.6), [0, -.0218, .005], { r: [0, 0, s * .06], basic: true });        // lower lid
+      part(e, new THREE.BoxGeometry(.044, .0026, .01), tone(.76), [0, .0335, .003], { r: [0, 0, -s * .05], basic: true }); // lid crease
+      part(head, SPHERE, brow, [s * .061, .057, .149], { s: [.031, .0046, .006], r: [0, s * .34, -s * .06], basic: true });
+    } else {
+      part(e, SPHERE, '#ffffff', [0, 0, 0], { s: [.031, .041, .012], basic: true });
+      part(e, SPHERE, look.eyes, [0, -.004, .006], { s: [.023, .032, .01], basic: true });
+      part(e, SPHERE, '#1a1210', [0, -.003, .011], { s: [.011, .017, .008], basic: true });
+      part(e, SPHERE, '#ffffff', [-.008 * s, .011, .016], { s: [.0065, .0065, .004], basic: true });
+      part(e, new THREE.BoxGeometry(.068, .012, .012), '#1d1513', [0, .039, .004], { r: [0, 0, -s * .12], basic: true });
+      part(head, new THREE.BoxGeometry(.05, .01, .012), brow, [s * .062, .072, .152], { r: [0, s * .3, s * .1], basic: true });
+    }
+    if (look.blush) part(head, SPHERE, '#f0a093', [s * .094, -.05, .132], { s: [.024, .012, .006], r: [0, s * .55, 0], basic: true });
   }
-  const mouth = bone(head, 0, -.084, .158);
-  part(mouth, SPHERE, '#8a4a42', [0, 0, 0], { s: [.022, .008, .008], basic: true });
+  if (human) {
+    part(head, SPHERE, look.skin, [0, -.03, .165], { s: [.0092, .035, .016], r: [-.38, 0, 0], outline: false }); // bridge of the nose
+    part(head, SPHERE, look.skin, [0, -.057, .181], { s: [.0125, .0105, .014], outline: false });               // its tip
+    for (const s of [-1, 1]) part(head, SPHERE, look.skin, [s * .0115, -.0615, .169], { s: [.0078, .0062, .0092], outline: false });
+    for (const s of [-1, 1]) part(head, SPHERE, tone(.5), [s * .0066, -.0662, .178], { s: [.003, .0019, .0026], basic: true });
+  }
+  const mouth = bone(head, 0, human ? -.1 : -.084, human ? .148 : .158);
+  if (human) {
+    part(mouth, SPHERE, lip, [0, .0052, 0], { s: [.025, .0062, .008], basic: true });   // upper lip
+    part(mouth, SPHERE, lip, [0, -.006, .001], { s: [.021, .0078, .0085], basic: true }); // lower lip
+    part(mouth, new THREE.BoxGeometry(.04, .0026, .006), tone(.42, '#5a1f2a', .4), [0, .0004, .006], { basic: true });
+  } else part(mouth, SPHERE, '#8a4a42', [0, 0, 0], { s: [.022, .008, .008], basic: true });
   if (look.visor) part(head, new THREE.BoxGeometry(.21, .048, .03), look.visor, [0, -.008, .158], { basic: true });
   if (look.glasses === 'rimless') {
     // Frameless glasses: clear lenses with no rim, held by a fine wire bridge and temples that reach the ears.
     for (const s of [-1, 1]) {
-      const lens = new THREE.Mesh(LENS_SHAPE, LENS); lens.position.set(s * .062, -.012, .18); lens.rotation.y = s * .22; lens.renderOrder = 2; head.add(lens);
-      const glint = new THREE.Mesh(GLINT_SHAPE, GLINT); glint.position.set(-.02, .022, .001); glint.rotation.z = -.7; glint.renderOrder = 3; lens.add(glint);
-      part(head, new THREE.BoxGeometry(.004, .005, .046), WIRE, [s * .1245, -.008, .1515], { r: [0, Math.atan2(s * .031, -.033), 0], basic: true });
-      part(head, new THREE.BoxGeometry(.004, .005, .145), WIRE, [s * .158, -.006, .065], { r: [0, Math.atan2(s * .036, -.14), 0], basic: true });
+      const lens = new THREE.Mesh(LENS_SHAPE, LENS); lens.position.set(s * .06, -.011, .18); lens.rotation.y = s * .22; lens.renderOrder = 2; head.add(lens);
+      const glint = new THREE.Mesh(GLINT_SHAPE, GLINT); glint.position.set(-.02, .014, .001); glint.rotation.z = -.7; glint.renderOrder = 3; lens.add(glint);
+      part(head, new THREE.BoxGeometry(.004, .005, .053), WIRE, [s * .121, -.007, .153], { r: [0, Math.atan2(s * .038, -.0356), 0], basic: true });
+      part(head, new THREE.BoxGeometry(.004, .005, .145), WIRE, [s * .158, -.007, .065], { r: [0, Math.atan2(s * .036, -.14), 0], basic: true });
     }
     part(head, new THREE.BoxGeometry(.034, .004, .004), WIRE, [0, -.002, .19], { basic: true });
   } else if (look.glasses) { for (const s of [-1, 1]) part(head, new THREE.TorusGeometry(.034, .006, 6, 18), '#1e2420', [s * .062, -.012, .168], { basic: true }); part(head, new THREE.BoxGeometry(.04, .006, .006), '#1e2420', [0, -.006, .172], { basic: true }); }
@@ -791,8 +828,8 @@ function makeCharacter(look) {
     part(trunk, new THREE.BoxGeometry(.15, .13, .07), '#8a5a38', [.205, .8, .07], { r: [0, -.35, 0] });
     part(trunk, new THREE.BoxGeometry(.152, .06, .074), '#6e4529', [.205, .845, .073], { r: [0, -.35, 0], outline: false });
     part(trunk, SPHERE, '#f0c565', [.222, .82, .115], { s: [.014, .014, .01], outline: false });
-    part(skirt || trunk, new THREE.TorusGeometry(.25, .012, 6, 34).rotateX(Math.PI / 2), '#d5b76e', [0, skirt ? -.38 : .5, 0], { outline: false });
-    for (const g of ankles) part(g, new THREE.TorusGeometry(.078, .013, 6, 18).rotateX(Math.PI / 2), '#d5b76e', [0, .14, .01], { outline: false });
+    if (skirt) part(skirt, new THREE.TorusGeometry(.25, .012, 6, 34).rotateX(Math.PI / 2), '#d5b76e', [0, -.38, 0], { outline: false });
+    for (const g of ankles) part(g, new THREE.TorusGeometry(.056, .011, 6, 18).rotateX(Math.PI / 2), '#d5b76e', [0, .1, -.002], { outline: false });
   }
   let cloak = null, cloakMesh = null;
   if (look.cloak || look.cape) {
@@ -843,7 +880,7 @@ function makeCharacter(look) {
     root.add(mesh); mesh.bind(skeleton);
   }
   root.scale.setScalar(1.18);
-  return { root, body, legs, knees, ankles, arms, elbows, hands, skirt, head, eyes, mouth, cloak, cloakMesh, staff, orb, phase: Math.random() * 6, yaw: 0, wave: 0, give: 0, blinkT: 1 + Math.random() * 3, expr: 'normal' };
+  return { root, body, legs, knees, ankles, arms, elbows, hands, skirt, head, eyes, mouth, lips: human, cloak, cloakMesh, staff, orb, phase: Math.random() * 6, yaw: 0, wave: 0, give: 0, blinkT: 1 + Math.random() * 3, expr: 'normal' };
 }
 function hair(head, look, part) {
   const c = look.hair, style = look.hairStyle;
@@ -870,26 +907,40 @@ function hair(head, look, part) {
   if (look.beard) { part(head, SPHERE, c, [0, -.12, .085], { s: [.115, .085, .075] }); part(head, SPHERE, c, [0, -.07, .155], { s: [.05, .012, .015], outline: false }); }
 }
 function animateCharacter(ch, speed, dt, t, idleSeed = 0, movement = null) {
-  const s = clamp(speed / 5.5, 0, 1), still = reduceMotion.matches ? .3 : 1;
+  const s = clamp(speed / (movement ? MOTOR.walk : 5.5), 0, 1), still = reduceMotion.matches ? .3 : 1;
   const runTarget = movement ? clamp((speed - MOTOR.walk + .2) / (MOTOR.run - MOTOR.walk), 0, 1) : 0;
   ch.runBlend = (ch.runBlend || 0) + (runTarget - (ch.runBlend || 0)) * (1 - Math.exp(-dt * 10));
   const running = ch.runBlend;
-  ch.phase += speed * dt * Math.PI * 2 / (1.8 + running * .5); // cadence follows distance, so feet stop when movement stops
-  const swing = Math.sin(ch.phase) * (.75 + .3 * running) * s;
-  ch.legs[0].rotation.x = swing; ch.legs[1].rotation.x = -swing;
-  ch.knees.forEach((k, i) => { k.rotation.x = -Math.max(0, Math.sin(ch.phase + i * Math.PI + .55)) * (.85 + .45 * running) * s; });
+  ch.phase += speed * dt * Math.PI * 2 / (1.85 + running * 1.15); // cadence follows distance, so feet stop when movement stops
+  // A stride, per leg. The hip swings further forward than back; the knee folds (shin backwards, as a knee does)
+  // while that leg comes through, with a little give as the heel lands; the ankle keeps the sole near level and
+  // pushes off the toes at the end of the stride.
+  const reach = (.62 + .3 * running) * s, drive = (.45 + .25 * running) * s, fold = (1.02 + .55 * running) * s;
+  const step = ch.legs.map((leg, i) => {
+    const a = ch.phase + i * Math.PI, sw = Math.sin(a), hip = sw >= 0 ? sw * drive : sw * reach;
+    const through = Math.max(0, -Math.cos(a)) ** 1.4, knee = (.1 + .1 * running) * s + fold * through, push = Math.max(0, sw) ** 3 * (.42 + .25 * running) * s;
+    leg.rotation.x = hip; ch.knees[i].rotation.x = knee; ch.ankles[i].rotation.x = -(hip + knee) * .62 + push;
+    return sw;
+  });
+  const swing = step[0];
   const breathe = Math.sin(t * 1.8 + idleSeed) * .012 * still;
-  ch.arms[0].rotation.x = -swing * .7 * (ch.cloak && !ch.wave ? .5 : 1);
-  ch.arms[1].rotation.x = swing * .85;
+  // Arms swing against the legs, from the shoulder, with the elbow giving as the hand comes forward.
+  const armSwing = (.36 + .52 * running) * s;
+  ch.arms[0].rotation.x = -step[0] * armSwing * (ch.cloak && !ch.wave ? .6 : 1);
+  ch.arms[1].rotation.x = -step[1] * armSwing;
   ch.arms[0].rotation.z = -.07 - breathe;
   ch.arms[1].rotation.z = .07 + breathe;
-  ch.elbows.forEach((e, i) => { e.rotation.x = -.12 - .75 * running - Math.max(0, Math.sin(ch.phase + i * Math.PI)) * .25 * s; });
+  ch.elbows.forEach((e, i) => { e.rotation.x = -.1 - .95 * running * s - Math.max(0, step[i]) * (.3 + .25 * running) * s; });
   if (ch.wave > 0) { ch.wave = Math.max(0, ch.wave - dt); const k = smooth(0, .3, Math.min(ch.wave, 1.8 - ch.wave)); ch.arms[1].rotation.z = .07 + k * 2.55; ch.arms[1].rotation.x = Math.sin(t * 11) * .25 * k; }
   if (ch.give > 0) { ch.give = Math.max(0, ch.give - dt); const k = smooth(0, .25, Math.min(ch.give, 1.5 - ch.give)); ch.arms[1].rotation.x = -1.3 * k; ch.arms[1].rotation.z = .07 + .12 * k; }
-  ch.body.position.y = Math.abs(Math.sin(ch.phase)) * .06 * s + breathe * .5;
-  ch.body.rotation.x = (.1 + .14 * running) * s;
-  if (movement) ch.body.rotation.y = Math.sin(ch.phase) * .08 * running;
-  ch.head.rotation.y = Math.sin(t * .4 + idleSeed) * .18 * (1 - s) * still;
+  // The body is highest as it passes over the standing leg and lowest when the legs are spread; it leans into
+  // its pace, turns its hips a little with each stride and shifts its weight from foot to foot. The head stays level.
+  ch.body.position.y = (.02 - Math.abs(Math.sin(ch.phase)) * (.045 + .02 * running)) * s + breathe * .5;
+  ch.body.rotation.x = (.06 + .17 * running) * s;
+  ch.body.rotation.y = Math.sin(ch.phase) * (.05 + .05 * running) * s;
+  ch.body.rotation.z = Math.cos(ch.phase) * .022 * s + Math.sin(t * .5 + idleSeed) * .008 * (1 - s) * still;
+  ch.head.rotation.y = Math.sin(t * .4 + idleSeed) * .18 * (1 - s) * still - ch.body.rotation.y * .8;
+  ch.head.rotation.z = -ch.body.rotation.z * .8;
   if (ch.cloak) ch.cloak.rotation.x = .08 + .32 * s + Math.sin(t * 2.2 + idleSeed) * .03 * still;
   if (movement) {
     ch.airBlend = (ch.airBlend || 0) + ((!movement.grounded ? 1 : 0) - (ch.airBlend || 0)) * (1 - Math.exp(-dt * 20));
@@ -910,12 +961,15 @@ function animateCharacter(ch, speed, dt, t, idleSeed = 0, movement = null) {
       ch.body.position.y += (.128 + .76 * Math.cos(angle) - .86) * weight;
     }
   }
+  if (ch.staff) ch.staff.rotation.x = -(ch.arms[0].rotation.x + ch.elbows[0].rotation.x) * .85;
   // Faces: everyone blinks every few seconds; expressions squint the eyes and shape the mouth.
   ch.blinkT -= dt;
   let lid = 1; if (ch.blinkT < 0) { lid = Math.min(1, Math.abs(ch.blinkT + .07) / .07); if (ch.blinkT < -.14) ch.blinkT = 2 + Math.random() * 3.5; }
   const ex = ch.expr, open = ex === 'closed' ? .1 : ex === 'happy' ? .45 : ex === 'wide' ? 1.15 : 1;
   for (const e of ch.eyes) e.scale.set(1, Math.max(.08, Math.min(lid, 1) * open), 1);
-  if (ex === 'happy') ch.mouth.scale.set(1.5, 3.2, 1.2); else if (ex === 'wide') ch.mouth.scale.set(1.1, 4, 1.3); else if (ex === 'closed') ch.mouth.scale.set(1.15, 1.6, 1); else ch.mouth.scale.set(1, 1, 1);
+  // Lips part rather than swell: a smile widens them, surprise rounds them.
+  if (ch.lips) { if (ex === 'happy') ch.mouth.scale.set(1.38, 1.7, 1.1); else if (ex === 'wide') ch.mouth.scale.set(.82, 2.5, 1.2); else if (ex === 'closed') ch.mouth.scale.set(1.08, 1.12, 1); else ch.mouth.scale.set(1, 1, 1); }
+  else if (ex === 'happy') ch.mouth.scale.set(1.5, 3.2, 1.2); else if (ex === 'wide') ch.mouth.scale.set(1.1, 4, 1.3); else if (ex === 'closed') ch.mouth.scale.set(1.15, 1.6, 1); else ch.mouth.scale.set(1, 1, 1);
 }
 
 // ───────────────────────────── beyond the sea ─────────────────────────────
@@ -3071,12 +3125,14 @@ function start() {
     settleRig(dt);
     if ((pose?.skirt === 1 && w > .1) || (!voyage && !talk.on && motor.grounded)) {
       player.root.updateMatrixWorld(true);
-      let lift = 0;
-      for (const ankle of player.ankles) {
-        const sole = ankle.localToWorld(new THREE.Vector3(0, -.128, .03));
+      // In a pose (sitting, soaking) only keep her out of the ground; on her feet, set her exactly on it.
+      const posed = pose && w > .05 || voyage || talk.on, soles = posed ? SOLE.slice(0, 1) : SOLE;
+      let lift = posed ? 0 : -Infinity;
+      for (const ankle of player.ankles) for (const at of soles) {
+        const sole = ankle.localToWorld(new THREE.Vector3(...at));
         lift = Math.max(lift, groundAt(sole.x, sole.z) + .005 - sole.y);
       }
-      player.body.position.y += lift / player.root.scale.y;
+      player.body.position.y += lift / player.root.scale.y + (posed ? 0 : (player.runBlend || 0) * Math.sin(player.phase) ** 2 * .055 * clamp(speed / MOTOR.run, 0, 1));
     }
     if (act?.id === 'pet') contactPet(dt, t, w);
     if (window.LOCAL_DESIGN_MODE) {
