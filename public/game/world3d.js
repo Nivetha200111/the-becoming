@@ -675,6 +675,38 @@ const HEAD = (() => {
   for (let i = 0; i < p.count; i++) { const y = p.getY(i); if (y >= 0) continue; const k = (-y / .165) ** 1.6; const z = p.getZ(i); p.setXYZ(i, p.getX(i) * (1 - .25 * k), y * 1.07, z > 0 ? z * (1 - .03 * k) + .024 * k : z * (1 - .2 * k)); }
   g.computeVertexNormals(); return g;
 })();
+// Eyelids are the front quarter of a dome: pinned along the top (or bottom) of the eye, with a free edge that
+// travels over it. The lash line is a thin band along that free edge.
+const LID_UP = new THREE.SphereGeometry(1, 16, 5, 0, Math.PI, 0, Math.PI / 2), LID_LOW = new THREE.SphereGeometry(1, 16, 4, 0, Math.PI, Math.PI / 2, Math.PI / 2);
+const LASH_UP = new THREE.SphereGeometry(1, 16, 2, 0, Math.PI, Math.PI / 2 - .34, .34), LASH_LOW = new THREE.SphereGeometry(1, 16, 2, 0, Math.PI, Math.PI / 2, .22);
+// Feelings, as small moves of the face. bi / bo: the inner and outer end of the brows (up is positive); cock: one
+// brow raised; up: the upper lid (1 is shut, below 0 is wide open); low: the lower lid rising, as in a smile;
+// smile and wide: the corners of the mouth; jaw: how far it opens; gx / gy: where the eyes look.
+const FEEL = {
+  normal: {},
+  content: { smile: .45, wide: .15, low: .12, bo: .1 },
+  happy: { smile: 1, wide: .55, low: .36, bi: .3, bo: .4 },
+  joy: { smile: 1, wide: .65, jaw: .62, low: 1, up: .5, bi: .45, bo: .55 },
+  love: { smile: .85, wide: .2, low: .65, up: .22, bi: .55, bo: .2 },
+  closed: { up: 1, low: .25, smile: .35, bi: .15 },
+  wide: { up: -.3, bi: .95, bo: .85, jaw: .42, wide: -.7 },
+  wonder: { up: -.22, bi: .6, bo: .65, jaw: .2, smile: .35, gy: .25 },
+  curious: { cock: 1, bi: .15, bo: .3, up: -.1, smile: .22, wide: -.15 },
+  focus: { bi: -.7, bo: .12, up: .2, low: .3, wide: -.2, gy: -.55 },
+  calm: { up: .3, low: .1, smile: .28, gy: -.85, bi: .1 },
+  serene: { up: .24, low: .12, smile: .32, bi: .12 },
+  determined: { bi: -.9, bo: .3, low: .28, smile: .12, wide: .25 },
+  effort: { bi: -1, bo: .15, up: .28, low: .65, wide: .75, jaw: .3, smile: -.12 },
+  run: { smile: .5, wide: .2, jaw: .28, bi: .2, bo: .3, low: .2 },
+  worried: { bi: .85, bo: -.15, smile: -.4, wide: .15, jaw: .1, up: -.08 },
+  sad: { bi: .9, bo: -.35, smile: -.85, up: .26, gy: -.45 },
+  sleepy: { up: .58, bi: .2, bo: -.2, smile: .08, gy: -.2 },
+  yawn: { up: .9, low: .3, jaw: 1, wide: -.35, bi: .5, bo: .1 },
+  smug: { up: .28, bi: -.25, cock: .7, smile: .3, wide: .1 },
+};
+const FEEL_KEYS = ['bi', 'bo', 'cock', 'up', 'low', 'smile', 'wide', 'jaw', 'gx', 'gy'];
+// Guides smile when she comes near; a few wear their temper the rest of the time.
+const BOT_MOOD = { goggins: 'determined', gilfoyle: 'smug', dexter: 'curious', beth: 'content', jane: 'content' };
 // Her own figure: a narrower waist and fuller hips than the shared torso.
 const TORSO_F = new THREE.LatheGeometry([[.001, .8], [.115, .815], [.152, .865], [.146, .93], [.122, 1.0], [.118, 1.05], [.134, 1.14], [.148, 1.24], [.15, 1.31], [.128, 1.37], [.082, 1.41], [.056, 1.44], [.001, 1.45]].map(([x, y]) => new THREE.Vector2(x, y)), 22);
 // A torso turned from a silhouette: hips, a waist, a ribcage and shoulders that slope into the neck.
@@ -712,7 +744,8 @@ function makeCharacter(look) {
   // Parts are modelled on bones, then baked into skinned meshes below.
   const part = (parent, geo, hex, p, o = {}) => {
     const m = new THREE.Mesh(geo); m.position.set(...p); if (o.r) m.rotation.set(...o.r); if (o.s) m.scale.set(...o.s); parent.add(m);
-    parts.push({ m, hex, face: !!o.basic, outline: !o.basic && !o.double && o.outline !== false });
+    // `blend` lets a part bend: it maps a vertex (in the part's own shape) to [bone, weight] pairs; the rest stays on the part's bone.
+    parts.push({ m, hex, face: !!o.basic, outline: !o.basic && !o.double && o.outline !== false, blend: o.blend });
     return m;
   };
   const bone = (parent, x, y, z) => { const b = new THREE.Bone(); b.position.set(x, y, z); parent.add(b); return b; };
@@ -759,34 +792,48 @@ function makeCharacter(look) {
     part(hand, SPHERE, look.skin, [-s * .012, -.028, .026], { s: [.013, .028, .014], r: [.5, 0, s * .35], outline: false });
     return g;
   });
-  // Faces. The egg and the android keep their simple masks; everyone else has the structure of a face: a jaw and
-  // chin, a nose with a bridge, lidded almond eyes, brows, and lips.
-  const human = !look.egg && !look.visor, tone = (k, to, a) => { const c = new THREE.Color(look.skin).multiplyScalar(k); if (to) c.lerp(new THREE.Color(to), a); return '#' + c.getHexString(); };
+  // Faces. The egg and the android keep their simple masks; everyone else has the structure of a face on a small rig
+  // of its own: brows that lift at either end, lids that travel over the eye, eyes that look about, a jaw, and lips
+  // pinned at the corners of the mouth, so they curve into a smile or a frown instead of swelling.
+  const human = !look.egg && !look.visor, shade = (hex, k, to, a) => { const c = new THREE.Color(hex).multiplyScalar(k); if (to) c.lerp(new THREE.Color(to), a); return '#' + c.getHexString(); }, tone = (k, to, a) => shade(look.skin, k, to, a);
   const head = bone(body, 0, look.egg ? 1.7 : 1.63, 0); if (look.egg) head.scale.set(1.28, 1.6, 1.28); else head.scale.setScalar(human ? 1.08 : 1.14);
   part(head, human ? HEAD : new THREE.SphereGeometry(.165, 28, 20), look.skin, [0, 0, 0], { s: human ? [.98, 1.03, 1] : [1, 1.04, 1] });
   for (const s of [-1, 1]) { part(head, SPHERE, look.skin, [s * .158, -.018, -.006], { s: [.024, .042, .03], outline: false }); if (human) part(head, SPHERE, tone(.7), [s * .164, -.02, .004], { s: [.008, .022, .014], basic: true }); }
-  const eyes = [], brow = look.hair === '#c6a574' ? '#9b7a4c' : '#2b211d', lip = tone(.96, '#b4465a', .48);
+  const eyes = [], brow = look.hair === '#c6a574' ? '#9b7a4c' : '#2b211d', lip = tone(.96, '#b4465a', .48), LASH = '#1d1513';
+  const rig = human ? { brows: [], lids: [], gaze: [], corners: [-1, 1].map(s => bone(head, s * .0245, -.1, .1435)), jaw: bone(head, 0, -.1, .148) } : null;
   for (const s of [-1, 1]) {
     const e = bone(head, s * .058, -.01, .15); e.rotation.y = s * .34; eyes.push(e);
     if (human) {
-      part(e, SPHERE, '#fdfaf5', [0, 0, 0], { s: [.03, .0225, .011], basic: true });
-      part(e, SPHERE, look.eyes, [0, -.001, .006], { s: [.0175, .0195, .0095], basic: true });
-      part(e, SPHERE, '#1a1210', [0, -.001, .011], { s: [.0085, .0105, .008], basic: true });
-      part(e, SPHERE, '#ffffff', [-.006 * s, .007, .016], { s: [.005, .005, .004], basic: true });
-      part(e, new THREE.BoxGeometry(.062, .0058, .012), '#1d1513', [0, .0238, .006], { r: [0, 0, -s * .05], basic: true });      // upper lash line
-      part(e, new THREE.BoxGeometry(.013, .0052, .012), '#1d1513', [s * .033, .0262, .003], { r: [0, 0, s * .5], basic: true }); // its outer flick
-      part(e, new THREE.BoxGeometry(.046, .003, .01), tone(.6), [0, -.0218, .005], { r: [0, 0, s * .06], basic: true });        // lower lid
-      part(e, new THREE.BoxGeometry(.044, .0026, .01), tone(.76), [0, .0335, .003], { r: [0, 0, -s * .05], basic: true }); // lid crease
-      part(head, SPHERE, brow, [s * .061, .057, .149], { s: [.031, .0046, .006], r: [0, s * .34, -s * .06], basic: true });
+      const gz = bone(e, 0, 0, 0), lu = bone(e, 0, .0203, 0), ll = bone(e, 0, -.0225, 0), bi = bone(head, s * .036, .057, .152), bo = bone(head, s * .088, .055, .14);
+      rig.gaze.push(gz); rig.lids.push([lu, ll]); rig.brows.push([bi, bo]);
+      part(e, SPHERE, '#fdfaf5', [0, .002, 0], { s: [.03, .0245, .008], basic: true });
+      // The iris has a darker rim and a lighter lower half, so the eye has depth; both catch the light from the same side.
+      part(gz, SPHERE, shade(look.eyes, .5), [0, -.001, .004], { s: [.0182, .0202, .0055], basic: true });
+      part(gz, SPHERE, look.eyes, [0, -.001, .005], { s: [.0158, .0178, .0055], basic: true });
+      part(gz, SPHERE, shade(look.eyes, 1, '#ffffff', .3), [0, -.0078, .0072], { s: [.0104, .0072, .004], basic: true });
+      part(gz, SPHERE, '#1a1210', [0, -.001, .008], { s: [.0076, .0092, .004], basic: true });
+      part(gz, SPHERE, '#ffffff', [-.0058, .0068, .0102], { s: [.0048, .0048, .003], basic: true });
+      part(gz, SPHERE, '#ffffff', [.0052, -.0058, .0102], { s: [.0024, .0024, .003], basic: true });
+      // Lids: skin pinned to the socket, stretched by the bone on its free edge. The lash line rides that edge.
+      part(e, LID_UP, tone(.93), [0, .0203, 0], { s: [.0335, .0097, .017], outline: false, blend: (x, y) => [[lu, 1 - y]] });
+      part(lu, LASH_UP, LASH, [0, 0, 0], { s: [.0348, .0185, .0182], basic: true });
+      part(lu, new THREE.BoxGeometry(.012, .005, .004), LASH, [s * .0335, .0035, .002], { r: [0, 0, s * .5], basic: true });
+      if (look.figure === 'f') for (const [x, y, z, r] of [[.027, .0072, .0118, .9], [.0185, .0084, .0156, 1.15]]) part(lu, new THREE.BoxGeometry(.0085, .0032, .003), LASH, [s * x, y, z], { r: [0, 0, s * r], basic: true });
+      part(e, LID_LOW, tone(.96), [0, -.0225, 0], { s: [.032, .0075, .0122], outline: false, blend: (x, y) => [[ll, 1 + y]] });
+      part(ll, LASH_LOW, tone(.6), [0, 0, 0], { s: [.0325, .011, .0126], basic: true });
+      // Brows are fuller at the nose and taper to the temple; each end has its own bone.
+      part(head, SPHERE, brow, [s * .061, .057, .149], { s: [.031, .0046, .006], r: [0, s * .34, -s * .06], basic: true, blend: x => { const inner = clamp(.5 - s * x * .5, 0, 1); return [[bi, inner], [bo, 1 - inner]]; } });
+      part(bi, SPHERE, brow, [s * .011, -.0002, -.0005], { s: [.0155, .0056, .006], r: [0, s * .34, -s * .06], basic: true });
     } else {
       part(e, SPHERE, '#ffffff', [0, 0, 0], { s: [.031, .041, .012], basic: true });
       part(e, SPHERE, look.eyes, [0, -.004, .006], { s: [.023, .032, .01], basic: true });
       part(e, SPHERE, '#1a1210', [0, -.003, .011], { s: [.011, .017, .008], basic: true });
       part(e, SPHERE, '#ffffff', [-.008 * s, .011, .016], { s: [.0065, .0065, .004], basic: true });
-      part(e, new THREE.BoxGeometry(.068, .012, .012), '#1d1513', [0, .039, .004], { r: [0, 0, -s * .12], basic: true });
+      part(e, new THREE.BoxGeometry(.068, .012, .012), LASH, [0, .039, .004], { r: [0, 0, -s * .12], basic: true });
       part(head, new THREE.BoxGeometry(.05, .01, .012), brow, [s * .062, .072, .152], { r: [0, s * .3, s * .1], basic: true });
     }
-    if (look.blush) part(head, SPHERE, '#f0a093', [s * .094, -.05, .132], { s: [.024, .012, .006], r: [0, s * .55, 0], basic: true });
+    // Cheeks lift a little with a smile.
+    if (look.blush) part(head, SPHERE, '#f0a093', [s * .094, -.05, .132], { s: [.024, .012, .006], r: [0, s * .55, 0], basic: true, blend: human ? () => [[rig.corners[s < 0 ? 0 : 1], .4]] : null });
   }
   if (human) {
     part(head, SPHERE, look.skin, [0, -.03, .165], { s: [.0092, .035, .016], r: [-.38, 0, 0], outline: false }); // bridge of the nose
@@ -796,9 +843,17 @@ function makeCharacter(look) {
   }
   const mouth = bone(head, 0, human ? -.1 : -.084, human ? .148 : .158);
   if (human) {
-    part(mouth, SPHERE, lip, [0, .0052, 0], { s: [.025, .0062, .008], basic: true });   // upper lip
-    part(mouth, SPHERE, lip, [0, -.006, .001], { s: [.021, .0078, .0085], basic: true }); // lower lip
-    part(mouth, new THREE.BoxGeometry(.04, .0026, .006), tone(.42, '#5a1f2a', .4), [0, .0004, .006], { basic: true });
+    // The upper lip hangs from the face and the lower lip from the jaw; both are pinned at the corners. Behind
+    // them are teeth, a tongue and the dark of the mouth, which only show when the jaw drops.
+    const jaw = rig.jaw, pin = half => x => [[rig.corners[x < 0 ? 0 : 1], smooth(.007, .024, Math.abs(x) * half)]];
+    part(mouth, SPHERE, '#3d171c', [0, -.0004, -.002], { s: [.0215, .0016, .003], basic: true, blend: (x, y) => { const c = smooth(.007, .024, Math.abs(x) * .0215); return [[rig.corners[x < 0 ? 0 : 1], c], [jaw, y < -.01 ? 1 - c : 0]]; } });
+    part(jaw, SPHERE, '#c9606a', [0, .0002, 0], { s: [.0105, .0042, .003], basic: true });
+    part(mouth, SPHERE, '#f8f2e8', [0, -.0042, .003], { s: [.0152, .0048, .003], basic: true });
+    part(mouth, SPHERE, shade(lip, .9), [0, .0052, .002], { s: [.025, .0062, .008], basic: true, blend: pin(.025) });
+    for (const s of [-1, 1]) part(mouth, SPHERE, shade(lip, .9), [s * .0066, .0096, .0025], { s: [.0084, .0038, .007], basic: true }); // the bow of the upper lip
+    part(jaw, SPHERE, lip, [0, -.006, .003], { s: [.021, .0078, .0085], basic: true, blend: pin(.021) });
+    if (look.figure === 'f') part(jaw, SPHERE, shade(lip, 1, '#ffffff', .16), [0, -.0048, .0102], { s: [.0066, .0017, .002], basic: true });
+    part(mouth, SPHERE, tone(.42, '#5a1f2a', .4), [0, .0003, .0088], { s: [.0212, .0011, .002], basic: true, blend: pin(.0212) });
   } else part(mouth, SPHERE, '#8a4a42', [0, 0, 0], { s: [.022, .008, .008], basic: true });
   if (look.visor) part(head, new THREE.BoxGeometry(.21, .048, .03), look.visor, [0, -.008, .158], { basic: true });
   if (look.glasses === 'rimless') {
@@ -863,11 +918,18 @@ function makeCharacter(look) {
     let owner = p.m.parent; while (!owner.isBone) owner = owner.parent;
     const g = p.m.geometry.index ? p.m.geometry.toNonIndexed() : p.m.geometry.clone(), n = g.attributes.position.count;
     for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+    const shape = p.blend && g.attributes.position.array.slice();
     g.applyMatrix4(p.m.matrixWorld);
     col.set(p.hex);
     g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(n * 3).map((_, i) => [col.r, col.g, col.b][i % 3]), 3));
-    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(new Uint16Array(n * 4).map((_, i) => i % 4 ? 0 : bones.indexOf(owner)), 4));
-    g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(new Float32Array(n * 4).map((_, i) => i % 4 ? 0 : 1), 4));
+    const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), own = bones.indexOf(owner);
+    for (let i = 0; i < n; i++) {
+      let rest = 1;
+      if (shape) p.blend(shape[i * 3], shape[i * 3 + 1], shape[i * 3 + 2]).slice(0, 3).forEach(([b, w], k) => { w = clamp(w, 0, rest); si[i * 4 + k + 1] = bones.indexOf(b); sw[i * 4 + k + 1] = w; rest -= w; });
+      si[i * 4] = own; sw[i * 4] = Math.max(0, rest);
+    }
+    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
+    g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
     buckets[p.face ? 'face' : 'toon'].push(g);
     if (p.outline) buckets.outline.push(g);
     p.m.removeFromParent();
@@ -880,7 +942,7 @@ function makeCharacter(look) {
     root.add(mesh); mesh.bind(skeleton);
   }
   root.scale.setScalar(1.18);
-  return { root, body, legs, knees, ankles, arms, elbows, hands, skirt, head, eyes, mouth, lips: human, cloak, cloakMesh, staff, orb, phase: Math.random() * 6, yaw: 0, wave: 0, give: 0, blinkT: 1 + Math.random() * 3, expr: 'normal' };
+  return { root, body, legs, knees, ankles, arms, elbows, hands, skirt, head, eyes, mouth, rig, feel: Object.fromEntries(FEEL_KEYS.map(k => [k, 0])), glance: { x: 0, y: 0, tx: 0, ty: 0, t: 1 + Math.random() * 3 }, speak: 0, cloak, cloakMesh, staff, orb, phase: Math.random() * 6, yaw: 0, wave: 0, give: 0, blinkT: 1 + Math.random() * 3, expr: 'normal' };
 }
 function hair(head, look, part) {
   const c = look.hair, style = look.hairStyle;
@@ -962,14 +1024,36 @@ function animateCharacter(ch, speed, dt, t, idleSeed = 0, movement = null) {
     }
   }
   if (ch.staff) ch.staff.rotation.x = -(ch.arms[0].rotation.x + ch.elbows[0].rotation.x) * .85;
-  // Faces: everyone blinks every few seconds; expressions squint the eyes and shape the mouth.
+  // Faces: everyone blinks every few seconds, and wears what they feel.
   ch.blinkT -= dt;
   let lid = 1; if (ch.blinkT < 0) { lid = Math.min(1, Math.abs(ch.blinkT + .07) / .07); if (ch.blinkT < -.14) ch.blinkT = 2 + Math.random() * 3.5; }
-  const ex = ch.expr, open = ex === 'closed' ? .1 : ex === 'happy' ? .45 : ex === 'wide' ? 1.15 : 1;
+  if (ch.rig) { faceFrame(ch, dt, t, lid, speed); return; }
+  const ex = ch.expr, open = FEEL[ex]?.up > .8 ? .1 : ex === 'happy' || ex === 'joy' || ex === 'love' ? .45 : ex === 'wide' ? 1.15 : 1;
   for (const e of ch.eyes) e.scale.set(1, Math.max(.08, Math.min(lid, 1) * open), 1);
-  // Lips part rather than swell: a smile widens them, surprise rounds them.
-  if (ch.lips) { if (ex === 'happy') ch.mouth.scale.set(1.38, 1.7, 1.1); else if (ex === 'wide') ch.mouth.scale.set(.82, 2.5, 1.2); else if (ex === 'closed') ch.mouth.scale.set(1.08, 1.12, 1); else ch.mouth.scale.set(1, 1, 1); }
-  else if (ex === 'happy') ch.mouth.scale.set(1.5, 3.2, 1.2); else if (ex === 'wide') ch.mouth.scale.set(1.1, 4, 1.3); else if (ex === 'closed') ch.mouth.scale.set(1.15, 1.6, 1); else ch.mouth.scale.set(1, 1, 1);
+  if (open < 1 && open > .2) ch.mouth.scale.set(1.5, 3.2, 1.2); else if (ex === 'wide' || ex === 'yawn') ch.mouth.scale.set(1.1, 4, 1.3); else if (open <= .2) ch.mouth.scale.set(1.15, 1.6, 1); else ch.mouth.scale.set(1, 1, 1);
+}
+// A face moves towards what its owner feels rather than snapping to it. Blinks, speech and glances play on top.
+function faceFrame(ch, dt, t, lid, speed) {
+  const R = ch.rig, f = ch.feel, want = FEEL[ch.expr] || FEEL.normal, ease = 1 - Math.exp(-dt * 9);
+  for (const k of FEEL_KEYS) f[k] += ((want[k] || 0) - f[k]) * ease;
+  const rest = b => b.userData.rest || (b.userData.rest = b.position.clone());
+  // Eyes wander when nothing holds them: a glance to one side, then back.
+  const g = ch.glance; g.t -= dt;
+  if (g.t < 0) { const away = !reduceMotion.matches && speed < .5 && !want.gy && Math.random() < .45; g.tx = away ? (Math.random() * 2 - 1) * .9 : 0; g.ty = away ? (Math.random() * 2 - 1) * .35 : 0; g.t = away ? .5 + Math.random() * 1.1 : 1.2 + Math.random() * 3; }
+  if (speed > .5) g.tx = g.ty = 0;
+  const dart = 1 - Math.exp(-dt * 22); g.x += (g.tx - g.x) * dart; g.y += (g.ty - g.y) * dart;
+  for (const gz of R.gaze) { const r = rest(gz); gz.position.set(r.x + clamp(f.gx + g.x, -1, 1) * .0062, r.y + clamp(f.gy + g.y, -1, 1) * .0048, r.z); }
+  // Lids: the upper one rests a little over the iris and travels down to shut; the lower one rises with a smile.
+  const shut = clamp(Math.max(f.up + .09, 1 - lid), -.14, 1), low = clamp(f.low + (1 - lid) * .2, 0, 1);
+  for (const [lu, ll] of R.lids) { const a = rest(lu), b = rest(ll); lu.position.y = a.y - shut * .0413; ll.position.set(b.x, b.y + low * .016, b.z - (1 - low) * .005); }
+  R.brows.forEach(([bi, bo], i) => {
+    const s = i ? 1 : -1, a = rest(bi), b = rest(bo), inner = f.bi + (i ? f.cock * .7 : -f.cock * .25), outer = f.bo + (i ? f.cock : -f.cock * .2);
+    bi.position.set(a.x - s * Math.max(0, -inner) * .004, a.y + inner * .0105 - shut * .0015, a.z); bo.position.y = b.y + outer * .0105;
+  });
+  // Speech opens and closes the jaw in uneven beats, the way talking does.
+  let jaw = f.jaw; if (ch.speak > 0) { ch.speak -= dt; jaw = Math.max(jaw, .16 + .3 * Math.abs(Math.sin(t * 13.5) * Math.sin(t * 4.3 + 1))); }
+  R.jaw.position.y = rest(R.jaw).y - jaw * .02;
+  R.corners.forEach((c, i) => { const s = i ? 1 : -1, r = rest(c); c.position.set(r.x + s * f.wide * .005, r.y + f.smile * (f.smile > 0 ? .0074 : .0058) - jaw * .004, r.z - Math.abs(f.smile) * .0016); });
 }
 
 // ───────────────────────────── beyond the sea ─────────────────────────────
@@ -2311,6 +2395,7 @@ function start() {
       bubble.style.setProperty('--who', sp.color || '#d5b76e');
       bubble.innerHTML = `<b class="who">${esc(sp.name)}${lv ? ` <em>Lv ${lv}</em>` : ''}</b><p></p>${choices ? `<div class="choices">${choices.map((c, i) => `<button type="button" data-choice="${i}">${esc(c.label)}</button>`).join('')}</div>` : '<span class="more" aria-hidden="true">▸</span>'}`;
       bubble.hidden = false; talk.anchor = sp;
+      const speaker = sp.kind === 'me' ? player : sp.o?.ch; if (speaker) speaker.speak = reduceMotion.matches ? 0 : clamp(.4 + text.length * .03, .6, 2.6);
       const p = bubble.querySelector('p'); p.textContent = text; bubble.classList.add('done');
       let timer = 0, settled = false;
       const finish = v => { if (settled) return; settled = true; clearTimeout(timer); talk.advance = talk.abort = null; resolve(v); };
@@ -2695,29 +2780,29 @@ function start() {
   const hop = (t, f) => Math.abs(Math.sin(t * f)) * .3;
   const ACTS = {
     wave: { dur: 1.9, expr: 'happy', say: 'Waving hello', start: () => { player.wave = 1.8; } },
-    cheer: { dur: 2.4, expr: 'happy', emote: '✦', say: 'Celebrating!', pose: t => ({ by: hop(t, 5.5), a0z: -2.7, a1z: 2.7, a0x: -.25, a1x: -.25, hx: -.25 }) },
-    dance: { loop: true, expr: 'happy', emote: '♪', say: 'Dancing', pose: t => { const b = Math.sin(t * 5); return { bry: Math.sin(t * 1.8) * .7 + ((t % 6) < 1 ? (t % 6) * Math.PI * 2 : 0), by: Math.abs(b) * .08, a0z: -1.3 - .8 * b, a1z: 1.3 - .8 * b, a0x: -.3, a1x: -.3, hz: Math.sin(t * 2.5) * .18, l0x: b * .35, l1x: -b * .35 }; } },
-    sit: { loop: true, say: 'Resting for a while', pose: () => SIT },
+    cheer: { dur: 2.4, expr: 'joy', emote: '✦', say: 'Celebrating!', pose: t => ({ by: hop(t, 5.5), a0z: -2.7, a1z: 2.7, a0x: -.25, a1x: -.25, hx: -.25 }) },
+    dance: { loop: true, expr: 'joy', emote: '♪', say: 'Dancing', pose: t => { const b = Math.sin(t * 5); return { bry: Math.sin(t * 1.8) * .7 + ((t % 6) < 1 ? (t % 6) * Math.PI * 2 : 0), by: Math.abs(b) * .08, a0z: -1.3 - .8 * b, a1z: 1.3 - .8 * b, a0x: -.3, a1x: -.3, hz: Math.sin(t * 2.5) * .18, l0x: b * .35, l1x: -b * .35 }; } },
+    sit: { loop: true, expr: 'content', say: 'Resting for a while', pose: () => SIT },
     stretch: { dur: 2.8, expr: 'closed', say: 'Stretching', pose: t => ({ a0z: -2.85, a1z: 2.85, a0x: -.15, a1x: -.15, bx: -.12, hx: -.3, by: .04 * Math.sin(t * 2) }) },
-    look: { dur: 3.4, say: 'Looking around', pose: t => ({ hy: Math.sin(t * 1.85) * .75, hx: -.06 }) },
-    staff: { dur: 2.6, say: 'Admiring her staff', glow: 4, pose: t => ({ a0x: -2.3 + Math.sin(t * 3) * .15, a0z: -.25, hx: -.35, hy: -.25 }) },
+    look: { dur: 3.4, expr: 'curious', say: 'Looking around', pose: t => ({ hy: Math.sin(t * 1.85) * .75, hx: -.06 }) },
+    staff: { dur: 2.6, expr: 'wonder', say: 'Admiring her staff', glow: 4, pose: t => ({ a0x: -2.3 + Math.sin(t * 3) * .15, a0z: -.25, hx: -.35, hy: -.25 }) },
     hum: { dur: 4.5, expr: 'happy', emote: '♪', say: 'Humming a tune', pose: t => ({ hz: Math.sin(t * 3) * .14, bz: Math.sin(t * 3) * .04 }) },
-    yawn: { dur: 3, expr: 'wide', emote: '~', say: 'Getting sleepy', pose: () => ({ a0z: -2.4, a1z: 2.4, a0x: -.6, a1x: -.6, hx: -.4 }) },
-    twirl: { dur: 1.5, expr: 'happy', emote: '✿', say: 'Showing off her new cloak', pose: t => ({ bry: smooth(0, 1.3, t) * Math.PI * 2, a0z: -1, a1z: 1, cx: .9 }) },
-    pet: { loop: true, expr: 'happy', emote: '♥', say: 'Cuddling Veer', pose: () => ({ ...SIT, bx: petTarget === 'veer' ? .12 : .25, hx: .25 }) },
-    campfire: { loop: true, expr: 'happy', say: 'Warming her hands by the fire', pose: t => ({ ...SIT, a0x: -.95, a1x: -.95, a0z: .12, a1z: -.12, hx: .05 + Math.sin(t * .6) * .03 }) },
-    hammer: { loop: true, say: 'Working the anvil', prop: ['hammer'], anvil: true, pose: t => { const ph = (t * 1.3) % 1, up = ph < .7 ? smooth(0, .7, ph) : 1 - smooth(.7, .8, ph); return { a1x: -.55 - 1.9 * up, a1z: .12, hx: .35, bx: .1 }; } },
-    write: { loop: true, say: 'Writing in her ledger', prop: ['quill', 'ledger'], pose: t => ({ a0x: -1.05, a0z: .5, a1x: -1.1 + Math.sin(t * 9) * .05, a1z: -.28 + Math.sin(t * 3.5) * .07, hx: .42 }) },
-    train: { loop: true, emote: '!', say: 'Training: jumping jacks', pose: t => { const k = (1 - Math.cos(t * 2.6 * Math.PI)) / 2; return { by: k * .2, a0z: -.15 - 2.5 * k, a1z: .15 + 2.5 * k, l0z: -.28 * k, l1z: .28 * k }; } },
-    read: { loop: true, say: 'Reading a chapter', prop: ['book'], pose: t => ({ a0x: -1.05, a1x: -1.05, a0z: .4, a1z: -.4, hx: .4 + Math.sin(t * .5) * .03, hy: Math.sin(t * .9) * .08 }) },
+    yawn: { dur: 3, expr: 'yawn', emote: '~', say: 'Getting sleepy', pose: () => ({ a0z: -2.4, a1z: 2.4, a0x: -.6, a1x: -.6, hx: -.4 }) },
+    twirl: { dur: 1.5, expr: 'joy', emote: '✿', say: 'Showing off her new cloak', pose: t => ({ bry: smooth(0, 1.3, t) * Math.PI * 2, a0z: -1, a1z: 1, cx: .9 }) },
+    pet: { loop: true, expr: 'love', emote: '♥', say: 'Cuddling Veer', pose: () => ({ ...SIT, bx: petTarget === 'veer' ? .12 : .25, hx: .25 }) },
+    campfire: { loop: true, expr: 'content', say: 'Warming her hands by the fire', pose: t => ({ ...SIT, a0x: -.95, a1x: -.95, a0z: .12, a1z: -.12, hx: .05 + Math.sin(t * .6) * .03 }) },
+    hammer: { loop: true, expr: 'effort', say: 'Working the anvil', prop: ['hammer'], anvil: true, pose: t => { const ph = (t * 1.3) % 1, up = ph < .7 ? smooth(0, .7, ph) : 1 - smooth(.7, .8, ph); return { a1x: -.55 - 1.9 * up, a1z: .12, hx: .35, bx: .1 }; } },
+    write: { loop: true, expr: 'focus', say: 'Writing in her ledger', prop: ['quill', 'ledger'], pose: t => ({ a0x: -1.05, a0z: .5, a1x: -1.1 + Math.sin(t * 9) * .05, a1z: -.28 + Math.sin(t * 3.5) * .07, hx: .42 }) },
+    train: { loop: true, expr: 'effort', emote: '!', say: 'Training: jumping jacks', pose: t => { const k = (1 - Math.cos(t * 2.6 * Math.PI)) / 2; return { by: k * .2, a0z: -.15 - 2.5 * k, a1z: .15 + 2.5 * k, l0z: -.28 * k, l1z: .28 * k }; } },
+    read: { loop: true, expr: 'calm', say: 'Reading a chapter', prop: ['book'], pose: t => ({ a0x: -1.05, a1x: -1.05, a0z: .4, a1z: -.4, hx: .4 + Math.sin(t * .5) * .03, hy: Math.sin(t * .9) * .08 }) },
     meditate: { loop: true, expr: 'closed', say: 'Meditating', aura: .8, glow: 2, pose: t => ({ ...SIT, hx: .1 + Math.sin(t * 1.1) * .015 }) },
-    tinker: { loop: true, say: 'Tinkering with a gadget', prop: ['wrench'], pose: t => ({ a0x: -1, a0z: .3, a1x: -1.15 + Math.sin(t * 6) * .12, a1z: -.25, a1y: Math.sin(t * 6) * .4, hx: .42, bx: .12 }) },
-    gaze: { loop: true, say: 'Gazing at the horizon', pose: t => ({ a1x: -2.15, a1z: -.62, hx: -.12, hy: Math.sin(t * .45) * .5 }) },
-    paint: { loop: true, say: 'Painting the view', prop: ['brush'], pose: t => ({ a1x: -1.4 + Math.sin(t * 2.1) * .18, a1z: -.12 + Math.cos(t * 1.7) * .22, hx: .05, hy: Math.sin(t * .35) * .15 }) },
+    tinker: { loop: true, expr: 'focus', say: 'Tinkering with a gadget', prop: ['wrench'], pose: t => ({ a0x: -1, a0z: .3, a1x: -1.15 + Math.sin(t * 6) * .12, a1z: -.25, a1y: Math.sin(t * 6) * .4, hx: .42, bx: .12 }) },
+    gaze: { loop: true, expr: 'wonder', say: 'Gazing at the horizon', pose: t => ({ a1x: -2.15, a1z: -.62, hx: -.12, hy: Math.sin(t * .45) * .5 }) },
+    paint: { loop: true, expr: 'focus', say: 'Painting the view', prop: ['brush'], pose: t => ({ a1x: -1.4 + Math.sin(t * 2.1) * .18, a1z: -.12 + Math.cos(t * 1.7) * .22, hx: .05, hy: Math.sin(t * .35) * .15 }) },
     soak: { loop: true, expr: 'closed', emote: '♨', say: 'Soaking in the hot spring', pose: () => ({ by: -.98, l0x: -1.4, l1x: -1.4, k0x: -1.25, k1x: -1.25, a0x: .3, a1x: .3, a0z: -1.15, a1z: 1.15, hx: -.3, cx: .5 }) },
     pray: { loop: true, expr: 'closed', say: 'Making a wish', aura: 1, pose: () => ({ a0x: -1.18, a1x: -1.18, a0z: .64, a1z: -.64, hx: .32, bx: .08 }) },
-    leetcode: { loop: true, emote: '⌨', say: 'Grinding LeetCode at Kobra Kai', pose: t => ({ by: -.6, bx: .14, l0x: -1.45, l1x: -1.45, k0x: 1.4, k1x: 1.4, a0x: -1.15 + Math.sin(t * 14) * .025, a1x: -1.15 + Math.sin(t * 14 + 1.6) * .025, e0x: -.45, e1x: -.45, a0z: .28, a1z: -.28, hx: .36 + Math.sin(t * .7) * .025 }) },
-    kata: { loop: true, emote: '!', say: 'Training kata with Sensei Kreese', pose: t => { const k = (Math.sin(t * 6) + 1) / 2, kick = (t % 4) > 3.15 ? Math.sin(((t % 4) - 3.15) / .85 * Math.PI) : 0; return { by: -.1, l0z: -.3, l1z: .3, l1x: -1.4 * kick, a0x: -1.55 * k - .35 * (1 - k), a1x: -1.55 * (1 - k) - .35 * k, a0z: .12, a1z: -.12, hx: -.05 }; } },
+    leetcode: { loop: true, expr: 'focus', emote: '⌨', say: 'Grinding LeetCode at Kobra Kai', pose: t => ({ by: -.6, bx: .14, l0x: -1.45, l1x: -1.45, k0x: 1.4, k1x: 1.4, a0x: -1.15 + Math.sin(t * 14) * .025, a1x: -1.15 + Math.sin(t * 14 + 1.6) * .025, e0x: -.45, e1x: -.45, a0z: .28, a1z: -.28, hx: .36 + Math.sin(t * .7) * .025 }) },
+    kata: { loop: true, expr: 'determined', emote: '!', say: 'Training kata with Sensei Kreese', pose: t => { const k = (Math.sin(t * 6) + 1) / 2, kick = (t % 4) > 3.15 ? Math.sin(((t % 4) - 3.15) / .85 * Math.PI) : 0; return { by: -.1, l0z: -.3, l1z: .3, l1x: -1.4 * kick, a0x: -1.55 * k - .35 * (1 - k), a1x: -1.55 * (1 - k) - .35 * k, a0z: .12, a1z: -.12, hx: -.05 }; } },
     phone: { loop: true, expr: 'happy', emote: '♡', say: 'Scrolling her phone in Hush Hollow', prop: ['phone'], pose: t => ({ ...SIT, a1x: -1.6, a1z: -.45, a0x: -.95, a0z: .3, hx: .45 + Math.sin(t * .4) * .04 }) },
   };
   const STAFF_DOWN = new Set(['campfire', 'write', 'train', 'read', 'meditate', 'tinker', 'paint', 'soak', 'pray', 'sit', 'pet', 'dance', 'leetcode', 'kata', 'phone']);
@@ -2984,7 +3069,7 @@ function start() {
     next.body.add(PR.book, PR.ledger);
     next.root.position.copy(previous.root.position); next.root.rotation.copy(previous.root.rotation);
     next.poseMemory = null; next.contactRadius = previous.contactRadius;
-    for (const k of ['yaw', 'phase', 'wave', 'give', 'expr', 'runBlend', 'airBlend', 'landing']) next[k] = previous[k];
+    for (const k of ['yaw', 'phase', 'wave', 'give', 'expr', 'runBlend', 'airBlend', 'landing', 'feel', 'glance', 'speak', 'blinkT']) next[k] = previous[k];
     previous.root.removeFromParent(); player = next; scene.add(player.root); outfitId = id;
     if (player.cloakMesh) player.cloakMesh.material = toonMat(palettes[state.equipped] || palettes.sage);
     wardrobe.querySelectorAll('[data-outfit]').forEach(b => { b.classList.toggle('on', b.dataset.outfit === id); b.setAttribute('aria-pressed', String(b.dataset.outfit === id)); });
@@ -3069,6 +3154,18 @@ function start() {
     if (b.cloak) { L(b.cloak.rotation, 'x', p.cx); L(b.cloak.scale, 'y', p.cy); }
     if (b.skirt && seated) { L(b.skirt.scale, 'y', .45); L(b.skirt.scale, 'x', 1.65); L(b.skirt.scale, 'z', 1.65); }
   }
+  // What shows on her face when she is not in the middle of something: the jump, the run, a villain nearby (braver
+  // with a weapon in hand), a conversation, the late hour, and otherwise how her day is going.
+  const mood = { rest: 'normal', armed: false, at: 0 };
+  function feeling(speed, px, pz) {
+    if (performance.now() > mood.at) { const day = E.day(); mood.at = performance.now() + 2000; mood.armed = !!E.bestWeapon(state, day); mood.rest = state.mode === 'recovery' ? 'serene' : state.entries.some(e => e.date === day) ? 'content' : 'normal'; }
+    if (!motor.grounded) return 'joy';
+    if (talk.on) return talk.anchor?.kind === 'me' ? 'happy' : 'curious';
+    if (foes.some(f => f.state === 'lurking' && f.m.root.visible && Math.hypot(f.m.root.position.x - px, f.m.root.position.z - pz) < 9)) return mood.armed ? 'determined' : 'worried';
+    if (speed > MOTOR.walk + .8) return 'run';
+    if (look.glow > .6 && idle > 20) return 'sleepy';
+    return mood.rest;
+  }
   hooks.pose = (dt, t, speed, px, py, pz) => {
     const moving = speed > .5 || keys.size > 0 || !!travel || !motor.grounded || Math.hypot(window.MovementInput?.x || 0, window.MovementInput?.z || 0) > 0, busy = talk.on || !!voyage || $('#modal').open || screen !== 'world' || !!document.querySelector('.quest-scroll');
     if (moving && act && !voyage) stopAct();
@@ -3100,7 +3197,7 @@ function start() {
     if (act?.spot && w > 0) player.yaw = lerpAngle(player.yaw, act.spot.face, 1 - Math.exp(-dt * 6));
     if (act?.id === 'pet' && act.end < 0) player.yaw = lerpAngle(player.yaw, act.heading, 1 - Math.exp(-dt * 5));
     player.root.rotation.y = player.yaw;
-    player.expr = act && w > .3 ? (act.A.expr || 'normal') : voyage ? 'happy' : 'normal';
+    player.expr = mood.test || (act && w > .3 ? (act.A.expr || 'normal') : voyage ? 'wonder' : feeling(speed, px, pz)); // mood.test: design mode holds one feeling to look at it
     // props and the staff she sets down
     const props = act && w > .25 ? act.A.prop || [] : [];
     const bodyRadius = act?.id === 'pet' ? CUDDLE.body : act && ['sit', 'campfire', 'meditate', 'phone', 'leetcode', 'soak'].includes(act.id) ? 1.1 : .72;
@@ -3141,7 +3238,7 @@ function start() {
       observedPetClearance = Math.min(observedPetClearance, ...pets.filter(p => p.visible).map(p => p.clearance));
       frameEl.dataset.companions = JSON.stringify({ activity: act?.id || 'idle', sailing: !!voyage, minimumClearance: observedPetClearance, pets });
     }
-    for (const n of npcs) { const near = n.realm === realm && Math.hypot(px - n.ch.root.position.x, pz - n.ch.root.position.z) < 7; n.ch.yaw = lerpAngle(n.ch.yaw, near ? Math.atan2(px - n.ch.root.position.x, pz - n.ch.root.position.z) : n.face, 1 - Math.exp(-dt * 3)); n.ch.root.rotation.y = n.ch.yaw; animateCharacter(n.ch, 0, dt, t, n.seed); }
+    for (const n of npcs) { const near = n.realm === realm && Math.hypot(px - n.ch.root.position.x, pz - n.ch.root.position.z) < 7; n.ch.yaw = lerpAngle(n.ch.yaw, near ? Math.atan2(px - n.ch.root.position.x, pz - n.ch.root.position.z) : n.face, 1 - Math.exp(-dt * 3)); n.ch.root.rotation.y = n.ch.yaw; n.ch.expr = near ? 'happy' : 'normal'; animateCharacter(n.ch, 0, dt, t, n.seed); }
     for (const r of realms) if (r.B.frame) r.B.frame(dt, t, r === realm && !voyage ? { u: px - r.R.at[0], v: pz - r.R.at[1], act: act && act.end < 0 ? act.id : null, r: Math.max(.62, (player.contactRadius ?? .72) - .1), pets: [veer, cat].filter(p => p.root.visible).map(p => ({ u: p.root.position.x - r.R.at[0], v: p.root.position.z - r.R.at[1], r: p === veer ? .62 : .42 })) } : null);
     if ((uiTimer -= dt) <= 0) { uiTimer = .3; status(); const s = !voyage && !talk.on ? nearestSpot(7) : null, nearFerry = !voyage && !talk.on && player.root.position.distanceTo(ferry.g.position) < 9; const label2 = s && act?.spot !== s ? `✦ ${s.label}` : nearFerry ? '⛵ Board the sky ferry' : ''; ctxBtn.hidden = !label2; if (label2 && ctxBtn.textContent !== label2) ctxBtn.textContent = label2; }
   };
@@ -3357,6 +3454,7 @@ function start() {
       const bp = o.ch.root.position, near = Math.hypot(px - bp.x, pz - bp.z), want = near < 7 ? Math.atan2(px - bp.x, pz - bp.z) : Math.sin(t * .2 + o.seed) * .4;
       o.ch.yaw = lerpAngle(o.ch.yaw, want, 1 - Math.exp(-dt * 3)); o.ch.root.rotation.y = o.ch.yaw;
       if (near < 3.6 && !o.greeted) { o.greeted = true; o.ch.wave = 1.8; } else if (near > 6) o.greeted = false;
+      o.ch.expr = near < 5 ? 'happy' : BOT_MOOD[o.b.id] || 'normal';
       animateCharacter(o.ch, 0, dt, t, o.seed);
     }
     const hours = applySky(hourOverride ?? istHours());
@@ -3516,7 +3614,7 @@ function start() {
     };
   }
   syncFoes();
-  if (window.LOCAL_DESIGN_MODE) window.world3d = { foes: () => foes, foeDialog, voyage: () => voyage, ferry, THREE, scene, camera, renderer, cam, look, talk, converse, bots, councils, setHour: h => { hourOverride = h; envDirty = true; }, bloom, get player() { return player; }, outfit: () => outfitId, motor, veer, cat, realms, sail, doSpot, doEmote, activity: () => act, currentRealm: () => realm, walkable, nearestWalkable, obstacles: () => obstacles, heightAt, sdfAt, pathDistAt, toW, toL };
+  if (window.LOCAL_DESIGN_MODE) window.world3d = { feel: name => { mood.test = FEEL[name] ? name : null; }, feelings: Object.keys(FEEL), foes: () => foes, foeDialog, voyage: () => voyage, ferry, THREE, scene, camera, renderer, cam, look, talk, converse, bots, councils, setHour: h => { hourOverride = h; envDirty = true; }, bloom, get player() { return player; }, outfit: () => outfitId, motor, veer, cat, realms, sail, doSpot, doEmote, activity: () => act, currentRealm: () => realm, walkable, nearestWalkable, obstacles: () => obstacles, heightAt, sdfAt, pathDistAt, toW, toL };
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
   const draw2d = draw;
   // If the GPU drops the context or a frame throws, hand the map back to the original 2D renderer
