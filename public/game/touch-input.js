@@ -55,6 +55,9 @@
   window.MovementInput = { get x() { return input.x; }, get z() { return input.z; }, get run() { return input.run; },
     takeJump() { const value = pendingJump || jumpPointers.size > 0; pendingJump = false; return value; },
     enableJump() { jump.disabled = false; }, reset };
-  window.addEventListener('blur', reset); window.addEventListener('pagehide', reset); window.addEventListener('resize', reset);
+  window.addEventListener('blur', reset); window.addEventListener('pagehide', reset);
+  // Only a real change of layout (rotating the phone) lets go of the stick. A phone's address bar sliding away
+  // changes the height alone, and used to drop the thumb mid-walk.
+  let lastWidth = window.innerWidth; window.addEventListener('resize', () => { if (window.innerWidth !== lastWidth) { lastWidth = window.innerWidth; reset(); } });
   document.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
 })();

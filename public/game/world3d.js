@@ -11,6 +11,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // ───────────────────────────── helpers ─────────────────────────────
@@ -40,8 +41,8 @@ function fbm(x, y, oct = 4) { let v = 0, a = 0.5, f = 1; for (let i = 0; i < oct
 const touch = matchMedia('(pointer:coarse)').matches, shortSide = Math.min(window.screen.width, window.screen.height);
 const Q = [
   { grass: 26000, flowers: 1100, trees: 60, bushes: 50, grid: [176, 128], shadow: 1024, msaa: 0, pr: 1.5, blob: 1, bloom: false },
-  { grass: 52000, flowers: 2000, trees: 75, bushes: 70, grid: [224, 160], shadow: 2048, msaa: 0, pr: 1.5, blob: 1, bloom: true },
-  { grass: 95000, flowers: 3600, trees: 92, bushes: 95, grid: [288, 208], shadow: 2048, msaa: 2, pr: 1.5, blob: 2, bloom: true },
+  { grass: 52000, flowers: 2000, trees: 75, bushes: 70, grid: [224, 160], shadow: 2048, msaa: 0, pr: 1.75, blob: 1, bloom: true },
+  { grass: 95000, flowers: 3600, trees: 92, bushes: 95, grid: [288, 208], shadow: 2048, msaa: 4, pr: 2, blob: 2, bloom: true },
 ][touch ? (shortSide < 600 ? 0 : 1) : 2];
 
 // Tileable fbm baked once: r = clouds, gb = ripple gradient, a = a second independent fbm. Far cheaper than per-pixel noise.
@@ -2088,6 +2089,9 @@ function start() {
     fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main(){ vec4 c=texture2D(tDiffuse,vUv); float l=dot(c.rgb,vec3(.2126,.7152,.0722)); c.rgb=mix(vec3(l),c.rgb,1.12); float v=smoothstep(.95,.3,length((vUv-.5)*vec2(1.25,1.))); c.rgb*=mix(vec3(.80,.72,.60),vec3(1.),v); gl_FragColor=c; }',
   }));
   composer.addPass(new OutputPass());
+  // Smooth edges on every device. Desktop multisamples the scene; phones and tablets, where that is costly or
+  // unsupported for this buffer, get a light anti-aliasing pass over the finished picture instead.
+  const fxaa = new ShaderPass(FXAAShader); fxaa.enabled = Q.msaa < 4; composer.addPass(fxaa);
 
   // Labels are DOM, so text stays crisp, translatable and screen-reader friendly.
   const layer = document.createElement('div'); layer.className = 'w3-layer'; layer.setAttribute('aria-hidden', 'true'); canvas.after(layer);
@@ -2135,13 +2139,16 @@ function start() {
   // Camera orbit around the avatar.
   const cam = { yaw: 0, pitch: .36, dist: 15.5, target: new THREE.Vector3(), intro: reduceMotion.matches ? 0 : 1 };
   const projV = new THREE.Vector3();
-  let viewW = 1, viewH = 1, pixelRatio = Math.min(window.devicePixelRatio || 1, Q.pr), maxRatio = pixelRatio;
+  let viewW = 1, viewH = 1, pixelRatio = Math.min(window.devicePixelRatio || 1, Q.pr), maxRatio = pixelRatio, sizedAt = '';
   function resize3d() {
     const r = canvas.getBoundingClientRect(); if (!r.width || !r.height) return;
+    // The same size again (a phone's address bar settling, a repeated observer call) must not rebuild every buffer.
+    const size = `${Math.round(r.width)}x${Math.round(r.height)}@${pixelRatio.toFixed(3)}`; if (size === sizedAt) return; sizedAt = size;
     hudAge = 1e9;
     viewW = r.width; viewH = r.height;
     renderer.setPixelRatio(pixelRatio); renderer.setSize(viewW, viewH, false);
     composer.setPixelRatio(pixelRatio); composer.setSize(viewW, viewH);
+    fxaa.material.uniforms.resolution.value.set(1 / (viewW * pixelRatio), 1 / (viewH * pixelRatio));
     camera.aspect = viewW / viewH; camera.fov = viewW / viewH < 1.2 ? 54 : 46; camera.updateProjectionMatrix();
     SIZE_SCALE.value = viewH * pixelRatio / (2 * Math.tan(camera.fov * Math.PI / 360));
   }
@@ -2806,6 +2813,8 @@ function start() {
   bar.innerHTML = `<div class="w3-who"><b>Nivetha <i>with Veer &amp; Mochi</i></b><small id="w3Doing" role="status">Exploring</small></div><div class="w3-emotes">${EMOTES.map(([id, ic, name], i) => `<button type="button" data-emote="${id}" title="${name} (${i + 1})"><i aria-hidden="true">${ic}</i><span>${name}</span></button>`).join('')}</div><button type="button" class="w3-lc" title="Tell Gilfoyle you’re doing LeetCode"><i aria-hidden="true">⚔</i>LeetCode</button><button type="button" class="w3-ctx" hidden></button>`;
   const chatAction = document.createElement('button'); chatAction.type = 'button'; chatAction.className = 'w3-chat-action'; chatAction.textContent = 'Chat'; chatAction.onclick = () => { endTalk(); const b = realm?.R.id === 'kobra' ? { id: 'fletcher' } : [...PARTY].sort((a, b) => Math.hypot(a.x - state.position.x, a.y - state.position.y) - Math.hypot(b.x - state.position.x, b.y - state.position.y))[0]; window.BotChat?.open(b?.id || 'grok'); }; bar.append(chatAction);
   frameEl.after(bar);
+  // On a phone the world already fills the screen when this bar is made; put it, and the chat heart, inside it.
+  if (typeof worldFull === 'function' && worldFull()) syncFull();
   new ResizeObserver(() => frameEl.style.setProperty('--action-bar-height', `${Math.ceil(bar.getBoundingClientRect().height) + 24}px`)).observe(bar);
   bar.querySelectorAll('[data-emote]').forEach(b => b.onclick = () => doEmote(b.dataset.emote));
   bar.querySelector('.w3-lc').onclick = () => leetcodeCall();
@@ -3181,7 +3190,8 @@ function start() {
   }
 
   // Frame loop (called by app.js tick through `draw`).
-  let lastT = 0, firstFrame = true, frames = 0, frameTime = 0, envTimer = 0, clockTimer = 0;
+  let lastT = 0, firstFrame = true, frames = 0, frameTime = 0, envTimer = 0, clockTimer = 0, slow = 0, fast = 0, lean = 0, ceiling = maxRatio, frameNo = 0;
+  const minRatio = Math.min(1, maxRatio);
   const worldPos = new THREE.Vector3();
   function render(t) {
     const dt = clamp(t - lastT, .001, .05); lastT = t;
@@ -3272,9 +3282,21 @@ function start() {
       bubble.style.transform = `translate3d(${bx}px,${by}px,0) translate(-50%,-100%)`;
     }
     compass.style.transform = `rotate(${yaw}rad)`;
-    // adaptive resolution: trade sharpness for smoothness on slower devices
-    frames++; frameTime += dt;
-    if (frameTime > 2.5) { const avg = frameTime / frames; frames = 0; frameTime = 0; const next = avg > .026 ? Math.max(.7, pixelRatio * .85) : avg < .0135 ? Math.min(maxRatio, pixelRatio * 1.1) : pixelRatio; if (Math.abs(next - pixelRatio) > .02) { pixelRatio = next; resize3d(); } }
+    // Adaptive quality: keep a steady frame rate without going soft. Effects are shed first (bloom, then shadows
+    // redrawn every other frame). Resolution drops only after that, and never below one pixel per screen pixel,
+    // which is what read as pixelated. A size that proved too heavy is not tried again, and it takes two slow
+    // stretches in a row to step down, so the picture no longer flickers between sharp and soft.
+    frames++; frameTime += dt; frameNo++;
+    if (lean >= 2) renderer.shadowMap.needsUpdate = frameNo % 2 === 0;
+    if (frameTime > 2.5) {
+      const avg = frameTime / frames; frames = 0; frameTime = 0; slow = avg > .024 ? slow + 1 : 0; fast = avg < .0125 ? fast + 1 : 0;
+      if (slow >= 2) {
+        slow = 0;
+        if (lean === 0) { lean = 1; bloom.enabled = false; }
+        else if (lean === 1) { lean = 2; renderer.shadowMap.autoUpdate = false; }
+        else { ceiling = Math.max(minRatio, pixelRatio - .01); const next = Math.max(minRatio, pixelRatio * .88); if (next < pixelRatio - .02) { pixelRatio = next; resize3d(); } }
+      } else if (fast >= 3) { fast = 0; const next = Math.min(ceiling, pixelRatio * 1.1); if (next > pixelRatio + .02) { pixelRatio = next; resize3d(); } }
+    }
     hover();
     composer.render(dt);
     if (firstFrame) { firstFrame = false; glCanvas.classList.add('ready'); }
