@@ -599,3 +599,10 @@ body.world-full{overflow:hidden}
 .touch-layout:not(.world-full) .companion-dock:not(.minimized){position:relative;right:auto;bottom:auto;width:100%;max-height:none;margin:14px 0 18px;padding:14px;z-index:2;box-shadow:0 5px 20px #101c3a18}
 .touch-layout.world-full .companion-dock.minimized{top:max(14px,env(safe-area-inset-top));left:50%;right:auto;bottom:auto;transform:translateX(-50%)}
 @media(min-width:761px){.touch-layout:not(.world-full) .companion-dock.minimized{top:90px;bottom:auto}}
+/* Villains: a plum name tag in the world, their taunt in the dialog, and the card shown when one is banished. */
+.w3-foe{color:#f6e9ff;background:linear-gradient(180deg,#4a3358f2,#2a1d36f2);box-shadow:0 0 0 1px #b58ad6aa,0 4px 12px #0b122655}
+.w3-foe i{color:#d9c2f0}
+.w3-foe i.foe{color:#fff;background:#c0443a;border-radius:50%;display:inline-block;width:15px;height:15px;line-height:15px;text-align:center;font-weight:700;letter-spacing:0;margin-right:5px;box-shadow:0 0 0 2px #f6d9d4,0 0 12px #e0685c}
+.w3-foe em{color:#f0c9a0}
+.foe-taunt{font:italic 600 20px/1.4 var(--serif);color:#5a3f70;margin:6px 0 14px}
+.reward-float.villain{background:linear-gradient(125deg,#4a3358ef,#2f2748f5);border-color:#c9a5e6}

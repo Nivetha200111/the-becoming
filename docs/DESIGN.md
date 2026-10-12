@@ -47,6 +47,20 @@ When the local design server runs, `window.world3d` exposes the scene, camera an
 
 Characters connect to the quests in their area. The Party roster displays all eight, while interactions in locked areas follow level requirements. Dialogue is authored text rather than live AI output.
 
+## Villains
+
+Three villains lurk near Basecamp: the Procrastination Monster (a slumped purple heap snoozing its alarm clock), the Distraction Devil (a hovering red imp waving a glowing phone) and the Boredom Bear (a grey-blue bear forever mid-yawn). They stand for days slipping away, and each is banished for the day by a real, claimed action:
+
+| Villain | Banished today by |
+| --- | --- |
+| Procrastination Monster | Any claimed quest |
+| Distraction Devil | A claimed FOCUS quest |
+| Boredom Bear | A quest not claimed in the past seven days, or a boss battle |
+
+The rules are pure and live in `villains.js` (`Villains.status`, `counters`, `strength`, `tally`), with tests in `tests/villains.test.mjs`. Everything is derived from the claimed entries: nothing is stored in the save and a villain never adds or removes XP. A villain left unchallenged grows a little each day (up to five), counted from the first claim onwards. On a recovery day all three sleep. Clicking one opens its card with a taunt, how to banish it and the open quests that would. When a claim banishes one it spins away and a card announces it; the daily line under the header counts how many are still lurking.
+
+In world3d.js the bodies are built in `makeVillain()`, their places are `FOE_SPOTS`, and the block marked "Villains" handles state, animation, name tags and the card. While present they are solid, like the guides. The 2D fallback map does not draw them; the daily line still reports them.
+
 ## Responsive review
 
 Inspect approximately 360px, 768px and 1440px widths. Check navigation wrapping, Party cards, map labels, modal scrolling, touch controls, and short-height landscape screens. Preserve visible focus, readable contrast, non-hover access to actions, reduced-motion travel, and mobile device backup/export controls. Don’t turn the world into an image: avatar movement and NPC interaction must remain functional.
