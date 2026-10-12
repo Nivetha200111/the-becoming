@@ -16,13 +16,16 @@ The tokens live at the top of `style.css` (`--paper`, `--lapis`, `--gold`, `--di
 
 The world is rendered in 3D by `public/game/world3d.js` (three.js, vendored under `public/game/vendor/three`). Game logic still lives on the 1100 × 720 logical map: app.js moves `state.position` in logical units and the save format is unchanged. world3d.js maps that map to metres (`toW`/`toL`, 0.08 m per unit), turns keyboard movement relative to the camera, keeps the avatar out of buildings, trees and the sea, and raycasts clicks back to logical coordinates. The 2D canvas helpers in app.js/party.js remain as the fallback when WebGL2 is unavailable.
 
-Everything is generated in code: a heightfield island with flattened pads under each landmark and dirt paths from camp, a depth-tinted water shader with shoreline foam, a sky shader with clouds that also lights the scene through an environment map, instanced grass, flowers, trees, bushes and rocks with wind, eight landmarks built from primitives with procedural stone, roof and wood textures, and cel-shaded characters with ink outlines built as skinned meshes. Normal mode is a clear afternoon; Recovery mode turns the world to dusk with lanterns and fireflies. Locked areas sit behind a shimmering barrier until their level.
+Everything is generated in code: a heightfield island with flattened pads under each landmark and dirt paths from camp, a depth-tinted water shader with shoreline foam, a sky shader with clouds that also lights the scene through an environment map, instanced grass, flowers, trees, bushes and rocks with wind, eight landmarks built from primitives with procedural stone, roof and wood textures, and cel-shaded characters with ink outlines built as skinned meshes. The sky follows the real clock in India (Asia/Kolkata, the same zone as the daily reset): dawn, day, golden hour, dusk and a starry night lit by the moon, blended continuously by the sun's height. Recovery mode keeps lanterns lit, brings out fireflies and softens the wind. Locked areas sit behind a shimmering barrier until their level.
 
 Where to tune things in world3d.js:
 
 | Change | Look for |
 | --- | --- |
-| Time-of-day colours, sun, fog, bloom | `PRESETS` |
+| Time-of-day colours, sun/moon path, fog, bloom | `PRESETS` and `applySky()` |
+| Guide dialogue around the quest scroll | `VOICES` |
+| Conversation flow, camera two-shot, scroll | `converse()`, `say()`, `showScroll()` |
+| Council meeting places | the `councils` block in `start()`; positions in party.js `COUNCIL_SPOTS` |
 | Landmark placement, pad size, label height | `SITES` |
 | A landmark's model | `buildSite()` |
 | Terrain shape and colours | `rawHeight()` and the terrain colour block in `start()` |
@@ -30,22 +33,29 @@ Where to tune things in world3d.js:
 | Character outfits and hair | `lookFor()`, `PLAYER_LOOK`, `hair()` |
 | Density per device | `Q` quality tiers (phone, tablet, desktop); resolution also adapts to the frame rate |
 
-When the local design server runs, `window.world3d` exposes the scene, camera and presets in the browser console for inspection.
+When the local design server runs, `window.world3d` exposes the scene, camera and helpers in the browser console. `world3d.setHour(21)` previews any time of day; `world3d.setHour(null)` returns to the real clock.
 
 ## Characters
 
-| Character | Place | Role |
-| --- | --- | --- |
-| Jane | Camp | Life guide |
-| Lelouch | Camp | Master orchestrator |
-| Carmy | Work citadel | Work guide |
-| Gilfoyle | Engineering forge | Engineering guide |
-| Goggins | Grove | Training and recovery guide |
-| Beth | Tower | SPM study guide |
-| Beatrix | Temple | Claude architecture guide |
-| Dexter | Lab | Automation guide |
+The party comes from `GameRoster` in roster.js (roles, homes, levelling); party.js adds each bot's look, home spot and scripted line (`LOOKS`), and world3d.js turns those into 3D characters (`lookFor()`).
 
-Characters connect to the quests in their area. The Party roster displays all eight, while interactions in locked areas follow level requirements. Dialogue is authored text rather than live AI output.
+| Bot | Home | Look |
+| --- | --- | --- |
+| Grok Bot | Basecamp | Android with a glowing visor |
+| Bossman | Basecamp | Caped orchestrator |
+| Patrick Jane | Basecamp | Blond, waistcoat and jacket |
+| dr eggbot | Basecamp | Egg-shaped bot designer with goggles and lab coat |
+| Carmen | Contract Citadel | Chef's apron |
+| Gilfoyle | Engineering Forge | Long hair, beard, glasses |
+| Kreese | Engineering Forge | Bald, black tee |
+| Goggins | Recovery Grove | Athlete |
+| Beth Harmon | SPM Tower | Auburn bob, lab coat |
+| Beatrix | Claude Temple | Yellow suit, ponytail |
+| Dexter | Automation Lab | Shirt |
+
+The four councils (War Room and Control Room behind Basecamp, Exam Bunker beside SPM Tower, Career Council below the Summit) are meeting places with a banner per member.
+
+Walking up to a guide, arriving at an area, or pressing Talk on the Party screen plays a scene: a letterboxed two-shot, speech bubbles (click, Enter or Space to continue, Escape to leave), a quest scroll thrown across, then the scroll unrolls with the quest's details. Accept, claim (opens the usual evidence form), ask for another, or open the full quest list. Name tags show each bot's level and a gold ! when they have a quest for you. When a bot has a Party HQ check-in, its real message is spoken; otherwise its lines are scripted in `VOICES`.
 
 ## Villains
 

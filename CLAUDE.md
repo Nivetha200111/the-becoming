@@ -13,8 +13,8 @@ Use Node 22.13+ and npm. Run `npm ci`, then `npm run dev:local`, and open http:/
 | public/game/index.html | Game DOM, dialogs, navigation and deferred script order |
 | public/game/style.css | Layout, typography, colors, responsive styles |
 | public/game/app.js | Canvas world drawing, avatar movement, quests, inventory and journal UI |
-| public/game/party.js | Eight NPC sprites, SVG portraits, Party roster, bot dialogue and interactions |
-| public/game/world3d.js | three.js 3D world (ES module): terrain, water, sky, foliage, landmarks, toon characters, camera, 3D input and collision |
+| public/game/party.js | Bot looks and home spots, council places, SVG portraits, Party screen with levels and check-ins, mission tags, card dialogs and 2D sprites |
+| public/game/world3d.js | three.js 3D world (ES module): terrain, water, real-time sky, foliage, landmarks, councils, toon characters, conversations and quest scrolls, camera, 3D input and collision |
 | public/game/vendor/three | Vendored, minified three.js; regenerate with `node scripts/vendor-three.mjs` after changing the `three` devDependency |
 | public/game/data.js | World areas and quest definitions |
 | public/game/roster.js | The 15 Grok bots (11 characters, 4 council rooms), claim ownership and per-bot XP; lib/roster.cjs must be an exact copy |
