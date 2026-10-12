@@ -1466,6 +1466,74 @@ function makeFerry() {
   const proxy = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 3.2, 10), new THREE.MeshBasicMaterial({ visible: false })); proxy.position.y = 1; proxy.userData = { kind: 'ferry' }; g.add(proxy);
   return { g, body, wings, sail, proxy };
 }
+// The three villains (rules in villains.js). Like the pets, each is a few toon primitives with an ink outline.
+function makeVillain(kind) {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const ink = new THREE.MeshBasicMaterial({ color: '#221a1e' }), white = new THREE.MeshBasicMaterial({ color: '#fff8ea' }), outline = new THREE.MeshBasicMaterial({ color: '#2b2026', side: THREE.BackSide });
+  const add = (parent, geo, mat, p, s, r, line = true) => { const m = new THREE.Mesh(geo, mat); m.position.set(...p); if (s) m.scale.set(...s); if (r) m.rotation.set(...r); m.castShadow = true; parent.add(m); if (line) { const o = new THREE.Mesh(geo, outline); o.position.copy(m.position); o.rotation.copy(m.rotation); o.scale.copy(m.scale).multiplyScalar(1.05); parent.add(o); } return m; };
+  const v = { root, body, kind, eyes: [], phase: Math.random() * 6 }, head = new THREE.Group();
+  if (kind === 'procrastination') {
+    // A slumped purple heap with heavy eyelids, holding the alarm clock it keeps snoozing.
+    const skin = toonMat('#7a5aa6'), belly = toonMat('#b9a3d6'), dark = toonMat('#4d3a6e');
+    add(body, SPHERE, skin, [0, .72, 0], [.62, .72, .56]); add(body, SPHERE, belly, [0, .58, .2], [.42, .46, .4], null, false);
+    head.position.set(0, 1.3, .12); body.add(head); add(head, SPHERE, skin, [0, 0, 0], [.4, .34, .36]);
+    for (const s of [-1, 1]) {
+      add(head, new THREE.ConeGeometry(.07, .2, 6), dark, [s * .22, .3, -.02], null, [0, 0, -s * .5]);
+      add(head, SPHERE, white, [s * .14, .04, .31], [.085, .075, .04], null, false);
+      v.eyes.push(add(head, SPHERE, ink, [s * .14, .02, .345], [.04, .045, .02], null, false));
+      add(head, SPHERE, skin, [s * .14, .105, .325], [.1, .06, .05], null, false);
+      add(body, SPHERE, dark, [s * .28, .08, .14], [.2, .1, .26]);
+    }
+    add(head, SPHERE, ink, [0, -.14, .32], [.13, .03, .03], null, false);
+    v.arms = [-1, 1].map(s => { const g = new THREE.Group(); g.position.set(s * .56, .98, .05); g.rotation.z = s * .12; body.add(g); add(g, capsule(.11, .38), skin, [0, -.26, 0]); return g; });
+    const clock = new THREE.Group(); clock.position.set(0, -.6, .12); v.arms[1].add(clock);
+    add(clock, new THREE.CylinderGeometry(.17, .17, .07, 20).rotateX(Math.PI / 2), M.gold, [0, 0, 0]);
+    add(clock, new THREE.CylinderGeometry(.14, .14, .075, 20).rotateX(Math.PI / 2), white, [0, 0, .004], null, null, false);
+    for (const s of [-1, 1]) add(clock, SPHERE, M.gold, [s * .11, .16, 0], [.055, .045, .055], null, false);
+    v.hand = new THREE.Group(); v.hand.position.set(0, 0, .046); clock.add(v.hand); add(v.hand, new THREE.BoxGeometry(.014, .11, .008), ink, [0, .05, 0], null, null, false);
+    v.height = 1.75; v.radius = 1;
+  } else if (kind === 'boredom') {
+    // A grey-blue bear sat flat on the ground, legs out, forever halfway through a yawn.
+    const fur = toonMat('#6f8196'), pale = toonMat('#c9d3dc'), dark = toonMat('#4a586a');
+    add(body, SPHERE, fur, [0, .55, 0], [.55, .58, .5]); add(body, SPHERE, pale, [0, .5, .2], [.36, .38, .34], null, false);
+    head.position.set(0, 1.14, .1); body.add(head); add(head, SPHERE, fur, [0, 0, 0], [.36, .32, .33]);
+    add(head, SPHERE, pale, [0, -.07, .26], [.17, .13, .13]); add(head, SPHERE, ink, [0, -.015, .385], [.05, .035, .03], null, false);
+    v.mouth = add(head, SPHERE, ink, [0, -.13, .345], [.07, .025, .03], null, false);
+    for (const s of [-1, 1]) {
+      add(head, SPHERE, fur, [s * .26, .26, -.02], [.12, .12, .07]); add(head, SPHERE, pale, [s * .26, .26, .03], [.07, .07, .03], null, false);
+      v.eyes.push(add(head, SPHERE, ink, [s * .13, .05, .3], [.04, .014, .02], null, false));
+      add(body, capsule(.14, .22).rotateX(Math.PI / 2), fur, [s * .3, .14, .42]); add(body, SPHERE, dark, [s * .3, .14, .68], [.12, .12, .05], null, false);
+    }
+    v.arms = [-1, 1].map(s => { const g = new THREE.Group(); g.position.set(s * .5, .8, .1); g.rotation.z = s * .25; body.add(g); add(g, capsule(.12, .3), fur, [0, -.2, 0]); add(g, SPHERE, dark, [0, -.42, .03], [.11, .07, .12], null, false); return g; });
+    add(body, SPHERE, fur, [0, .3, -.48], [.12, .12, .12]);
+    v.height = 1.6; v.radius = .95;
+  } else {
+    // A small red imp that hovers, waving a glowing phone, with notifications circling its head.
+    const red = toonMat('#c0443a'), dark = toonMat('#7d2530'), yellow = new THREE.MeshBasicMaterial({ color: '#ffe36b' });
+    v.hover = new THREE.Group(); body.add(v.hover);
+    add(v.hover, SPHERE, red, [0, .62, 0], [.26, .32, .23]);
+    head.position.set(0, 1.08, .03); v.hover.add(head); add(head, SPHERE, red, [0, 0, 0], [.27, .25, .25]);
+    for (const s of [-1, 1]) {
+      add(head, new THREE.ConeGeometry(.06, .22, 6), dark, [s * .15, .27, 0], null, [0, 0, -s * .35]);
+      add(head, SPHERE, yellow, [s * .1, .03, .215], [.07, .06, .03], null, false);
+      v.eyes.push(add(head, SPHERE, ink, [s * .1, .03, .24], [.022, .05, .015], null, false));
+      add(head, new THREE.BoxGeometry(.13, .022, .02), ink, [s * .1, .115, .22], null, [0, 0, s * .45], false);
+      add(v.hover, capsule(.055, .16), red, [s * .1, .26, 0]);
+    }
+    add(head, new THREE.TorusGeometry(.08, .014, 6, 16, Math.PI), ink, [0, -.06, .225], null, [0, 0, Math.PI], false);
+    v.wings = [-1, 1].map(s => { const g = new THREE.Group(); g.position.set(s * .16, .8, -.17); v.hover.add(g); add(g, new THREE.ConeGeometry(.2, .44, 3).rotateZ(-s * Math.PI / 2).translate(s * .22, 0, 0), dark, [0, 0, 0], [1, 1, .14], null, false); return g; });
+    v.arms = [-1, 1].map(s => { const g = new THREE.Group(); g.position.set(s * .25, .76, .05); g.rotation.set(-1.15, 0, s * .22); v.hover.add(g); add(g, capsule(.05, .2), red, [0, -.14, 0]); return g; });
+    v.tail = new THREE.Group(); v.tail.position.set(0, .45, -.2); v.hover.add(v.tail);
+    add(v.tail, capsule(.025, .4), dark, [0, .12, -.18], null, [-1, 0, 0]); add(v.tail, new THREE.ConeGeometry(.07, .14, 4), dark, [0, .33, -.42], null, [-.6, 0, 0]);
+    const phone = new THREE.Group(); phone.position.set(0, .74, .42); phone.rotation.x = -.25; v.hover.add(phone);
+    add(phone, new THREE.BoxGeometry(.16, .28, .025), ink, [0, 0, 0]); add(phone, new THREE.BoxGeometry(.13, .24, .01), glow('#8fe0ff', 2.2), [0, 0, .016], null, null, false);
+    v.pings = ['#ff6b8a', '#ffd34d', '#7fe0a0'].map(c => add(v.hover, SPHERE, glow(c, 2.4), [0, 0, 0], [.045, .045, .045], null, false));
+    v.height = 1.6; v.radius = .75;
+  }
+  v.head = head; for (const e of v.eyes) e.userData.open = e.scale.y;
+  root.traverse(o => { o.userData.noCollide = true; });
+  return v;
+}
 // Mochi, Nivetha's cat: cream fur, ginger patches, a red scarf and a little gold bell.
 function makeCat(fur = '#f6e7cc', patch = '#e0935a', scarf = '#b4492f') {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
@@ -1572,6 +1640,7 @@ function start() {
   // Where Nivetha is: the home island (realm = null) or one of the realms beyond the sea.
   let skyBlend = 0, skyRef = null, realm = null, voyage = null, pierInfo = null, groundAt = heightAt, mainMask = null, rescueTravel = null, dynObstacles = [];
   const realms = [], hooks = {};
+  let foes = []; // the villains, filled in once the world is built
   const posW = (lx, ly) => realm ? [realm.R.at[0] + (lx - 550) * SCALE, realm.R.at[1] + (ly - 360) * SCALE] : toW(lx, ly);
   const posL = (x, z) => realm ? [(x - realm.R.at[0]) / SCALE + 550, (z - realm.R.at[1]) / SCALE + 360] : toL(x, z);
   const frameEl = canvas.parentElement, glCanvas = document.createElement('canvas');
@@ -2062,7 +2131,7 @@ function start() {
   // Collision against landmarks, trees, characters and the coast (all in logical units).
   const botObstacles = () => bots.filter(o => o.ch.root.visible).map(o => ({ x: o.b.x, y: o.b.y, r: 10 }));
   let obstacles = [];
-  const refreshObstacles = level => { dynObstacles = [...botObstacles(), ...(level >= 7 ? gateObstacles : [])]; obstacles = [...staticObstacles, ...treeObstacles, ...dynObstacles]; };
+  const refreshObstacles = level => { dynObstacles = [...botObstacles(), ...foes.filter(f => f.state && f.state !== 'banished').map(f => ({ x: f.at.x, y: f.at.y, r: f.m.radius * .75 / SCALE })), ...(level >= 7 ? gateObstacles : [])]; obstacles = [...staticObstacles, ...treeObstacles, ...dynObstacles]; };
   const walkable = (lx, ly) => realm ? realm.walkable(lx, ly) : mainWalkable(lx, ly);
   const mainWalkable = (lx, ly) => { const [x, z] = toW(lx, ly); return sdfAt(x, z) > 1.1 && heightAt(x, z) < 12.5 && !(mainMask && mainMask.test(x, z)) && (mainMask ? dynObstacles : obstacles).every(o => (lx - o.x) ** 2 + (ly - o.y) ** 2 > o.r * o.r); };
   function nearestWalkable(p) {
@@ -2273,6 +2342,7 @@ function start() {
     if (hit?.kind === 'ferry') { ferryDialog(); return; }
     if (hit?.kind === 'cat') { doEmote('pet', 'mochi'); return; }
     if (hit?.kind === 'veer') { doEmote('pet', 'veer'); return; }
+    if (hit?.kind === 'villain') { foeDialog(hit.villain); return; }
     if (hit?.kind === 'spot') { doSpot(hit.spot); return; }
     if (hit?.kind === 'npc') { npcTalk(hit.npc); return; }
     if (hit?.kind === 'bot') { botTalk(hit.bot); return; }
@@ -2307,7 +2377,7 @@ function start() {
     if (pointers.size || talk.on) { tip.hidden = true; return; }
     const hit = pick(e), box = canvas.getBoundingClientRect();
     if (hit) {
-      const level = E.level(E.total(state)), text = hit.kind === 'veer' ? 'Veer · Give him a cuddle' : hit.kind === 'npc' ? hit.npc.name + ' · Talk' : hit.kind === 'ferry' ? 'The Sky Ferry · Sail to other worlds' : hit.kind === 'cat' ? 'Mochi · Give her a pat' : hit.kind === 'spot' ? '✦ ' + hit.spot.label : hit.kind === 'bot' ? hit.bot.name + ' · ' + hit.bot.role : hit.kind === 'council' ? hit.council.name + ' · ' + hit.council.role : hit.area.name + (level < hit.area.unlock ? ' · Unlock at level ' + hit.area.unlock : ' · Visit');
+      const level = E.level(E.total(state)), text = hit.kind === 'villain' ? hit.villain.name + ' · Face it' : hit.kind === 'veer' ? 'Veer · Give him a cuddle' : hit.kind === 'npc' ? hit.npc.name + ' · Talk' : hit.kind === 'ferry' ? 'The Sky Ferry · Sail to other worlds' : hit.kind === 'cat' ? 'Mochi · Give her a pat' : hit.kind === 'spot' ? '✦ ' + hit.spot.label : hit.kind === 'bot' ? hit.bot.name + ' · ' + hit.bot.role : hit.kind === 'council' ? hit.council.name + ' · ' + hit.council.role : hit.area.name + (level < hit.area.unlock ? ' · Unlock at level ' + hit.area.unlock : ' · Visit');
       canvas.style.cursor = 'pointer'; tip.hidden = false; tip.textContent = text;
       tip.style.left = Math.min(e.clientX - box.left + 12, box.width - 200) + 'px'; tip.style.top = Math.max(45, e.clientY - box.top - 40) + 'px';
     } else { canvas.style.cursor = 'grab'; tip.hidden = true; }
@@ -3192,7 +3262,74 @@ function start() {
   }
 
   sync();
-  if (window.LOCAL_DESIGN_MODE) window.world3d = { THREE, scene, camera, renderer, cam, look, talk, converse, bots, councils, setHour: h => { hourOverride = h; envDirty = true; }, bloom, get player() { return player; }, outfit: () => outfitId, motor, veer, cat, realms, sail, doSpot, doEmote, activity: () => act, currentRealm: () => realm, walkable, nearestWalkable, obstacles: () => obstacles, heightAt, sdfAt, pathDistAt, toW, toL };
+  // ───────── Villains: three creatures that lurk near Basecamp until a real, claimed action banishes them for the
+  // day. On a recovery day they sleep. They are scenery with a rule attached (villains.js) and never touch XP.
+  const FOE_SPOTS = { procrastination: [655, 452], distraction: [668, 318], boredom: [452, 468] };
+  foes = Villains.LIST.map(v => {
+    const m = makeVillain(v.id), at = safePosition({ x: FOE_SPOTS[v.id][0], y: FOE_SPOTS[v.id][1] }, m.radius), [x, z] = toW(at.x, at.y), [cx, cz] = toW(555, 390);
+    m.root.position.set(x, heightAt(x, z), z); m.root.visible = false; scene.add(m.root);
+    const proxy = new THREE.Mesh(new THREE.CylinderGeometry(m.radius * .8, m.radius * .8, m.height, 8), new THREE.MeshBasicMaterial({ visible: false }));
+    proxy.position.set(x, heightAt(x, z) + m.height / 2, z); proxy.userData = { kind: 'villain', villain: v }; proxy.visible = false; scene.add(proxy); proxies.push(proxy);
+    return { v, m, proxy, at, el: label('w3-bot w3-foe'), state: null, strength: 0, shrink: 0, yaw: Math.atan2(cx - x, cz - z) };
+  });
+  function syncFoes() {
+    const now = Villains.status(state, E.day()); let changed = false;
+    for (const f of foes) {
+      const s = now.find(x => x.id === f.v.id), next = s.banished ? 'banished' : s.resting ? 'resting' : 'lurking';
+      // Only a claim made while it was lurking is celebrated; an already quiet day loads quietly.
+      if (f.state === 'lurking' && next === 'banished') { f.shrink = 1; window.RewardMoments?.show({ kind: 'villain', title: `${f.v.title} banished`, detail: f.v.defeat }); }
+      if (f.state !== next) changed = true;
+      f.state = next; f.strength = s.strength;
+      const html = next === 'resting' ? `<i>☾</i>${esc(f.v.title)} <em>asleep</em>` : `<i class="foe">!</i>${esc(f.v.title)}${s.strength ? ` <em>day ${s.strength + 1}</em>` : ''}`;
+      if (f.el.innerHTML !== html) { f.el.innerHTML = html; f.el._size = null; }
+    }
+    if (changed) refreshObstacles(lastLevel);
+  }
+  function foeDialog(v) {
+    const s = Villains.status(state, E.day()).find(x => x.id === v.id), days = Villains.tally(state, v.id);
+    const open = quests().filter(q => available(q) && !E.completed(state, q) && Villains.counters(v.id, q, state, E.day())).slice(0, 4);
+    const history = `${days ? `Banished on ${days} day${days === 1 ? '' : 's'} so far.` : 'Not banished yet.'}${s.strength && s.lurking ? ` It has gone unchallenged for ${s.strength} day${s.strength === 1 ? '' : 's'} and is growing.` : ''} Villains never take XP away.`;
+    modal(`<div class="eyebrow">VILLAIN · ${s.resting ? 'ASLEEP ON A RECOVERY DAY' : s.banished ? 'BANISHED TODAY' : 'LURKING TODAY'}</div><h2>${esc(v.name)}</h2>` +
+      (s.resting ? '<p>Fast asleep. On a recovery day the villains have no hold on you: rest is the point.</p>'
+        : s.banished ? `<p>${esc(v.defeat)}</p>`
+        : `<p class="foe-taunt">“${esc(v.taunts[Math.floor(nowT / 7) % v.taunts.length])}”</p><p><strong>How to banish it today.</strong> ${esc(v.weakness)}</p>` +
+          (open.length ? `<div class="region-dialog-list">${open.map(q => `<button data-quest="${esc(q.id)}"><span>${esc(q.title)}</span><small>+${q.xp} XP</small></button>`).join('')}</div>` : '<p>Nothing open would banish it right now. Make your own quest from the quest log.</p>')) +
+      `<p class="info-note">${history}</p>`);
+    all('[data-quest]').forEach(el => el.onclick = () => questDialog(el.dataset.quest));
+  }
+  { const syncBefore = hooks.sync, frameBefore = hooks.frame, labelsBefore = hooks.labels;
+    hooks.sync = () => { syncBefore(); syncFoes(); };
+    hooks.frame = (dt, t) => {
+      frameBefore(dt, t);
+      for (const f of foes) {
+        const m = f.m, gone = f.state === 'banished';
+        if (gone && f.shrink <= 0) { m.root.visible = f.proxy.visible = false; continue; }
+        if (gone) f.shrink = Math.max(0, f.shrink - dt / .9);
+        m.root.visible = true; f.proxy.visible = !gone;
+        const asleep = f.state === 'resting', k = reduceMotion.matches ? .3 : 1, dx = player.root.position.x - m.root.position.x, dz = player.root.position.z - m.root.position.z;
+        if (!asleep && !gone && !realm && Math.hypot(dx, dz) < 14) f.yaw = lerpAngle(f.yaw, Math.atan2(dx, dz), 1 - Math.exp(-dt * 2.5));
+        m.root.rotation.y = f.yaw + (gone ? (1 - f.shrink) * 7 : 0);
+        m.root.scale.setScalar((1 + Math.min(f.strength, Villains.MAX_STRENGTH) * .06) * (gone ? Math.max(.001, f.shrink) : 1));
+        const breath = Math.sin(t * (asleep ? .9 : 1.6) + m.phase) * k;
+        m.body.scale.set(1 + breath * .015, (asleep ? .84 : 1) + breath * .025, 1 + breath * .015);
+        m.head.rotation.x = asleep ? .5 : Math.sin(t * .7 + m.phase) * .06 * k;
+        for (const e of m.eyes) e.scale.y = asleep ? .004 : e.userData.open;
+        if (m.kind === 'procrastination') { m.arms[0].rotation.x = Math.sin(t * .8) * .08 * k; m.arms[1].rotation.x = asleep ? 0 : -.35 + Math.sin(t * .6) * .05 * k; m.hand.rotation.z = -t * .12; }
+        else if (m.kind === 'boredom') { const yawn = asleep ? 0 : Math.max(0, Math.sin(t * .8 + m.phase)) ** 6; m.mouth.scale.set(.07 + yawn * .03, .025 + yawn * .1, .03); m.head.rotation.x -= yawn * .3 * k; m.arms[0].rotation.x = -yawn * .5 * k; }
+        else {
+          m.hover.position.y = asleep ? -.2 : .14 + Math.sin(t * 2.4 + m.phase) * .07 * k;
+          m.wings.forEach((g, i) => { g.rotation.y = (i ? -1 : 1) * (asleep ? .9 : Math.sin(t * 9) * .5 * k); }); m.tail.rotation.y = Math.sin(t * 3) * .4 * k;
+          m.pings.forEach((p, i) => { p.visible = !asleep; const a = t * 2.2 + i * 2.094; p.position.set(Math.cos(a) * .5, 1.12 + Math.sin(t * 3 + i) * .08, Math.sin(a) * .5); });
+        }
+      }
+    };
+    hooks.labels = place => {
+      labelsBefore(place);
+      for (const f of foes) { if (realm || voyage || !f.proxy.visible) { fadeLabel(f.el, 0); continue; } tv.copy(f.m.root.position); tv.y += f.m.height * f.m.root.scale.y + .3; place(f.el, tv, 38, 4); }
+    };
+  }
+  syncFoes();
+  if (window.LOCAL_DESIGN_MODE) window.world3d = { foes: () => foes, foeDialog, THREE, scene, camera, renderer, cam, look, talk, converse, bots, councils, setHour: h => { hourOverride = h; envDirty = true; }, bloom, get player() { return player; }, outfit: () => outfitId, motor, veer, cat, realms, sail, doSpot, doEmote, activity: () => act, currentRealm: () => realm, walkable, nearestWalkable, obstacles: () => obstacles, heightAt, sdfAt, pathDistAt, toW, toL };
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
   const draw2d = draw;
   // If the GPU drops the context or a frame throws, hand the map back to the original 2D renderer

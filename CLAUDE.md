@@ -20,6 +20,7 @@ Use Node 22.13+ and npm. Run `npm ci`, then `npm run dev:local`, and open http:/
 | public/game/roster.js | The 15 Grok bots (11 characters, 4 council rooms), claim ownership and per-bot XP; lib/roster.cjs must be an exact copy |
 | public/game/partyfeed.js | Party HQ feed in the browser (`window.PartyFeed`): bot missions as quests, check-ins, bot stats |
 | public/game/engine.js | Pure state, XP, levels, coins, validation |
+| public/game/villains.js | Pure rules for the three villains (Procrastination Monster, Distraction Devil, Boredom Bear): who is lurking, banished or asleep today, derived from claimed entries |
 | public/game/sync-core.js | Three-way save merge |
 | public/game/cloud.js | Polling, offline queue, revision conflict handling, Notion sync trigger and footer status |
 | app/page.jsx and app/api/game/route.js | Next.js shell and authenticated game HTML |
@@ -36,7 +37,7 @@ Use Node 22.13+ and npm. Run `npm ci`, then `npm run dev:local`, and open http:/
 
 Start by reading `docs/DESIGN.md`. Most visible design changes are in style.css, the canvas draw helpers in app.js, and portraits/sprites in party.js. All art is code-native canvas or inline SVG; no missing external image assets or paid font dependencies. Keep usable touch targets, mobile scroll, keyboard access, reduced-motion support, and legible text. The game is served inside a same-origin iframe; use its document as the scope for UI inspection.
 
-The game scripts share globals. Preserve order: engine.js → data.js → roster.js → sync-core.js → cloud.js → partyfeed.js → app.js → party.js → world3d.js (module, loaded through the import map in index.html). party.js wraps app.js's update/draw functions; world3d.js then wraps update and replaces draw, and falls back to the 2D map when WebGL2 is unavailable or the context is lost. Avoid bundling one file in isolation or introducing a variable that collides with another global. Refactoring into modules is possible but requires migrating all dependencies together.
+The game scripts share globals. Preserve order: engine.js → data.js → roster.js → sync-core.js → cloud.js → partyfeed.js → villains.js → app.js → touch-input.js → party.js → life-core.js → milestones.js → bot-chat.js → life-sync.js → world3d.js (module, loaded through the import map in index.html). party.js wraps app.js's update/draw functions; world3d.js then wraps update and replaces draw, and falls back to the 2D map when WebGL2 is unavailable or the context is lost. Avoid bundling one file in isolation or introducing a variable that collides with another global. Refactoring into modules is possible but requires migrating all dependencies together.
 
 ## Behavior and data to preserve
 
