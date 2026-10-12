@@ -73,3 +73,29 @@ test('the tally counts the days each villain was banished', () => {
   assert.equal(Villains.tally(s, 'boredom'), 2); // focus was new on the 10th, train on the 11th, focus again on the 12th was not
   assert.equal(Villains.banishedOn(s, 'boredom', TODAY), false);
 });
+
+test('a shield stops its villain growing; the others still do', () => {
+  const s = Engine.fresh(); claim(s, quest('boss', 'INT', { xp: 250, boss: true, repeat: false }), '2026-10-08');
+  Engine.buyGear(s, 'shield-procrastination', '2026-10-08');
+  const v = Object.fromEntries(Villains.status(s, TODAY, Engine).map(x => [x.id, x]));
+  assert.equal(v.procrastination.shielded, true); assert.equal(v.procrastination.strength, 0);
+  assert.equal(v.distraction.shielded, false); assert.equal(v.distraction.strength, 4); // the 8th to the 11th, none with a FOCUS claim
+  assert.equal(v.procrastination.lurking, true, 'a shield does not banish it');
+});
+
+test('each banishing deals the damage of the best weapon owned that day, and forms fall in turn', () => {
+  const s = Engine.fresh();
+  claim(s, quest('boss', 'INT', { xp: 250, boss: true, repeat: false }), '2026-10-01'); // 125 bronze, bare hands that day
+  assert.deepEqual({ ...Villains.battle(s, 'procrastination', Engine) }, { form: 1, max: 10, hp: 9, damage: 1 });
+  Engine.buyGear(s, 'w1', '2026-10-02');                                              // Wooden Practice Sword: 2 damage
+  for (const d of ['2026-10-02', '2026-10-03', '2026-10-04']) claim(s, quest('train', 'END'), d);
+  let b = Villains.battle(s, 'procrastination', Engine);
+  assert.equal(b.damage, 7); assert.equal(b.form, 1); assert.equal(b.hp, 3);
+  claim(s, quest('train', 'END'), '2026-10-05'); claim(s, quest('train', 'END'), '2026-10-06');
+  b = Villains.battle(s, 'procrastination', Engine);
+  assert.equal(b.damage, 11); assert.equal(b.form, 2); assert.equal(b.max, 25); assert.equal(b.hp, 24);
+  // Without the engine the same history is fought bare-handed.
+  assert.equal(Villains.battle(s, 'procrastination').damage, 6);
+  // The Distraction Devil was never banished here, so it is untouched.
+  assert.deepEqual({ ...Villains.battle(s, 'distraction', Engine) }, { form: 1, max: 10, hp: 10, damage: 0 });
+});

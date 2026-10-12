@@ -19,7 +19,7 @@ Use Node 22.13+ and npm. Run `npm ci`, then `npm run dev:local`, and open http:/
 | public/game/data.js | World areas and quest definitions |
 | public/game/roster.js | The 15 Grok bots (11 characters, 4 council rooms), claim ownership and per-bot XP; lib/roster.cjs must be an exact copy |
 | public/game/partyfeed.js | Party HQ feed in the browser (`window.PartyFeed`): bot missions as quests, check-ins, bot stats |
-| public/game/engine.js | Pure state, XP, levels, coins, validation |
+| public/game/engine.js | Pure state, XP, levels, coins, gold, bronze and the armoury catalogue, validation |
 | public/game/villains.js | Pure rules for the three villains (Procrastination Monster, Distraction Devil, Boredom Bear): who is lurking, banished or asleep today, derived from claimed entries |
 | public/game/sync-core.js | Three-way save merge |
 | public/game/cloud.js | Polling, offline queue, revision conflict handling, Notion sync trigger and footer status |
@@ -41,7 +41,7 @@ The game scripts share globals. Preserve order: engine.js → data.js → roster
 
 ## Behavior and data to preserve
 
-The save may include an optional `rewards` array (Treasury redemptions); older saves without it stay valid. Keep save version 1 and storage keys `nivetha-becoming-v1` and `nivetha-cloud-base-v1` unless implementing and testing a migration. Keep quest IDs and completion keys stable to preserve existing XP. Completing a real-world action requires evidence/a note; keep duplicate award prevention and reward reconciliation. Daily reset uses Asia/Kolkata. Recovery mode is a deliberate alternative to training.
+The save may include an optional `rewards` array (Treasury redemptions) and an optional `armory` array (shields and weapons bought with bronze); older saves without them stay valid. Bronze itself is derived from claimed entries and never stored. Keep save version 1 and storage keys `nivetha-becoming-v1` and `nivetha-cloud-base-v1` unless implementing and testing a migration. Keep quest IDs and completion keys stable to preserve existing XP. Completing a real-world action requires evidence/a note; keep duplicate award prevention and reward reconciliation. Daily reset uses Asia/Kolkata. Recovery mode is a deliberate alternative to training.
 
 If you change engine.js, copy it exactly to lib/engine.cjs so server validation stays aligned. Never put personal progress, credentials, browser state, .env.local, node_modules or build output in commits. Export progress from the current game in Settings and import it on a new hostname; the code repository contains no private save data.
 

@@ -3273,20 +3273,24 @@ function start() {
     return { v, m, proxy, at, el: label('w3-bot w3-foe'), state: null, strength: 0, shrink: 0, yaw: Math.atan2(cx - x, cz - z) };
   });
   function syncFoes() {
-    const now = Villains.status(state, E.day()); let changed = false;
+    const now = Villains.status(state, E.day(), E); let changed = false;
     for (const f of foes) {
       const s = now.find(x => x.id === f.v.id), next = s.banished ? 'banished' : s.resting ? 'resting' : 'lurking';
       // Only a claim made while it was lurking is celebrated; an already quiet day loads quietly.
-      if (f.state === 'lurking' && next === 'banished') { f.shrink = 1; window.RewardMoments?.show({ kind: 'villain', title: `${f.v.title} banished`, detail: f.v.defeat }); }
+      if (f.state === 'lurking' && next === 'banished') {
+        const weapon = E.bestWeapon(state, E.day()), hit = E.weaponPower(state, E.day());
+        f.shrink = 1; window.RewardMoments?.show({ kind: 'villain', title: `${f.v.title} banished`, detail: `${f.v.defeat} ${weapon ? weapon.name : 'Bare hands'}: ${hit} damage.` });
+        if (f.form && s.battle.form > f.form) window.RewardMoments?.show({ kind: 'villain', title: `${f.v.title}: form ${f.form} defeated`, detail: 'A tougher form takes its place.' });
+      }
       if (f.state !== next) changed = true;
-      f.state = next; f.strength = s.strength;
-      const html = next === 'resting' ? `<i>☾</i>${esc(f.v.title)} <em>asleep</em>` : `<i class="foe">!</i>${esc(f.v.title)}${s.strength ? ` <em>day ${s.strength + 1}</em>` : ''}`;
+      f.state = next; f.strength = s.strength; f.form = s.battle.form;
+      const html = next === 'resting' ? `<i>☾</i>${esc(f.v.title)} <em>asleep</em>` : `<i class="foe">!</i>${esc(f.v.title)}${s.shielded ? ' <em>⛨</em>' : s.strength ? ` <em>day ${s.strength + 1}</em>` : ''}`;
       if (f.el.innerHTML !== html) { f.el.innerHTML = html; f.el._size = null; }
     }
     if (changed) refreshObstacles(lastLevel);
   }
   function foeDialog(v) {
-    const s = Villains.status(state, E.day()).find(x => x.id === v.id), days = Villains.tally(state, v.id);
+    const s = Villains.status(state, E.day(), E).find(x => x.id === v.id), days = Villains.tally(state, v.id), weapon = E.bestWeapon(state, E.day()), b = s.battle;
     const open = quests().filter(q => available(q) && !E.completed(state, q) && Villains.counters(v.id, q, state, E.day())).slice(0, 4);
     const history = `${days ? `Banished on ${days} day${days === 1 ? '' : 's'} so far.` : 'Not banished yet.'}${s.strength && s.lurking ? ` It has gone unchallenged for ${s.strength} day${s.strength === 1 ? '' : 's'} and is growing.` : ''} Villains never take XP away.`;
     modal(`<div class="eyebrow">VILLAIN · ${s.resting ? 'ASLEEP ON A RECOVERY DAY' : s.banished ? 'BANISHED TODAY' : 'LURKING TODAY'}</div><h2>${esc(v.name)}</h2>` +
@@ -3294,8 +3298,12 @@ function start() {
         : s.banished ? `<p>${esc(v.defeat)}</p>`
         : `<p class="foe-taunt">“${esc(v.taunts[Math.floor(nowT / 7) % v.taunts.length])}”</p><p><strong>How to banish it today.</strong> ${esc(v.weakness)}</p>` +
           (open.length ? `<div class="region-dialog-list">${open.map(q => `<button data-quest="${esc(q.id)}"><span>${esc(q.title)}</span><small>+${q.xp} XP</small></button>`).join('')}</div>` : '<p>Nothing open would banish it right now. Make your own quest from the quest log.</p>')) +
+      `<div class="foe-hp"><span>Form ${b.form} · ${b.hp} of ${b.max} health left</span><div class="progress"><i style="width:${b.hp / b.max * 100}%"></i></div></div>` +
+      `<p>${weapon ? `Your weapon: <strong>${esc(weapon.name)}</strong>, ${weapon.power} damage each time you banish it.` : 'You fight bare-handed: 1 damage each time you banish it.'} ${s.shielded ? 'Your shield stops it growing.' : 'No shield against it yet.'}</p>` +
+      `<div class="dialog-actions"><button class="secondary" id="toArmoury">Open the Armoury · ⬡ ${E.bronze(state).toLocaleString('en-IN')} bronze</button></div>` +
       `<p class="info-note">${history}</p>`);
     all('[data-quest]').forEach(el => el.onclick = () => questDialog(el.dataset.quest));
+    $('#toArmoury').onclick = () => { $('#modal').close(); showScreen('rewards'); document.getElementById('armoury')?.scrollIntoView({ block: 'start' }); };
   }
   { const syncBefore = hooks.sync, frameBefore = hooks.frame, labelsBefore = hooks.labels;
     hooks.sync = () => { syncBefore(); syncFoes(); };
