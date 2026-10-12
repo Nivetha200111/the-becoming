@@ -14,6 +14,19 @@ Production fails closed if private access isn't configured. Login uses a persona
 
 The current adapter forwards GET/POST to exactly https://nivetha-life-world.niv2001.chatgpt.site/api/state using a supported owner-private service credential. The token must be obtained/configured securely and remains server-only. This keeps the existing store's revision conflict checks, but requires the current Site to remain available. The frontend performs 12-second visible-page polling, refreshes on return and queues offline changes; this is polling sync, not a websocket live stream.
 
+## Keeping the save in Notion
+
+Set `SAVE_STORE=notion` in Vercel (Production) and redeploy. The save then lives in your own Notion workspace, with no other service involved. It needs `NOTION_TOKEN` and the Party HQ database that chat and bot sync already use; nothing new has to be created.
+
+- Each save is a new Party HQ row with **Type** `Save`. **Game key** holds the revision (`save:000000000042`), and **Details** and **Game note** hold the compressed save. The newest readable revision is your save. The last six are kept as backups and older ones go to Notion's trash.
+- Leave `SITES_SAVE_TOKEN` set for the first run. The first request finds Notion empty, reads your existing save from the old backend once, and writes it to Notion with the same revision. After that the old backend is never read again and the token can be removed.
+- Bots must not edit or delete `Save` rows. A damaged newest row is skipped and the previous revision is used, so one bad edit does not lose the save.
+- To keep the save away from the bots entirely, create a second database with the Party HQ properties (`node scripts/notion-setup.mjs create-party`), share it only with the game's integration, and set `NOTION_SAVE_DATABASE_ID` (and `NOTION_SAVE_DATA_SOURCE_ID` if it has several data sources).
+- Notion cannot lock a row, so two devices saving in the same instant are settled after the fact: both write, every device agrees on the same winner, and the other one merges and retries. A save larger than about 380,000 compressed characters (several thousand claimed quests) is refused with a clear message; export a backup before then.
+- `/api/health` reports `saveStore` as `notion` or `site`.
+
+This has only been run against a mocked Notion API (`tests/notion-save.test.mjs`). After switching, check the footer reads `Cloud synced · all devices`, claim a small quest, and confirm a `Save` row appears in Party HQ.
+
 ## Independent database adapter
 
 To remove the Site dependency, implement savedState(method, body) in lib/save-store.mjs against a durable database (for example Postgres). Preserve:
