@@ -30,6 +30,7 @@ Use Node 22.13+ and npm. Run `npm ci`, then `npm run dev:local`, and open http:/
 | lib/notion-save.mjs | Optional save store in the owner's Notion workspace (`SAVE_STORE=notion`): append-only `Save` rows in Party HQ, with a one-time copy from the old backend |
 | app/api/notion/route.js and lib/notion-sync.mjs | Authenticated one-way mirror of saved quest entries into a Notion database |
 | app/api/party/route.js and lib/party-sync.mjs | Party HQ exchange: bot-logged completions into the save, mission status, check-ins |
+| lib/achievements-sync.mjs | Counts achievements with XP from the ACHIEVEMENTS database on NIVETHA LIFE OS into the save, once each; runs with the Party HQ exchange |
 | scripts/notion-setup.mjs | Creates or checks the Notion Quest log and Party HQ databases |
 | docs/GROK_BOTS.md | How the Grok bots play through Notion, plus the instruction block to paste into each bot |
 

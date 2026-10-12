@@ -14,6 +14,19 @@ Production fails closed if private access isn't configured. Login uses a persona
 
 The current adapter forwards GET/POST to exactly https://nivetha-life-world.niv2001.chatgpt.site/api/state using a supported owner-private service credential. The token must be obtained/configured securely and remains server-only. This keeps the existing store's revision conflict checks, but requires the current Site to remain available. The frontend performs 12-second visible-page polling, refreshes on return and queues offline changes; this is polling sync, not a websocket live stream.
 
+## Achievements from Notion (LIFE OS → game)
+
+NIVETHA LIFE OS says "Total XP = sum of XP in ACHIEVEMENTS", and that database is where the bots have always logged real XP. The game reads it whenever it checks Party HQ (on opening, on returning to the tab, and every 3 minutes while visible) and counts every achievement that has XP into the save, once, keyed by its Notion page.
+
+- It needs only `NOTION_TOKEN`, and the game's Notion connection must be able to read ACHIEVEMENTS. If it cannot, the footer says `share ACHIEVEMENTS with the game` and nothing is changed: open ACHIEVEMENTS in Notion, choose ⋯ → Connections, and add the game's connection.
+- Domain decides the stat, the place and the bot: ServiceNow Cert → INT, SPM Tower, Beth Harmon; Claude Cert → INT, Claude Temple, Beatrix; Work → LEVERAGE, Contract Citadel, Carmen; Career → LEVERAGE, Opportunity Summit, Gilfoyle; Systems → BUILD, Automation Lab, Dexter; Body → END, Recovery Grove, Goggins; Life → FOCUS, Basecamp, Patrick Jane.
+- The date is the achievement's Date, or the day the row was created. Evidence is its Details, or Why It Matters. One achievement counts for at most 250 XP, the engine's limit for a single entry.
+- Editing an achievement in Notion updates its entry. Deleting one in Notion does not remove XP from the game.
+- Unlike Party HQ completions there is no 14-day limit and XP is not rounded, because these are your own records rather than a bot's claim.
+- Set `ACHIEVEMENTS_SYNC=off` to stop it. `NOTION_ACHIEVEMENTS_DATABASE_ID` points it at a different database.
+
+This has only been run against a mocked Notion API (`tests/achievements.test.mjs`).
+
 ## Keeping the save in Notion
 
 Set `SAVE_STORE=notion` in Vercel (Production) and redeploy. The save then lives in your own Notion workspace, with no other service involved. It needs `NOTION_TOKEN` and the Party HQ database that chat and bot sync already use; nothing new has to be created.
