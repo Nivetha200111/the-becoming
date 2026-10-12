@@ -736,7 +736,7 @@ function lookFor(b) {
 }
 // Where a foot touches the ground, in its ankle's space: under the arch, the heel, the toes.
 const SOLE = [[0, -.128, .03], [0, -.115, -.045], [0, -.106, .15]];
-const PLAYER_LOOK = { figure: 'f', skin: '#c58c65', hair: '#2a2321', hairStyle: 'pixie', glasses: 'rimless', eyes: '#6b4430', top: '#efe4c8', sleeve: '#efe4c8', legs: '#4a4843', boots: '#5b4636', skirt: '#efe4c8', belt: '#d5b76e', cloak: true, staff: true, blush: true, flair: true };
+const PLAYER_LOOK = { figure: 'f', headphones: true, skin: '#c58c65', hair: '#2a2321', hairStyle: 'pixie', glasses: 'rimless', eyes: '#6b4430', top: '#efe4c8', sleeve: '#efe4c8', legs: '#4a4843', boots: '#5b4636', skirt: '#efe4c8', belt: '#d5b76e', cloak: true, staff: true, blush: true, flair: true };
 
 function makeCharacter(look) {
   const root = new THREE.Group(), body = new THREE.Bone(), parts = [];
@@ -901,6 +901,21 @@ function makeCharacter(look) {
     if (look.cloak) part(trunk, new THREE.TorusGeometry(.14, .05, 8, 20, Math.PI), look.top, [0, 1.42, -.03], { r: [Math.PI / 2 + .3, 0, Math.PI], outline: false });
     if (look.cape) part(trunk, new THREE.CylinderGeometry(.12, .17, .2, 18, 1, true, Math.PI * .7, Math.PI * 1.6), look.cape, [0, 1.47, 0], { double: true });
   }
+  // Headphones stay a separate group on the head bone, like the staff, so she can put them on and take them off.
+  let phones = null;
+  if (look.headphones) {
+    phones = new THREE.Group(); phones.position.set(0, -.012, -.014); phones.visible = false; head.add(phones);
+    const shell = toonMat('#34446b'), pad = toonMat('#1f2639'), trim = toonMat('#d5b76e'), add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; phones.add(m); return m; };
+    add(new THREE.TorusGeometry(.246, .016, 8, 32, Math.PI), shell, 0, 0, 0).scale.set(.83, 1, 2);                       // the band, over the top of her hair
+    add(new THREE.TorusGeometry(.233, .014, 6, 14, 1.05).rotateZ((Math.PI - 1.05) / 2), pad, 0, 0, 0).scale.set(.83, 1, 2.4); // its cushion
+    for (const s of [-1, 1]) {
+      add(new THREE.BoxGeometry(.017, .085, .03), shell, s * .204, .03, 0);                                               // the arm that holds the cup
+      add(new THREE.CylinderGeometry(.066, .076, .05, 24).rotateZ(-s * Math.PI / 2), shell, s * .2, -.012, .004);         // the cup
+      add(new THREE.TorusGeometry(.057, .02, 8, 22).rotateY(Math.PI / 2), pad, s * .172, -.012, .004);                     // the cushion against her ear
+      add(new THREE.TorusGeometry(.048, .007, 6, 22).rotateY(Math.PI / 2), trim, s * .226, -.012, .004);
+      add(SPHERE, trim, s * .226, -.012, .004).scale.set(.005, .018, .018);
+    }
+  }
   let staff = null, orb = null;
   if (look.staff) {
     // The staff stays a separate mesh (not baked) so she can set it aside for two-handed activities.
@@ -942,7 +957,7 @@ function makeCharacter(look) {
     root.add(mesh); mesh.bind(skeleton);
   }
   root.scale.setScalar(1.18);
-  return { root, body, legs, knees, ankles, arms, elbows, hands, skirt, head, eyes, mouth, rig, feel: Object.fromEntries(FEEL_KEYS.map(k => [k, 0])), glance: { x: 0, y: 0, tx: 0, ty: 0, t: 1 + Math.random() * 3 }, speak: 0, cloak, cloakMesh, staff, orb, phase: Math.random() * 6, yaw: 0, wave: 0, give: 0, blinkT: 1 + Math.random() * 3, expr: 'normal' };
+  return { root, body, legs, knees, ankles, arms, elbows, hands, skirt, head, eyes, mouth, rig, phones, feel: Object.fromEntries(FEEL_KEYS.map(k => [k, 0])), glance: { x: 0, y: 0, tx: 0, ty: 0, t: 1 + Math.random() * 3 }, speak: 0, cloak, cloakMesh, staff, orb, phase: Math.random() * 6, yaw: 0, wave: 0, give: 0, blinkT: 1 + Math.random() * 3, expr: 'normal' };
 }
 function hair(head, look, part) {
   const c = look.hair, style = look.hairStyle;
@@ -2156,7 +2171,7 @@ function start() {
         flowerMesh.setMatrixAt(f, dummy.matrix); flowerMesh.setColorAt(f, flowerCols[(noise2(x * .2, z * .2) * 3.5 + 3.5 + vr() * 1.2 | 0) % flowerCols.length]); f++;
       }
     }
-    grassMesh.count = n; flowerMesh.count = f; grassMesh.receiveShadow = flowerMesh.receiveShadow = true;
+    grassMesh.count = grassMesh.userData.blades = n; flowerMesh.count = f; grassMesh.receiveShadow = flowerMesh.receiveShadow = true;
     grassMesh.computeBoundingSphere(); flowerMesh.computeBoundingSphere(); scene.add(grassMesh, flowerMesh);
   }
 
@@ -2217,7 +2232,7 @@ function start() {
         if (n < gN) { const w = .07 + rr() * .05; dummy.position.set(u, h - .03, v); dummy.rotation.set(0, rr() * 6.28, 0); dummy.scale.set(w, .3 + rr() * .45, w); dummy.updateMatrix(); grass.setMatrixAt(n, dummy.matrix); gc.copy(g1).lerp(g2, rr()).multiplyScalar(.95 + rr() * .2); grass.setColorAt(n++, gc); }
         if (f < fN && rr() < .35) { const s = .045 + rr() * .035; dummy.position.set(u, h + .22 + rr() * .2, v); dummy.scale.set(s, s, s); dummy.updateMatrix(); flowers.setMatrixAt(f, dummy.matrix); flowers.setColorAt(f++, fcols[(rr() * fcols.length) | 0]); }
       }
-      grass.count = n; flowers.count = f; grass.receiveShadow = flowers.receiveShadow = true; grass.computeBoundingSphere(); flowers.computeBoundingSphere(); group.add(grass, flowers); }
+      grass.count = grass.userData.blades = n; flowers.count = f; grass.receiveShadow = flowers.receiveShadow = true; grass.computeBoundingSphere(); flowers.computeBoundingSphere(); group.add(grass, flowers); }
     const toLL = (u, v) => ({ x: u / SCALE + 550, y: v / SCALE + 360 });
     const parkU = su + dir.x * 5.2 - dir.y * 2.1, parkV = sv + dir.y * 5.2 + dir.x * 2.1;
     realms.push({
@@ -2314,9 +2329,16 @@ function start() {
   // Camera orbit around the avatar.
   const cam = { yaw: 0, pitch: .36, dist: 15.5, target: new THREE.Vector3(), intro: reduceMotion.matches ? 0 : 1 };
   const projV = new THREE.Vector3();
-  let viewW = 1, viewH = 1, pixelRatio = Math.min(window.devicePixelRatio || 1, Q.pr), maxRatio = pixelRatio, sizedAt = '';
+  let viewW = 1, viewH = 1, pixelRatio = Math.min(window.devicePixelRatio || 1, Q.pr), maxRatio = pixelRatio, ceiling = maxRatio, sizedAt = '';
+  // The lowest resolution the picture may fall to: one pixel per screen pixel on a phone, and on a computer never
+  // more than a fifth below the screen's own.
+  const floorRatio = () => touch ? Math.min(1, maxRatio) : Math.max(1, maxRatio * .8);
   function resize3d() {
     const r = canvas.getBoundingClientRect(); if (!r.width || !r.height) return;
+    // The screen's pixel density can change after loading (browser zoom, a window moved to another monitor). Follow
+    // it, or the picture is stretched from the old size and looks soft.
+    const top = Math.min(window.devicePixelRatio || 1, Q.pr);
+    if (Math.abs(top - maxRatio) > .01) { const k = top / maxRatio; maxRatio = top; pixelRatio = clamp(pixelRatio * k, floorRatio(), top); ceiling = clamp(ceiling * k, floorRatio(), top); }
     // The same size again (a phone's address bar settling, a repeated observer call) must not rebuild every buffer.
     const size = `${Math.round(r.width)}x${Math.round(r.height)}@${pixelRatio.toFixed(3)}`; if (size === sizedAt) return; sizedAt = size;
     hudAge = 1e9;
@@ -2805,6 +2827,19 @@ function start() {
     kata: { loop: true, expr: 'determined', emote: '!', say: 'Training kata with Sensei Kreese', pose: t => { const k = (Math.sin(t * 6) + 1) / 2, kick = (t % 4) > 3.15 ? Math.sin(((t % 4) - 3.15) / .85 * Math.PI) : 0; return { by: -.1, l0z: -.3, l1z: .3, l1x: -1.4 * kick, a0x: -1.55 * k - .35 * (1 - k), a1x: -1.55 * (1 - k) - .35 * k, a0z: .12, a1z: -.12, hx: -.05 }; } },
     phone: { loop: true, expr: 'happy', emote: '♡', say: 'Scrolling her phone in Hush Hollow', prop: ['phone'], pose: t => ({ ...SIT, a1x: -1.6, a1z: -.45, a0x: -.95, a0z: .3, hx: .45 + Math.sin(t * .4) * .04 }) },
   };
+  // Headphones are hers to put on and take off. The choice is remembered on this device only; it is not part of the save.
+  const phones = { want: false, shown: false };
+  try { phones.want = localStorage.getItem('becoming-headphones') === 'on'; } catch {}
+  phones.shown = phones.want; if (player.phones) player.phones.visible = phones.shown;
+  ACTS.headphones = { dur: 1.35, expr: 'happy', say: 'Putting her headphones on', pose: () => ({ a0z: -2.05, a1z: 2.05, e0z: -1.95, e1z: 1.95, a0x: -.1, a1x: -.1, hx: .1 }) };
+  function toggleHeadphones() {
+    phones.want = !phones.want; try { localStorage.setItem('becoming-headphones', phones.want ? 'on' : 'off'); } catch {}
+    ACTS.headphones.say = phones.want ? 'Putting her headphones on' : 'Taking her headphones off';
+    // Standing free, she lifts both hands to do it. Mid-stride, mid-activity or mid-voyage they simply go on or off.
+    if (!act && !voyage && !talk.on && motor.grounded && motor.speed < .5 && !keys.size && !travel) startAct('headphones');
+    syncHeadphones();
+  }
+  function syncHeadphones() { const b = document.querySelector('[data-phones]'); if (b) { b.classList.toggle('on', phones.want); b.setAttribute('aria-pressed', String(phones.want)); b.title = `${phones.want ? 'Take her headphones off' : 'Put her headphones on'} (H)`; } }
   const STAFF_DOWN = new Set(['campfire', 'write', 'train', 'read', 'meditate', 'tinker', 'paint', 'soak', 'pray', 'sit', 'pet', 'dance', 'leetcode', 'kata', 'phone']);
   const kobra = () => realms.find(r => r.R.id === 'kobra');
   const isLeetCode = q => q.id === 'pattern' || /leetcode|\bLC\b|\bDSA\b/i.test(`${q.title} ${q.detail}`);
@@ -3005,16 +3040,18 @@ function start() {
     if (talk.on || voyage) return;
     if (e.key.toLowerCase() === 'e' && interact()) { e.preventDefault(); e.stopImmediatePropagation(); }
     else if (/^[1-6]$/.test(e.key) && e.target === canvas) { e.preventDefault(); doEmote(EMOTES[+e.key - 1][0]); }
+    else if ((e.key === '7' || e.key.toLowerCase() === 'h') && e.target === canvas && !e.ctrlKey && !e.metaKey) { e.preventDefault(); toggleHeadphones(); }
   }, true);
   // The action bar under the map, and the "beyond the sea" cards under the area list.
   const bar = document.createElement('div'); bar.className = 'w3-actions'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Nivetha’s actions');
-  bar.innerHTML = `<div class="w3-who"><b>Nivetha <i>with Veer &amp; Mochi</i></b><small id="w3Doing" role="status">Exploring</small></div><div class="w3-emotes">${EMOTES.map(([id, ic, name], i) => `<button type="button" data-emote="${id}" title="${name} (${i + 1})"><i aria-hidden="true">${ic}</i><span>${name}</span></button>`).join('')}</div><button type="button" class="w3-lc" title="Tell Gilfoyle you’re doing LeetCode"><i aria-hidden="true">⚔</i>LeetCode</button><button type="button" class="w3-ctx" hidden></button>`;
+  bar.innerHTML = `<div class="w3-who"><b>Nivetha <i>with Veer &amp; Mochi</i></b><small id="w3Doing" role="status">Exploring</small></div><div class="w3-emotes">${EMOTES.map(([id, ic, name], i) => `<button type="button" data-emote="${id}" title="${name} (${i + 1})"><i aria-hidden="true">${ic}</i><span>${name}</span></button>`).join('')}<button type="button" data-phones aria-pressed="false"><i aria-hidden="true">♫</i><span>Headphones</span></button></div><button type="button" class="w3-lc" title="Tell Gilfoyle you’re doing LeetCode"><i aria-hidden="true">⚔</i>LeetCode</button><button type="button" class="w3-ctx" hidden></button>`;
   const chatAction = document.createElement('button'); chatAction.type = 'button'; chatAction.className = 'w3-chat-action'; chatAction.textContent = 'Chat'; chatAction.onclick = () => { endTalk(); const b = realm?.R.id === 'kobra' ? { id: 'fletcher' } : [...PARTY].sort((a, b) => Math.hypot(a.x - state.position.x, a.y - state.position.y) - Math.hypot(b.x - state.position.x, b.y - state.position.y))[0]; window.BotChat?.open(b?.id || 'grok'); }; bar.append(chatAction);
   frameEl.after(bar);
   // On a phone the world already fills the screen when this bar is made; put it, and the chat heart, inside it.
   if (typeof worldFull === 'function' && worldFull()) syncFull();
   new ResizeObserver(() => frameEl.style.setProperty('--action-bar-height', `${Math.ceil(bar.getBoundingClientRect().height) + 24}px`)).observe(bar);
   bar.querySelectorAll('[data-emote]').forEach(b => b.onclick = () => doEmote(b.dataset.emote));
+  bar.querySelector('[data-phones]').onclick = toggleHeadphones; syncHeadphones();
   bar.querySelector('.w3-lc').onclick = () => leetcodeCall();
   const ctxBtn = bar.querySelector('.w3-ctx'), doingEl = bar.querySelector('#w3Doing');
   ctxBtn.onclick = () => { const s = nearestSpot(7); if (s) doSpot(s); else ferryDialog(); };
@@ -3070,6 +3107,7 @@ function start() {
     next.root.position.copy(previous.root.position); next.root.rotation.copy(previous.root.rotation);
     next.poseMemory = null; next.contactRadius = previous.contactRadius;
     for (const k of ['yaw', 'phase', 'wave', 'give', 'expr', 'runBlend', 'airBlend', 'landing', 'feel', 'glance', 'speak', 'blinkT']) next[k] = previous[k];
+    if (next.phones) next.phones.visible = phones.shown;
     previous.root.removeFromParent(); player = next; scene.add(player.root); outfitId = id;
     if (player.cloakMesh) player.cloakMesh.material = toonMat(palettes[state.equipped] || palettes.sage);
     wardrobe.querySelectorAll('[data-outfit]').forEach(b => { b.classList.toggle('on', b.dataset.outfit === id); b.setAttribute('aria-pressed', String(b.dataset.outfit === id)); });
@@ -3164,7 +3202,7 @@ function start() {
     if (foes.some(f => f.state === 'lurking' && f.m.root.visible && Math.hypot(f.m.root.position.x - px, f.m.root.position.z - pz) < 9)) return mood.armed ? 'determined' : 'worried';
     if (speed > MOTOR.walk + .8) return 'run';
     if (look.glow > .6 && idle > 20) return 'sleepy';
-    return mood.rest;
+    return phones.shown && mood.rest === 'normal' ? 'content' : mood.rest; // music lifts an ordinary day
   }
   hooks.pose = (dt, t, speed, px, py, pz) => {
     const moving = speed > .5 || keys.size > 0 || !!travel || !motor.grounded || Math.hypot(window.MovementInput?.x || 0, window.MovementInput?.z || 0) > 0, busy = talk.on || !!voyage || $('#modal').open || screen !== 'world' || !!document.querySelector('.quest-scroll');
@@ -3197,6 +3235,9 @@ function start() {
     if (act?.spot && w > 0) player.yaw = lerpAngle(player.yaw, act.spot.face, 1 - Math.exp(-dt * 6));
     if (act?.id === 'pet' && act.end < 0) player.yaw = lerpAngle(player.yaw, act.heading, 1 - Math.exp(-dt * 5));
     player.root.rotation.y = player.yaw;
+    // They go on, or come off, as her hands reach her ears. With music on she nods along while she stands.
+    if (phones.shown !== phones.want && !(act?.id === 'headphones' && act.t < .8)) { phones.shown = phones.want; if (player.phones) player.phones.visible = phones.shown; }
+    if (phones.shown && !act && !voyage && speed < .5 && !reduceMotion.matches) { player.head.rotation.z += Math.sin(t * 5.4) * .035; player.head.rotation.x += (Math.sin(t * 10.8) * .5 + .5) * .03; }
     player.expr = mood.test || (act && w > .3 ? (act.A.expr || 'normal') : voyage ? 'wonder' : feeling(speed, px, pz)); // mood.test: design mode holds one feeling to look at it
     // props and the staff she sets down
     const props = act && w > .25 ? act.A.prop || [] : [];
@@ -3425,8 +3466,16 @@ function start() {
   }
 
   // Frame loop (called by app.js tick through `draw`).
-  let lastT = 0, firstFrame = true, frames = 0, frameTime = 0, envTimer = 0, clockTimer = 0, slow = 0, fast = 0, lean = 0, ceiling = maxRatio, frameNo = 0;
-  const minRatio = Math.min(1, maxRatio);
+  let lastT = 0, firstFrame = true, frames = 0, frameTime = 0, envTimer = 0, clockTimer = 0, slow = 0, fast = 0, lean = 0, frameNo = 0;
+  let halfShadows = false;
+  const thinGrass = keep => scene.traverse(o => { if (o.userData.blades) o.count = Math.round(o.userData.blades * keep); });
+  // What is given up, in order, when frames run slow. Each step keeps the picture at full resolution.
+  const shed = [
+    Q.msaa && (() => { for (const t of [composer.renderTarget1, composer.renderTarget2]) { t.samples = 0; t.dispose(); } fxaa.enabled = true; }), // light smoothing instead of multisampling
+    () => thinGrass(.62),
+    Q.bloom && (() => { bloom.enabled = false; }),
+    () => { halfShadows = true; renderer.shadowMap.autoUpdate = false; thinGrass(.4); },
+  ].filter(Boolean);
   const worldPos = new THREE.Vector3();
   function render(t) {
     const dt = clamp(t - lastT, .001, .05); lastT = t;
@@ -3518,19 +3567,20 @@ function start() {
       bubble.style.transform = `translate3d(${bx}px,${by}px,0) translate(-50%,-100%)`;
     }
     compass.style.transform = `rotate(${yaw}rad)`;
-    // Adaptive quality: keep a steady frame rate without going soft. Effects are shed first (bloom, then shadows
-    // redrawn every other frame). Resolution drops only after that, and never below one pixel per screen pixel,
-    // which is what read as pixelated. A size that proved too heavy is not tried again, and it takes two slow
-    // stretches in a row to step down, so the picture no longer flickers between sharp and soft.
+    // Adaptive quality: keep a steady frame rate without going soft. On a laptop's built-in graphics the cost is in
+    // the multisampling and the amount of grass, not in the number of pixels, so those give way first (`shed`): the
+    // picture stays at the screen's own resolution. Resolution is the last resort, only while frames are still very
+    // slow, and on a computer never by more than a fifth. A size that proved too heavy is not tried again, and it
+    // takes two slow stretches in a row to step down, so the picture does not flicker between sharp and soft.
     frames++; frameTime += dt; frameNo++;
-    if (lean >= 2) renderer.shadowMap.needsUpdate = frameNo % 2 === 0;
+    if (halfShadows) renderer.shadowMap.needsUpdate = frameNo % 2 === 0;
     if (frameTime > 2.5) {
+      if (Math.abs(Math.min(window.devicePixelRatio || 1, Q.pr) - maxRatio) > .01) resize3d();
       const avg = frameTime / frames; frames = 0; frameTime = 0; slow = avg > .024 ? slow + 1 : 0; fast = avg < .0125 ? fast + 1 : 0;
       if (slow >= 2) {
         slow = 0;
-        if (lean === 0) { lean = 1; bloom.enabled = false; }
-        else if (lean === 1) { lean = 2; renderer.shadowMap.autoUpdate = false; }
-        else { ceiling = Math.max(minRatio, pixelRatio - .01); const next = Math.max(minRatio, pixelRatio * .88); if (next < pixelRatio - .02) { pixelRatio = next; resize3d(); } }
+        if (lean < shed.length) shed[lean++]();
+        else if (touch || avg > .04) { const low = floorRatio(); ceiling = Math.max(low, pixelRatio - .01); const next = Math.max(low, pixelRatio * .88); if (next < pixelRatio - .02) { pixelRatio = next; resize3d(); } }
       } else if (fast >= 3) { fast = 0; const next = Math.min(ceiling, pixelRatio * 1.1); if (next > pixelRatio + .02) { pixelRatio = next; resize3d(); } }
     }
     hover();
@@ -3614,7 +3664,7 @@ function start() {
     };
   }
   syncFoes();
-  if (window.LOCAL_DESIGN_MODE) window.world3d = { feel: name => { mood.test = FEEL[name] ? name : null; }, feelings: Object.keys(FEEL), foes: () => foes, foeDialog, voyage: () => voyage, ferry, THREE, scene, camera, renderer, cam, look, talk, converse, bots, councils, setHour: h => { hourOverride = h; envDirty = true; }, bloom, get player() { return player; }, outfit: () => outfitId, motor, veer, cat, realms, sail, doSpot, doEmote, activity: () => act, currentRealm: () => realm, walkable, nearestWalkable, obstacles: () => obstacles, heightAt, sdfAt, pathDistAt, toW, toL };
+  if (window.LOCAL_DESIGN_MODE) window.world3d = { headphones: toggleHeadphones, quality: () => ({ lean, steps: shed.length, pixelRatio, maxRatio, floor: floorRatio(), samples: composer.renderTarget1.samples, fxaa: fxaa.enabled, bloom: bloom.enabled, halfShadows }), feel: name => { mood.test = FEEL[name] ? name : null; }, feelings: Object.keys(FEEL), foes: () => foes, foeDialog, voyage: () => voyage, ferry, THREE, scene, camera, renderer, cam, look, talk, converse, bots, councils, setHour: h => { hourOverride = h; envDirty = true; }, bloom, get player() { return player; }, outfit: () => outfitId, motor, veer, cat, realms, sail, doSpot, doEmote, activity: () => act, currentRealm: () => realm, walkable, nearestWalkable, obstacles: () => obstacles, heightAt, sdfAt, pathDistAt, toW, toL };
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
   const draw2d = draw;
   // If the GPU drops the context or a frame throws, hand the map back to the original 2D renderer
