@@ -31,7 +31,9 @@ Where to tune things in world3d.js:
 | Terrain shape and colours | `rawHeight()` and the terrain colour block in `start()` |
 | Tree, bush and rock shapes | `treeGeometry()`, `rockGeometry()` |
 | Character outfits and hair | `lookFor()`, `PLAYER_LOOK`, `hair()` |
-| Body shape: limbs, torso, hands, feet | `taper()`, `TORSO` and the limb blocks in `makeCharacter()` |
+| Body shape: limbs, torso, hands, feet | `taper()`, `TORSO`, `TORSO_F` (`figure: 'f'`) and the limb blocks in `makeCharacter()` |
+| Faces: jaw, nose, eyes, brows, lips | `HEAD` and the face block in `makeCharacter()`; tones come from each skin colour (`tone()`) |
+| Walk and run cycle | the stride block at the top of `animateCharacter()`; foot contact points in `SOLE` |
 | The round window that opens when scenery hides her | `occludable()` |
 | Density per device | `Q` quality tiers (phone, tablet, desktop); resolution also adapts to the frame rate |
 
@@ -121,7 +123,7 @@ Realms reuse the logical 1100 × 720 coordinate space (550, 360 is a realm's cen
 
 ## Nivetha and Mochi
 
-Nivetha has a pixie cut (cropped sides and nape, a swept fringe), rimless glasses (`glasses: 'rimless'` in `PLAYER_LOOK`; the lenses are see-through meshes on the head bone), a gold flower hairpin, earrings, a sash and satchel, and gold trim on her cloak. Every character blinks, and expressions (`happy`, `closed`, `wide`) shape the eyes and mouth. Her activities live in `ACTS`: each one is a pose blended over the walk cycle, plus optional props, effects and an emote. Every unlocked landmark and every realm has a ✦ spot, and she does the matching activity there (anvil, ledger, book, training, meditation and so on). When left idle she stretches, hums, looks around, pets Mochi, yawns at night and eventually sits down. She cheers when a quest is claimed or a treasure is redeemed, gets a light pillar on level-up, and twirls in a new cloak. The action bar under the map has Wave, Cheer, Dance, Sit, Stretch and Pet Mochi (keys 1–6). Mochi, her cat, follows her, sits when she stops and closes her eyes when petted.
+Nivetha has a pixie cut (cropped sides and nape, a swept fringe), rimless glasses (`glasses: 'rimless'` in `PLAYER_LOOK`; the lenses are see-through meshes on the head bone), a gold flower hairpin, earrings, a sash and satchel, and gold trim on her cloak. Human characters have a face with structure: a head that narrows into a jaw and chin (`HEAD`), a nose with a bridge and tip, lidded almond eyes with a lash line and crease, soft brows, and two lips; the egg and the android keep their simple masks. Every character blinks, and expressions (`happy`, `closed`, `wide`) shape the eyes and part the lips. Her activities live in `ACTS`: each one is a pose blended over the walk cycle, plus optional props, effects and an emote. Every unlocked landmark and every realm has a ✦ spot, and she does the matching activity there (anvil, ledger, book, training, meditation and so on). When left idle she stretches, hums, looks around, pets Mochi, yawns at night and eventually sits down. She cheers when a quest is claimed or a treasure is redeemed, gets a light pillar on level-up, and twirls in a new cloak. The action bar under the map has Wave, Cheer, Dance, Sit, Stretch and Pet Mochi (keys 1–6). Mochi, her cat, follows her, sits when she stops and closes her eyes when petted.
 
 ## Movement
 
@@ -181,7 +183,7 @@ Verification: `npm test` covers exact milestone thresholds, uncertainty, hystere
 
 ### Running, jumping and touch movement
 
-The character motor remains the authority for terrain, acceleration and collision. Running has a longer stride, bent elbows and torso lean; jumping blends into tucked legs and balanced arms, followed by a brief knee bend on landing. Gait uses the motor’s speed rather than an estimate from rendered frames. Clothing changes preserve locomotion blending, and boot soles are kept above the terrain when grounded.
+The character motor remains the authority for terrain, acceleration and collision. Each leg has its own stride: the hip reaches further forward than back, the knee folds backwards as the leg comes through, and the ankle keeps the sole level and pushes off the toes. Stride length is sized to the motor’s walk and run speeds so feet do not skate. The body is highest over the standing leg, turns its hips and shifts its weight with each step, and the head stays level; arms swing against the legs and the wrist keeps the staff upright. Running has a longer stride, bent elbows, torso lean and a moment in the air between strides; jumping blends into tucked legs and balanced arms, followed by a brief knee bend on landing. Gait uses the motor’s speed rather than an estimate from rendered frames. Clothing changes preserve locomotion blending. On her feet she is set exactly on the terrain by the lowest of her heel, arch and toe (`SOLE`); in a pose her soles are only kept above it. The gold hem is drawn only on outfits with a skirt.
 
 The touch input script supplies a separate analog vector, run toggle and queued jump press. Pointer capture allows independent steering and action thumbs; releasing one never releases a physical keyboard key. Short jump taps survive between simulation frames. Inputs reset on cancellation, menus, backgrounding and viewport changes. A dead zone prevents thumb drift. Tablet chat sits below the world, and fullscreen starts with the companion minimized so movement controls remain reachable. The 2D fallback supports analog movement and running.
 
