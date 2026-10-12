@@ -625,7 +625,7 @@ body.world-full{overflow:hidden}
 .menu-grid button{display:block;min-height:64px;padding:12px 14px;text-align:left;border-radius:14px;color:var(--ink);background:linear-gradient(180deg,#fffaf0,#f3e4c0);box-shadow:0 0 0 1px var(--gold-line)}
 .menu-grid strong{display:block;font:700 14px var(--display);letter-spacing:.6px}.menu-grid small{display:block;margin-top:3px;font:600 11px var(--ui);color:var(--gold-deep)}
 .back-to-world{position:fixed;z-index:80;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);min-height:48px;padding:12px 22px;border-radius:999px;font:700 13px var(--display);letter-spacing:1px;color:var(--gold-hi);background:linear-gradient(160deg,#2b4373,#182746);box-shadow:0 0 0 1.5px var(--gold),0 10px 26px #0b122666}
-@media(max-width:900px) and (pointer:coarse){
+@media(pointer:coarse) and (max-width:900px),(pointer:coarse) and (max-height:520px){
  .world-frame.immersive #worldMenu{display:inline-grid;place-items:center;min-width:46px;min-height:46px;padding:0;font-size:20px}
  .world-frame.immersive #fullscreen{display:none}
  /* The corners, laid out for thumbs: title and clock top left; menu, camp and compass top right; the chat heart
@@ -638,4 +638,17 @@ body.world-full{overflow:hidden}
  .world-frame.immersive .w3-compass{top:calc(max(16px,env(safe-area-inset-top)) + 58px);right:max(16px,env(safe-area-inset-right))}
  .touch-layout.world-full .companion-dock.minimized{top:auto;left:auto;right:12px;bottom:calc(var(--action-bar-height,82px) + 156px);transform:none}
  body:has(.back-to-world:not([hidden])) main{padding-bottom:84px}
+}
+/* A phone held sideways: the picture is wide and short, so everything sits along the bottom edge in one row.
+   Joystick left, the action bar in the middle, Run, Jump and Enter right, and the chat heart above them. */
+@media(pointer:coarse) and (max-height:520px) and (orientation:landscape){
+ .world-frame.immersive .touch-controls{left:max(14px,env(safe-area-inset-left));right:max(14px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom))}
+ .world-frame.immersive .touch-controls #touchJoystick{width:104px;height:104px}
+ .world-frame.immersive>.w3-actions{left:calc(max(14px,env(safe-area-inset-left)) + 118px);right:calc(max(14px,env(safe-area-inset-right)) + 134px);width:auto;max-width:none;transform:none;bottom:max(10px,env(safe-area-inset-bottom));padding:6px 8px;gap:6px;justify-content:center}
+ .world-frame.immersive>.w3-actions .w3-who{display:none}
+ .world-frame.immersive>.w3-actions .w3-emotes button{min-width:40px;min-height:40px}
+ .world-frame.immersive>.w3-actions .w3-ctx{width:auto;flex:1}
+ .touch-layout.world-full .companion-dock.minimized{bottom:calc(max(10px,env(safe-area-inset-bottom)) + 126px);right:max(14px,env(safe-area-inset-right))}
+ .world-frame.immersive .map-caption{left:max(16px,env(safe-area-inset-left))}
+ .world-frame.immersive.is-3d .w3-clock{left:max(16px,env(safe-area-inset-left))}
 }

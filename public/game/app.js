@@ -105,7 +105,9 @@ fsBtn.onclick=toggleFull;document.addEventListener('fullscreenchange',syncFull);
 canvas.addEventListener('keydown',e=>{if((e.key==='f'||e.key==='F')&&!$('#modal').open&&!e.ctrlKey&&!e.metaKey){e.preventDefault();toggleFull();}});
 // On a phone the world is the app: it opens filling the screen, a menu button leads to everything else, and every
 // other page has a way straight back. The same overlay the Full screen button uses, so nothing else has to change.
-const phoneQuery=matchMedia('(max-width:900px) and (pointer:coarse)');
+// A phone held upright is narrow; held sideways it is short. Either way it is a phone.
+const phoneQuery=matchMedia('(pointer:coarse) and (max-width:900px), (pointer:coarse) and (max-height:520px)');
+phoneQuery.addEventListener?.('change',()=>{if(screen==='world')phoneWorld(phoneQuery.matches);});
 function phoneWorld(on){if(!phoneQuery.matches||document.fullscreenElement||document.webkitFullscreenElement||worldFrame.classList.contains('immersive')===on)return;worldFrame.classList.toggle('immersive',on);syncFull();}
 function worldMenu(){const xp=E.total(state),b=E.bounds(xp),open=quests().filter(q=>available(q)&&!E.completed(state,q)).length;
  modal(`<div class="eyebrow">LV ${b.level} · ${esc(titles[Math.min(b.level-1,6)].toUpperCase())}</div><h2>${xp.toLocaleString()} XP</h2><p>${b.next-xp} XP to level ${b.level+1} · ❂ ${E.gold(state).toLocaleString('en-IN')} gold · ⬡ ${E.bronze(state).toLocaleString('en-IN')} bronze · ✧ ${E.coins(state)} coins</p><div class="menu-grid">${[['quests','Quests',open+' open'],['skills','Skill tree','Your five stats'],['journal','Chronicle','What you’ve done'],['rewards','Wardrobe & Armoury','Cloaks, shields, weapons'],['treasury','Treasury','Real-life rewards']].map(([id,name,note])=>`<button type="button" data-go="${id}"><strong>${name}</strong><small>${note}</small></button>`).join('')}<button type="button" id="menuChat"><strong>Chat</strong><small>Your party</small></button><button type="button" id="menuSettings"><strong>Save & settings</strong><small>Backups and help</small></button></div>`);
