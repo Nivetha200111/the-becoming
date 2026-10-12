@@ -84,6 +84,12 @@ Weapons are forged in order. Each villain has forms with 10, 25 and 50 health, t
 
 In world3d.js the bodies are built in `makeVillain()`, their places are `FOE_SPOTS`, and the block marked "Villains" handles state, animation, name tags and the card. While present they are solid, like the guides. The 2D fallback map does not draw them; the daily line still reports them.
 
+## Phones and picture quality
+
+On a phone (a touch screen up to 900 px wide) the world is the app. It opens filling the screen, using the same overlay as the Full screen button. A ☰ button top right opens a menu with level, XP and balances and leads to Quests, Skill tree, Chronicle, Wardrobe & Armoury, Treasury, Chat and settings; every other page has a "Back to the world" button. The corners are laid out for thumbs: title and clock top left; menu, camp and compass top right; the joystick bottom left; Run, Jump and Enter bottom right with the chat heart above them; the action bar along the bottom. This is `phoneWorld()` and `worldMenu()` in app.js and the last block of style.css. Dragging on the world turns the camera, pinching zooms and tapping travels, as before. The joystick now keeps hold when the address bar slides away (touch-input.js).
+
+Edges are smoothed on every device: desktop multisamples the scene (`Q.msaa`), and phones and tablets run a light FXAA pass over the finished picture. To keep the frame rate the game sheds effects first (bloom, then shadows redrawn every other frame) and lowers resolution only after that, never below one pixel per screen pixel. A size that proved too heavy is not tried again, so the picture does not flicker between sharp and soft. See the "Adaptive quality" block and `resize3d()` in world3d.js.
+
 ## Responsive review
 
 Inspect approximately 360px, 768px and 1440px widths. Check navigation wrapping, Party cards, map labels, modal scrolling, touch controls, and short-height landscape screens. Preserve visible focus, readable contrast, non-hover access to actions, reduced-motion travel, and mobile device backup/export controls. Don’t turn the world into an image: avatar movement and NPC interaction must remain functional.

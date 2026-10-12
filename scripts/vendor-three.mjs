@@ -6,7 +6,7 @@ import { dirname, join, posix } from 'node:path';
 const require=createRequire(import.meta.url);
 const { minify }=require('next/dist/compiled/terser');
 const root=join(process.cwd(),'node_modules/three'),out=join(process.cwd(),'public/game/vendor/three');
-const entries=['build/three.core.js','build/three.module.js','examples/jsm/postprocessing/EffectComposer.js','examples/jsm/postprocessing/RenderPass.js','examples/jsm/postprocessing/UnrealBloomPass.js','examples/jsm/postprocessing/OutputPass.js','examples/jsm/postprocessing/ShaderPass.js','examples/jsm/utils/BufferGeometryUtils.js'];
+const entries=['build/three.core.js','build/three.module.js','examples/jsm/postprocessing/EffectComposer.js','examples/jsm/postprocessing/RenderPass.js','examples/jsm/postprocessing/UnrealBloomPass.js','examples/jsm/postprocessing/OutputPass.js','examples/jsm/postprocessing/ShaderPass.js','examples/jsm/shaders/FXAAShader.js','examples/jsm/utils/BufferGeometryUtils.js'];
 const seen=new Set();
 async function copy(rel){
   if(seen.has(rel))return;seen.add(rel);

@@ -618,3 +618,24 @@ body.world-full{overflow:hidden}
 .gear.owned .gear-icon{color:#fff7e6;background:radial-gradient(circle at 35% 30%,#c98a55,#8a5226)}
 .foe-hp{margin:14px 0}.foe-hp span{display:block;font:700 11px var(--ui);letter-spacing:.6px;color:#5a3f70;margin-bottom:6px}
 .foe-hp .progress i{background:linear-gradient(90deg,#c0443a,#e08a5c)}
+/* Phone: the world fills the screen, a menu button leads to the other pages, and each page has a way back. */
+#worldMenu{display:none}
+.world-frame{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.menu-grid button{display:block;min-height:64px;padding:12px 14px;text-align:left;border-radius:14px;color:var(--ink);background:linear-gradient(180deg,#fffaf0,#f3e4c0);box-shadow:0 0 0 1px var(--gold-line)}
+.menu-grid strong{display:block;font:700 14px var(--display);letter-spacing:.6px}.menu-grid small{display:block;margin-top:3px;font:600 11px var(--ui);color:var(--gold-deep)}
+.back-to-world{position:fixed;z-index:80;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);min-height:48px;padding:12px 22px;border-radius:999px;font:700 13px var(--display);letter-spacing:1px;color:var(--gold-hi);background:linear-gradient(160deg,#2b4373,#182746);box-shadow:0 0 0 1.5px var(--gold),0 10px 26px #0b122666}
+@media(max-width:900px) and (pointer:coarse){
+ .world-frame.immersive #worldMenu{display:inline-grid;place-items:center;min-width:46px;min-height:46px;padding:0;font-size:20px}
+ .world-frame.immersive #fullscreen{display:none}
+ /* The corners, laid out for thumbs: title and clock top left; menu, camp and compass top right; the chat heart
+    above the action buttons instead of over the menu. */
+ .world-frame.immersive .map-caption{align-items:flex-start}
+ .world-frame.immersive .map-caption span{margin-top:6px;max-width:46%}
+ .world-frame.immersive.is-3d .w3-clock{top:calc(max(16px,env(safe-area-inset-top)) + 28px);left:16px;right:auto}
+ .world-frame.immersive #home{min-width:46px;min-height:46px;padding:0;font-size:0;letter-spacing:0}
+ .world-frame.immersive #home::before{content:'⌖';font-size:20px}
+ .world-frame.immersive .w3-compass{top:calc(max(16px,env(safe-area-inset-top)) + 58px);right:max(16px,env(safe-area-inset-right))}
+ .touch-layout.world-full .companion-dock.minimized{top:auto;left:auto;right:12px;bottom:calc(var(--action-bar-height,82px) + 156px);transform:none}
+ body:has(.back-to-world:not([hidden])) main{padding-bottom:84px}
+}
