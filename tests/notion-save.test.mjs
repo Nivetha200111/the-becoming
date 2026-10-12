@@ -37,6 +37,10 @@ const call = (n, method, body, options = {}) => notionSavedState(method, body, e
 
 test('SAVE_STORE selects Notion; without it the original bridge is used unchanged', async () => {
   assert.equal(saveStore({}), 'site'); assert.equal(saveStore(env), 'notion');
+  // Notion is the store whenever it is connected; no separate switch is needed. SAVE_STORE=site forces the old bridge.
+  const connected = { NOTION_TOKEN: env.NOTION_TOKEN, NOTION_PARTY_DATABASE_ID: env.NOTION_PARTY_DATABASE_ID };
+  assert.equal(saveStore(connected), 'notion'); assert.equal(saveStore({ ...connected, SAVE_STORE: 'site' }), 'site');
+  assert.equal(saveStore({ SITES_SAVE_TOKEN: 'only-the-old-backend' }), 'site');
   await assert.rejects(savedState('GET', undefined, { SAVE_STORE: 'notion' }), /Notion save storage is not configured/);
   await assert.rejects(savedState('GET', undefined, {}), /not configured/);
 });
@@ -89,6 +93,16 @@ test('switching stores carries the existing save across once, keeping its revisi
   // A device that still remembers an old revision can make the first save into an empty store.
   const empty = fakeNotion(), started = await call(empty, 'POST', { expectedRevision: 5, state: old });
   assert.equal(started.status, 200); assert.equal(started.data.revision, 6);
+});
+
+test('an old backend that refuses its credential is treated as empty; one that is down makes the switch wait', async () => {
+  const withOld = { ...env, SITES_SAVE_TOKEN: 'stale-token' }, mine = played(40);
+  const refuse = n => async (url, init) => url.includes('chatgpt.site') ? Response.json({ error: 'no' }, { status: 401 }) : n.fetcher(url, init);
+  const a = fakeNotion(); assert.deepEqual((await savedState('GET', undefined, withOld, refuse(a))).data, { revision: 0, state: null });
+  const first = await savedState('POST', { expectedRevision: 0, state: mine }, withOld, refuse(a));
+  assert.equal(first.status, 200); assert.equal(first.data.revision, 1); assert.deepEqual((await savedState('GET', undefined, withOld, refuse(a))).data.state, mine);
+  const b = fakeNotion(), down = async (url, init) => url.includes('chatgpt.site') ? Response.json({}, { status: 503 }) : b.fetcher(url, init);
+  await assert.rejects(savedState('GET', undefined, withOld, down), /temporarily unavailable/); assert.equal(b.live().length, 0);
 });
 
 test('a damaged or hand-edited newest row is skipped in favour of the last good revision', async () => {
