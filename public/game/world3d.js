@@ -1467,24 +1467,61 @@ function makeEasel() {
   return { g, paint };
 }
 // The sky ferry: a little sailboat with gold trim that unfolds wings and flies between realms.
+// The sky ferry is a real little boat: a hull with a pointed bow, a rounded stern and a keel, drawn from one outline.
+// It floats with part of the hull under the water (FERRY.float is how high the gunwale rides), and flies on two
+// light wings with a tail fin to steer.
+const FERRY = { bow: 3.6, stern: 2.9, beam: 2.45, depth: .85, float: .42, deck: -.16 };
+const ferryHalf = z => FERRY.beam * (z >= 0 ? 1 - (z / FERRY.bow) ** 2 : Math.sqrt(1 - (z / FERRY.stern) ** 6));
+const ferrySheer = z => z >= 0 ? .34 * (z / FERRY.bow) ** 2 : .1 * (z / FERRY.stern) ** 2; // the gunwale lifts towards bow and stern
 function makeFerry() {
   const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
-  const hull = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), M.wood); hull.scale.set(3.25, .7, 2.9); hull.castShadow = true; body.add(hull);
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(5.8, .08, 4.9), M.woodDark); deck.position.y = -.06; body.add(deck);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(1, .05, 6, 48).rotateX(Math.PI / 2), M.gold); rim.scale.set(3.25, 1, 2.9); body.add(rim);
-  const prow = new THREE.Mesh(new THREE.TorusGeometry(.28, .06, 8, 20, Math.PI * 1.4), M.gold); prow.position.set(0, .35, 2.95); prow.rotation.y = Math.PI / 2; body.add(prow);
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(.06, .08, 4.4, 8), M.woodDark); mast.position.set(0, 2.15, .4); mast.castShadow = true; body.add(mast);
-  const yard = new THREE.Mesh(new THREE.BoxGeometry(2.5, .08, .08), M.woodDark); yard.position.set(0, 3.9, .4); body.add(yard);
+  const NS = 30, NJ = 12, station = i => -FERRY.stern + (FERRY.bow + FERRY.stern) * i / NS;
+  // Hull: cross-sections from stern to bow, each a U from one gunwale down round the keel to the other.
+  const pos = [], idx = [];
+  for (let i = 0; i <= NS; i++) {
+    const z = station(i), w = Math.max(.02, ferryHalf(z)), keel = FERRY.depth * (z >= 0 ? 1 - .5 * (z / FERRY.bow) ** 2 : 1 - .25 * (z / FERRY.stern) ** 2);
+    for (let j = 0; j <= NJ; j++) { const a = j / NJ * Math.PI, c = Math.cos(a); pos.push(Math.sign(c) * Math.abs(c) ** .75 * w, ferrySheer(z) - keel * Math.sin(a) ** 1.25, z); }
+  }
+  for (let i = 0; i < NS; i++) for (let j = 0; j < NJ; j++) { const a = i * (NJ + 1) + j, b = a + NJ + 1; idx.push(a, a + 1, b, a + 1, b + 1, b); }
+  const hullGeo = new THREE.BufferGeometry(); hullGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); hullGeo.setIndex(idx); hullGeo.computeVertexNormals();
+  const hullMat = M.wood.clone(); hullMat.side = THREE.DoubleSide;
+  const hull = new THREE.Mesh(hullGeo, hullMat); hull.castShadow = true; body.add(hull);
+  // Deck and gunwale follow the same outline.
+  const outline = []; for (let i = 0; i <= NS; i++) outline.push([ferryHalf(station(i)), station(i)]);
+  const ring = [...outline.map(([x, z]) => new THREE.Vector3(x, ferrySheer(z), z)), ...outline.slice(1, -1).reverse().map(([x, z]) => new THREE.Vector3(-x, ferrySheer(z), z))];
+  const rim = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ring, true), 120, .055, 6, true), M.gold); body.add(rim);
+  const shape = new THREE.Shape(); outline.forEach(([x, z], i) => shape[i ? 'lineTo' : 'moveTo'](x * .94, z * .97)); outline.slice(1, -1).reverse().forEach(([x, z]) => shape.lineTo(-x * .94, z * .97));
+  const deck = new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(Math.PI / 2), M.woodDark); deck.position.y = FERRY.deck; deck.material = M.woodDark.clone(); deck.material.side = THREE.DoubleSide; deck.receiveShadow = true; body.add(deck);
+  const keel = new THREE.Mesh(new THREE.BoxGeometry(.12, .3, 4.8), M.woodDark); keel.position.set(0, -FERRY.depth - .08, -.2); body.add(keel);
+  const prow = new THREE.Mesh(new THREE.TorusGeometry(.26, .055, 8, 20, Math.PI * 1.4), M.gold); prow.position.set(0, ferrySheer(FERRY.bow) + .26, FERRY.bow - .1); prow.rotation.y = Math.PI / 2; body.add(prow);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(.06, .08, 4.5, 8), M.woodDark); mast.position.set(0, 2.1, .7); mast.castShadow = true; body.add(mast);
+  const yard = new THREE.Mesh(new THREE.BoxGeometry(2.5, .08, .08), M.woodDark); yard.position.set(0, 3.9, .7); body.add(yard);
   const sailTex = canvasTexture(256, (x, s) => { x.fillStyle = '#f5ead0'; x.fillRect(0, 0, s, s); x.strokeStyle = '#c49a45'; x.lineWidth = 10; x.strokeRect(10, 10, s - 20, s - 20); x.fillStyle = '#c49a45'; x.font = `${s * .42}px Georgia, serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('✦', s / 2, s / 2 + 6); });
   const sg = new THREE.PlaneGeometry(2.3, 2.5, 8, 8), sp = sg.attributes.position; for (let i = 0; i < sp.count; i++) sp.setZ(i, Math.cos(sp.getX(i) / 2.3 * Math.PI) * .35);
-  sg.computeVertexNormals(); const sail = new THREE.Mesh(sg, new THREE.MeshStandardMaterial({ map: sailTex, side: THREE.DoubleSide, roughness: .9 })); sail.position.set(0, 2.6, .5); sail.castShadow = true; body.add(sail);
-  for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .9, 6), M.iron); post.position.set(s * .75, .45, -2.2); body.add(post); const l = new THREE.Mesh(new THREE.SphereGeometry(.12, 10, 8), M.lantern); l.position.set(s * .75, .95, -2.2); body.add(l); }
-  const bench = new THREE.Mesh(new THREE.BoxGeometry(1.6, .12, .45), M.wood); bench.position.set(0, .2, -1.6); body.add(bench);
+  sg.computeVertexNormals(); const sail = new THREE.Mesh(sg, new THREE.MeshStandardMaterial({ map: sailTex, side: THREE.DoubleSide, roughness: .9 })); sail.position.set(0, 2.6, .8); sail.castShadow = true; body.add(sail);
+  for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .9, 6), M.iron); post.position.set(s * .9, .35, -2.1); body.add(post); const l = new THREE.Mesh(new THREE.SphereGeometry(.12, 10, 8), M.lantern); l.position.set(s * .9, .85, -2.1); body.add(l); }
+  const bench = new THREE.Mesh(new THREE.BoxGeometry(1.7, .12, .45), M.wood); bench.position.set(0, FERRY.deck + .3, -1.5); body.add(bench);
+  for (const s of [-1, 1]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(.1, .3, .4), M.woodDark); leg.position.set(s * .7, FERRY.deck + .15, -1.5); body.add(leg); }
+  // A tail fin and rudder at the stern, to steer by in the air and in the water.
+  const finGeo = new THREE.BufferGeometry(); finGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, .9, 0, 0, -.5, 0, 1.25, -.75, 0, 0, .9, 0, 1.25, -.75, 0, 1.1, -.2], 3)); finGeo.computeVertexNormals();
+  const fin = new THREE.Mesh(finGeo, new THREE.MeshStandardMaterial({ color: '#f5ead0', side: THREE.DoubleSide, roughness: .9 })); fin.position.set(0, .12, -FERRY.stern + .55); fin.castShadow = true; body.add(fin);
+  const rudder = new THREE.Mesh(new THREE.BoxGeometry(.06, .9, .5), M.woodDark); rudder.position.set(0, -.45, -FERRY.stern + .1); body.add(rudder);
   const wingGeo = new THREE.BufferGeometry(); wingGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, -1.4, 0, 0, 1.2, 3.2, .3, -.6, 0, 0, 1.2, 3.2, .3, -.6, 2.4, .2, .9], 3)); wingGeo.computeVertexNormals();
   const wingMat = new THREE.MeshStandardMaterial({ color: '#fff1c8', emissive: '#f2c76a', emissiveIntensity: .8, transparent: true, opacity: .55, side: THREE.DoubleSide, depthWrite: false });
-  const wings = [-1, 1].map(s => { const w = new THREE.Mesh(wingGeo, wingMat); w.position.set(s * 3.1, .15, .2); w.scale.set(s * .001, 1, 1); body.add(w); return w; });
-  const proxy = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 3.2, 10), new THREE.MeshBasicMaterial({ visible: false })); proxy.position.y = 1; proxy.userData = { kind: 'ferry' }; g.add(proxy);
-  return { g, body, wings, sail, proxy };
+  const wings = [-1, 1].map(s => { const w = new THREE.Mesh(wingGeo, wingMat); w.position.set(s * (FERRY.beam - .05), .12, .2); w.scale.set(s * .001, 1, 1); body.add(w); return w; });
+  // The wake she leaves while moving on the water, and the ring thrown up when she touches down. Both lie on the
+  // water, so they hang from the ferry itself rather than the hull, which pitches and rolls.
+  const foam = canvasTexture(128, (x, s) => {
+    // Two soft arms of foam spreading back from the stern, fading out behind her.
+    x.clearRect(0, 0, s, s); x.strokeStyle = '#ffffff'; x.lineCap = 'round'; x.shadowColor = '#ffffff'; x.shadowBlur = s * .1; x.lineWidth = s * .07;
+    for (const side of [-1, 1]) { x.beginPath(); x.moveTo(s * .5, s * .94); x.quadraticCurveTo(s * (.5 + side * .16), s * .6, s * (.5 + side * .36), s * .06); x.stroke(); }
+    const fade = x.createLinearGradient(0, s, 0, 0); fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(.55, 'rgba(0,0,0,.5)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
+    x.shadowBlur = 0; x.globalCompositeOperation = 'destination-in'; x.fillStyle = fade; x.fillRect(0, 0, s, s); x.globalCompositeOperation = 'source-over';
+  });
+  const wake = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 6.4).rotateX(-Math.PI / 2).translate(0, 0, -3.4), new THREE.MeshBasicMaterial({ map: foam, transparent: true, opacity: 0, depthWrite: false })); wake.renderOrder = 3; wake.visible = false; g.add(wake);
+  const splash = new THREE.Mesh(new THREE.RingGeometry(.72, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); splash.renderOrder = 3; splash.visible = false;
+  const proxy = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 3.4, 10), new THREE.MeshBasicMaterial({ visible: false })); proxy.position.y = 1; proxy.userData = { kind: 'ferry' }; g.add(proxy);
+  return { g, body, wings, sail, proxy, wake, splash, rudder, fin };
 }
 // The three villains (rules in villains.js). Like the pets, each is a few toon primitives with an ink outline.
 function makeVillain(kind) {
@@ -2047,7 +2084,7 @@ function start() {
     const parkU = su + dir.x * 5.2 - dir.y * 2.1, parkV = sv + dir.y * 5.2 + dir.x * 2.1;
     realms.push({
       R, F, B, group, obstacles, board: toLL(bu, bv),
-      park: { pos: new THREE.Vector3(R.at[0] + parkU, R.float ? R.base - .1 : 0, R.at[1] + parkV), yaw: Math.atan2(-dir.x, -dir.y) },
+      park: { pos: new THREE.Vector3(R.at[0] + parkU, R.float ? R.base - .1 : 0, R.at[1] + parkV), yaw: Math.atan2(-dir.x, -dir.y), float: !!R.float, centre: R.at },
       labelPos: new THREE.Vector3(R.at[0], R.base + R.labelH, R.at[1]),
       spots: B.spots.map(s => ({ ...s, realmId: R.id, L: toLL(s.u, s.v), pos: new THREE.Vector3(R.at[0] + s.u, F.ground(s.u, s.v), R.at[1] + s.v) })),
       walkable(lx, ly) {
@@ -2570,7 +2607,7 @@ function start() {
   let petTarget = 'veer';
   const LAP = new Set(['sit', 'campfire', 'phone']);
   const ferry = makeFerry(); scene.add(ferry.g); proxies.push(ferry.proxy);
-  const homePark = { pos: new THREE.Vector3(pierInfo.sx - 2.4, 0, pierInfo.sz + 4.4), yaw: Math.PI };
+  const homePark = { pos: new THREE.Vector3(pierInfo.sx - 2.4, 0, pierInfo.sz + 4.4), yaw: Math.PI, float: false, centre: [0, 0] };
   const homeBoard = nearestWalkable((([x, y]) => ({ x, y }))(toL(pierInfo.sx, pierInfo.sz - 2.2)));
   const aura = particles(46, 1, { size: .12, speed: .32, rise: 2.4, spread: 1.1, color: '#ffe08a', boost: 2.6, opacity: 0 });
   const sparks = particles(36, 1, { size: .07, speed: 1.8, rise: .9, spread: .8, color: '#ffb347', boost: 3.5, opacity: 0 });
@@ -2726,17 +2763,39 @@ function start() {
   }
   // The ferry and voyages between realms.
   function parkFerry() { const p = realm ? realm.park : homePark; ferry.g.position.copy(p.pos); ferry.g.rotation.set(0, p.yaw, 0); ferry.body.rotation.set(0, 0, 0); for (const [i, w] of ferry.wings.entries()) w.scale.set((i ? 1 : -1) * .001, 1, 1); }
-  parkFerry();
+  parkFerry(); scene.add(ferry.splash);
+  // How high the ferry's gunwale sits at a dock: afloat on the sea, or hovering at a floating island's quay.
+  const dockY = p => p.pos.y + (p.float ? .1 : FERRY.float);
   function sail(dest, opts = {}) {
     if (voyage || talk.on || !active) return;
     if ((dest || null) === realm) { toast(dest ? `You’re already in ${dest.R.name}.` : 'You’re already home.'); return; }
     if (screen !== 'world') showScreen('world');
     stopAct(); act = null; travel = null; keys.clear(); $('#mapTooltip').hidden = true;
     if (reduceMotion.matches) { arrive(dest, opts); return; }
-    const from = ferry.g.position.clone(), to = (dest ? dest.park : homePark).pos.clone(), flat = new THREE.Vector3(to.x - from.x, 0, to.z - from.z), dist = flat.length(); flat.normalize();
-    const H = 20 + dist * .08;
-    voyage = { t: 0, dur: 3.6 + dist / 32, dest, opts, p: [from, from.clone().addScaledVector(flat, 16).setY(from.y + H), to.clone().addScaledVector(flat, -16).setY(to.y + H), to], deck: new THREE.Vector3(), fwd: flat.clone(), heading: Math.atan2(flat.x, flat.z) };
+    // The track leaves straight out to sea, swings round, and comes in to the far dock from the sea: a boat does
+    // not fly through its own island. Height is planned separately along it (see voyageHeight).
+    const A = realm ? realm.park : homePark, B = dest ? dest.park : homePark, from = A.pos.clone().setY(dockY(A)), to = B.pos.clone().setY(dockY(B));
+    const out = p => new THREE.Vector3(p.pos.x - p.centre[0], 0, p.pos.z - p.centre[1]).normalize(), dist = Math.hypot(to.x - from.x, to.z - from.z), k = clamp(dist * .36, 14, 70);
+    const P = [from.clone(), from.clone().addScaledVector(out(A), k), to.clone().addScaledVector(out(B), k), to.clone()], lut = [0], N = 96, q = new THREE.Vector3(); let last = P[0].clone();
+    for (let i = 1; i <= N; i++) { bez(P, i / N, q); lut.push(lut[i - 1] + Math.hypot(q.x - last.x, q.z - last.z)); last.copy(q); }
+    // Cruising height is kept to what she can reach at a boat's gentle climb in the room she has.
+    const L = lut[N], H = Math.max(from.y, to.y) + Math.min(15 + dist * .05, Math.max(6, L * .074));
+    // Lengths of each stage. A sea dock needs room to get up speed and to slow down; a floating quay only a short drift.
+    let run0 = A.float ? 5 : Math.min(20, L * .16), run1 = B.float ? 5 : Math.min(18, L * .15), climb = clamp((H - from.y) * 4.6, 18, L * .36), glide = clamp((H - to.y) * 5.2, 20, L * .38);
+    const over = (run0 + run1 + climb + glide) / (L * .96); if (over > 1) { run0 /= over; run1 /= over; climb /= over; glide /= over; }
+    voyage = { t: 0, dur: 5.5 + L / 23, dest, opts, P, lut, L, H, run0, run1, climb, glide, y0: from.y, y1: to.y, yaw0: ferry.g.rotation.y, yaw1: B.yaw, sea0: !A.float, sea1: !B.float, wet: !A.float, roll: 0, pitch: 0, lastHeading: ferry.g.rotation.y,
+      deck: new THREE.Vector3(), fwd: out(A), heading: ferry.g.rotation.y };
     bars.classList.add('on'); frameEl.classList.add('voyaging'); emote('✦', 2); status(); renderRealmCards();
+  }
+  // Height along the track, by distance travelled: level on the water, a smooth climb, level cruise, a glide and a
+  // level landing run. The eased ends mean she lifts off and touches down without a jolt.
+  function voyageHeight(v, d) {
+    if (d <= v.run0) return v.y0;
+    if (d < v.run0 + v.climb) return v.y0 + (v.H - v.y0) * smooth(0, 1, (d - v.run0) / v.climb);
+    const down = v.L - v.run1 - v.glide;
+    if (d <= down) return v.H;
+    if (d < v.L - v.run1) return v.H + (v.y1 - v.H) * smooth(0, 1, (d - down) / v.glide);
+    return v.y1;
   }
   function arrive(dest, opts = {}) {
     realm = dest || null; voyage = null; bars.classList.remove('on'); frameEl.classList.remove('voyaging'); talk.settle = 1.6;
@@ -2898,17 +2957,40 @@ function start() {
   hooks.frame = (dt, t) => {
     nowT = t; if ((wardrobeAge -= dt) <= 0 && !voyage) { wardrobeAge = .3; updateWardrobe(); }
     const wantSky = realm?.R.sky && !voyage ? 1 : 0; if (Math.abs(wantSky - skyBlend) > .001) { skyBlend += (wantSky - skyBlend) * Math.min(1, dt * 1.2); if (Math.abs(wantSky - skyBlend) < .01) skyBlend = wantSky; envDirty = true; }
+    const splash = ferry.splash;
+    if (splash.visible) { const u = (splash.userData.t += dt) / 1.3; splash.scale.setScalar(1.5 + u * 7); splash.material.opacity = .7 * (1 - u) ** 2; if (u >= 1) splash.visible = false; }
     if (voyage) {
-      const v = voyage; v.t = Math.min(1, v.t + dt / v.dur); const e = v.t < .5 ? 2 * v.t * v.t : 1 - (-2 * v.t + 2) ** 2 / 2;
-      bez(v.p, e, bv1); bez(v.p, Math.min(1, e + .01), bv2); bv2.sub(bv1); if (bv2.lengthSq() < 1e-8) bv2.copy(v.fwd);
-      ferry.g.position.copy(bv1); v.heading = Math.atan2(bv2.x, bv2.z); ferry.g.rotation.set(0, v.heading, 0);
-      ferry.body.rotation.x = -Math.atan2(bv2.y, Math.hypot(bv2.x, bv2.z)) * .7; ferry.body.rotation.z = Math.sin(t * 1.3) * .05;
-      const open = smooth(0, .12, v.t) * (1 - smooth(.88, 1, v.t));
-      ferry.wings.forEach((w, i) => { const s = i ? 1 : -1; w.scale.set(s * Math.max(.001, open), 1, 1); w.rotation.z = s * Math.sin(t * 5) * .28 * open; });
-      v.fwd.set(bv2.x, 0, bv2.z).normalize(); v.deck.copy(bv1).addScaledVector(v.fwd, .7); v.deck.y -= .02;
+      const v = voyage; v.t = Math.min(1, v.t + dt / v.dur);
+      // Distance along the track: she gathers way slowly, moves fastest mid-voyage and slows into the dock.
+      const d = v.L * smooth(0, 1, v.t), speed = v.L * 6 * v.t * (1 - v.t) / v.dur;
+      let i = 1; while (i < v.lut.length - 1 && v.lut[i] < d) i++;
+      const u = (i - 1 + (d - v.lut[i - 1]) / Math.max(1e-6, v.lut[i] - v.lut[i - 1])) / (v.lut.length - 1);
+      bez(v.P, u, bv1); bez(v.P, Math.min(1, u + .004), bv2); bv2.sub(bv1); bv2.y = 0; if (bv2.lengthSq() < 1e-10) bv2.copy(v.fwd); bv2.normalize();
+      const y = voyageHeight(v, d), slope = (voyageHeight(v, Math.min(v.L, d + .6)) - voyageHeight(v, Math.max(0, d - .6))) / 1.2;
+      const sea = d < v.L / 2 ? v.sea0 : v.sea1, level = d < v.L / 2 ? v.y0 : v.y1, wet = sea && y - level < .12, fast = clamp(speed / 14, 0, 1);
+      // On the water she lifts a little as she gathers speed and bobs when slow; in the air she rides steady.
+      ferry.g.position.set(bv1.x, y + (wet ? fast * .16 + Math.sin(t * 1.4) * .05 * (1 - fast) : 0), bv1.z);
+      // Heading: swing out from the dock, follow the track, then line up with the far dock.
+      const along = Math.atan2(bv2.x, bv2.z), heading = lerpAngle(lerpAngle(v.yaw0, along, smooth(0, .1, v.t)), v.yaw1, smooth(.92, 1, v.t));
+      const turn = lerpAngle(0, heading - v.lastHeading, 1) / Math.max(dt, 1e-3); v.lastHeading = heading; v.heading = heading; ferry.g.rotation.set(0, heading, 0);
+      // Nose up to climb and down to glide, bow lifted while planing, and a last lift of the nose before touching down.
+      const flare = sea && !wet && y - level < 3 && slope < 0 ? .09 : 0;
+      v.pitch += (clamp(-Math.atan(slope) * .9, -.34, .34) - (wet ? fast * .09 : 0) - flare - v.pitch) * (1 - Math.exp(-dt * 4));
+      // She leans into her turns, more the faster she goes; on the water only a little.
+      v.roll += (clamp(-turn * (wet ? .12 : .5) * fast, -.42, .42) - v.roll) * (1 - Math.exp(-dt * 3));
+      ferry.body.rotation.x = v.pitch; ferry.body.rotation.z = v.roll + Math.sin(t * 1.3) * (wet ? .03 : .015);
+      ferry.rudder.rotation.y = clamp(-turn * .6, -.5, .5);
+      // Wings unfurl during the run across the water and fold again once she is down.
+      const open = smooth(v.run0 * .15, v.run0 * .85, d) * (1 - smooth(v.L - v.run1 * .8, v.L - v.run1 * .15, d));
+      ferry.wings.forEach((w, n) => { const s = n ? 1 : -1; w.scale.set(s * Math.max(.001, open), 1, 1); w.rotation.z = s * Math.sin(t * (wet ? 7 : 4.5)) * (wet ? .34 : .22) * open; });
+      // A wake while she moves on the water, and a ring of spray where she lifts off or touches down.
+      ferry.wake.visible = wet && fast > .04; ferry.wake.position.y = level - ferry.g.position.y + .06; ferry.wake.material.opacity = Math.min(.5, fast * .9); ferry.wake.scale.set(.7 + fast * .4, 1, .55 + fast * .75);
+      if (sea && wet !== v.wet && fast > .1) { splash.position.set(bv1.x, level + .07, bv1.z); splash.userData.t = 0; splash.visible = true; }
+      v.wet = wet;
+      v.fwd.set(Math.sin(heading), 0, Math.cos(heading)); v.deck.copy(ferry.g.position).addScaledVector(v.fwd, .5); v.deck.y += FERRY.deck + .01;
       if (v.t >= 1) arrive(v.dest, v.opts);
     } else {
-      const p = realm ? realm.park : homePark; ferry.g.position.y = p.pos.y + .1 + Math.sin(t * 1.1) * .06; ferry.body.rotation.z = Math.sin(t * .9) * .04; ferry.body.rotation.x = Math.sin(t * .7) * .03;
+      const p = realm ? realm.park : homePark; ferry.g.position.y = dockY(p) + Math.sin(t * 1.1) * (p.float ? .06 : .045); ferry.body.rotation.z = Math.sin(t * .9) * .035; ferry.body.rotation.x = Math.sin(t * .7) * .025; ferry.wake.visible = false; ferry.rudder.rotation.y = 0;
     }
   };
   // Every frame, after the walk animation: blend her current activity, props, Mochi and effects.
@@ -3378,7 +3460,7 @@ function start() {
     };
   }
   syncFoes();
-  if (window.LOCAL_DESIGN_MODE) window.world3d = { foes: () => foes, foeDialog, THREE, scene, camera, renderer, cam, look, talk, converse, bots, councils, setHour: h => { hourOverride = h; envDirty = true; }, bloom, get player() { return player; }, outfit: () => outfitId, motor, veer, cat, realms, sail, doSpot, doEmote, activity: () => act, currentRealm: () => realm, walkable, nearestWalkable, obstacles: () => obstacles, heightAt, sdfAt, pathDistAt, toW, toL };
+  if (window.LOCAL_DESIGN_MODE) window.world3d = { foes: () => foes, foeDialog, voyage: () => voyage, ferry, THREE, scene, camera, renderer, cam, look, talk, converse, bots, councils, setHour: h => { hourOverride = h; envDirty = true; }, bloom, get player() { return player; }, outfit: () => outfitId, motor, veer, cat, realms, sail, doSpot, doEmote, activity: () => act, currentRealm: () => realm, walkable, nearestWalkable, obstacles: () => obstacles, heightAt, sdfAt, pathDistAt, toW, toL };
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
   const draw2d = draw;
   // If the GPU drops the context or a frame throws, hand the map back to the original 2D renderer
