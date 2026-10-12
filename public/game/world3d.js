@@ -2295,11 +2295,13 @@ function start() {
   let prev = null, prevState = null, stuck = 0;
   const motor = new CharacterMotor({ clear: (x, z) => { const [lx, ly] = posL(x, z); return walkable(lx, ly); }, ground: (x, z) => groundAt(x, z) });
   function safePosition(p, radius = MOTOR.radius) {
-    const clear = (lx, ly) => { const [x, z] = posW(lx, ly); return footprintClear(x, z, motor.clear, radius); };
+    const clear = (lx, ly, margin = 0) => { const [x, z] = posW(lx, ly); return footprintClear(x, z, motor.clear, radius) && (!margin || footprintClear(x, z, motor.clear, radius + margin)); };
     if (clear(p.x, p.y)) return { ...p };
-    for (let r = 4; r < 260; r += 4) for (let a = 0; a < 32; a++) {
+    // Prefer open ground to the nearest crevice. The gap between a tent and the campfire fits her body, but she
+    // cannot be walked out of it by clicking, and Veer and Mochi cannot reach her there.
+    for (const margin of [.6, 0]) for (let r = 4; r < 260; r += 4) for (let a = 0; a < 32; a++) {
       const x = p.x + Math.cos(a * Math.PI / 16) * r, y = p.y + Math.sin(a * Math.PI / 16) * r;
-      if (clear(x, y)) return { x, y };
+      if (clear(x, y, margin)) return { x, y };
     }
     return nearestWalkable(p);
   }
@@ -2519,7 +2521,8 @@ function start() {
       const pet = petTarget === 'veer' ? veer : cat;
       const dx = pet.root.position.x - player.root.position.x, dz = pet.root.position.z - player.root.position.z;
       // Hold this heading throughout the interaction; both actors otherwise chase each other's rotation.
-      act.heading = Math.hypot(dx, dz) > .1 ? Math.atan2(dx, dz) : player.yaw;
+      const toward = Math.hypot(dx, dz) > .1 ? Math.atan2(dx, dz) : player.yaw;
+      act.heading = cuddleHeading(pet, player.root.position.x, player.root.position.z, toward) ?? toward;
       act.contact = 0;
     }
     if (A.emote) emote(A.emote, A.loop ? 3 : A.dur);
@@ -2536,7 +2539,15 @@ function start() {
   function doEmote(id, who = 'veer') {
     if (voyage || talk.on) return;
     if (act?.id === id && act.A.loop && (id !== 'pet' || petTarget === who)) { stopAct(); return; }
-    if (id === 'pet') { petTarget = who; ACTS.pet.say = who === 'veer' ? 'Cuddling Veer' : 'Petting Mochi'; }
+    if (id === 'pet') {
+      petTarget = who; ACTS.pet.say = who === 'veer' ? 'Cuddling Veer' : 'Petting Mochi';
+      // Boxed in by tents or furniture, the pet cannot come within reach: step to the nearest spot with room first.
+      const pet = who === 'veer' ? veer : cat, p = player.root.position;
+      if (cuddleHeading(pet, p.x, p.z, player.yaw) === null) {
+        const spot = cuddleSpot(pet, p.x, p.z);
+        if (spot) { stopAct(); goTo(spot.x, spot.y, () => startAct('pet')); return; }
+      }
+    }
     startAct(id);
   }
   const emoteEl = label('w3-emote');
@@ -2806,7 +2817,7 @@ function start() {
     if (!act && !busy && !moving) {
       if (pendingCheer) { if (pendingCheer === 3) startAct('twirl'); else celebrate(pendingCheer === 2); pendingCheer = 0; }
       else if (idle > idleNext) {
-        const s = nearestSpot(4.5), catNear = veer.root.position.distanceTo(player.root.position) < 3, night = look.glow > .6;
+        const s = nearestSpot(4.5), catNear = veer.root.position.distanceTo(player.root.position) < 3 && cuddleHeading(petTarget === 'veer' ? veer : cat, player.root.position.x, player.root.position.z, player.yaw) !== null, night = look.glow > .6;
         if (s) startAct(s.act, s);
         else if (idle > 40) startAct('sit');
         else startAct(['stretch', 'look', 'staff', 'hum', catNear ? 'pet' : 'look', night ? 'yawn' : 'hum', 'wave'][Math.random() * 7 | 0]);
@@ -2831,7 +2842,7 @@ function start() {
     player.expr = act && w > .3 ? (act.A.expr || 'normal') : voyage ? 'happy' : 'normal';
     // props and the staff she sets down
     const props = act && w > .25 ? act.A.prop || [] : [];
-    const bodyRadius = act?.id === 'pet' ? .6 : act && ['sit', 'campfire', 'meditate', 'phone', 'leetcode', 'soak'].includes(act.id) ? 1.1 : .72;
+    const bodyRadius = act?.id === 'pet' ? CUDDLE.body : act && ['sit', 'campfire', 'meditate', 'phone', 'leetcode', 'soak'].includes(act.id) ? 1.1 : .72;
     player.contactRadius = (player.contactRadius ?? .72) + (bodyRadius - (player.contactRadius ?? .72)) * (1 - Math.exp(-dt * 6));
     for (const k of ['book', 'ledger', 'hammer', 'quill', 'brush', 'wrench', 'phone']) PR[k].visible = props.includes(k);
     if (PR.phone.visible) { PR.phoneTex.offset.y -= dt * .05; if (Math.floor(act.t / 4) !== Math.floor((act.t - dt) / 4)) emote(['♡', '☺', '✿', 'ᐢ.ᐢ', '♪'][Math.random() * 5 | 0], 2); }
@@ -2872,10 +2883,17 @@ function start() {
     if ((uiTimer -= dt) <= 0) { uiTimer = .3; status(); const s = !voyage && !talk.on ? nearestSpot(7) : null, nearFerry = !voyage && !talk.on && player.root.position.distanceTo(ferry.g.position) < 9; const label2 = s && act?.spot !== s ? `✦ ${s.label}` : nearFerry ? '⛵ Board the sky ferry' : ''; ctxBtn.hidden = !label2; if (label2 && ctxBtn.textContent !== label2) ctxBtn.textContent = label2; }
   };
   const PET_RADIUS = { veer: .95, mochi: .7 };
+  // While cuddling both bodies tuck in, and the pet settles exactly this far in front of her: within arm's reach.
+  const CUDDLE = { body: .54, veer: .55, mochi: .36, gap: .08 };
+  const cuddleRadius = pet => pet === veer ? CUDDLE.veer : CUDDLE.mochi;
+  const cuddleDistance = pet => CUDDLE.body + cuddleRadius(pet) + CUDDLE.gap;
+  // The closest the pet may sit right now. Both radii ease in, so a fixed distance would fall inside the minimum
+  // separation and send the pet to a farther fallback spot, out of her reach.
+  const cuddleReach = radius => radius + (player.contactRadius ?? .72) + CUDDLE.gap;
   const selectedPet = pet => act?.id === 'pet' && petTarget === (pet === veer ? 'veer' : 'mochi');
   const companionRadius = pet => pet.contactRadius ?? (pet === veer ? PET_RADIUS.veer : PET_RADIUS.mochi);
   function easeCompanionRadius(pet, dt) {
-    const desired = selectedPet(pet) ? (pet === veer ? .55 : .36) : pet === veer ? PET_RADIUS.veer : PET_RADIUS.mochi;
+    const desired = selectedPet(pet) ? cuddleRadius(pet) : pet === veer ? PET_RADIUS.veer : PET_RADIUS.mochi;
     pet.contactRadius = companionRadius(pet) + (desired - companionRadius(pet)) * (1 - Math.exp(-dt * 6));
   }
   let observedPetClearance = Infinity;
@@ -2919,6 +2937,27 @@ function start() {
     const other = pet === veer ? cat : veer;
     if (other.placed && other.root.visible) actors.push({ x: other.root.position.x, z: other.root.position.z, radius: companionRadius(other) });
     return actors;
+  }
+  // The heading nearest `toward` where the pet has room to sit within her reach and a clear walk to get there,
+  // or null when she is boxed in (between the tents and the campfire, say).
+  function cuddleHeading(pet, x, z, toward) {
+    const d = cuddleDistance(pet), r = cuddleRadius(pet), from = pet.placed && pet.motor;
+    const walk = from && new CharacterMotor({ clear: motor.clear, ground: groundAt, radius: r, slope: 1.25,
+      dynamicClear: (qx, qz) => actorsClear(qx, qz, r, [{ x, z, radius: CUDDLE.body }], CUDDLE.gap) });
+    for (let i = 0; i < 24; i++) {
+      const a = toward + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * Math.PI / 12, tx = x + Math.sin(a) * d, tz = z + Math.cos(a) * d;
+      if (footprintClear(tx, tz, motor.clear, r) && (!walk || walk.pathClear(from.x, from.z, tx, tz))) return a;
+    }
+    return null;
+  }
+  // The nearest open ground a few straight steps away, with room for the pet on every side of her.
+  function cuddleSpot(pet, x, z) {
+    const room = cuddleDistance(pet) + cuddleRadius(pet);
+    for (let r = .5; r <= 8; r += .5) for (let i = 0; i < 16; i++) {
+      const a = player.yaw + i * Math.PI / 8, sx = x + Math.sin(a) * r, sz = z + Math.cos(a) * r;
+      if (footprintClear(sx, sz, motor.clear, room) && footprintClear(sx, sz, motor.clear, room / 2) && motor.pathClear(x, z, sx, sz)) { const [lx, ly] = posL(sx, sz); return { x: lx, y: ly }; }
+    }
+    return null;
   }
   function companionTarget(pet, px, pz, yaw, side, behind, radius) {
     const actors = companionActors(pet);
@@ -2981,7 +3020,7 @@ function start() {
     if (voyage) { const f = voyage.fwd; v.root.position.set(px + f.z * 1.8 - f.x * .6, py, pz - f.x * 1.8 - f.z * .6); v.yaw = voyage.heading; v.placed = false; v.root.visible = true; }
     else {
       const heading = cuddle ? act.heading : player.yaw, radius = companionRadius(v);
-      const target = companionTarget(v, px, pz, heading, cuddle ? 0 : 1.9, cuddle ? -1.17 : .65, radius);
+      const target = companionTarget(v, px, pz, heading, cuddle ? 0 : 1.9, cuddle ? -cuddleReach(radius) : .65, radius);
       speed = followCompanion(v, target, dt, radius);
       mode = speed > .15 ? 'walk' : lap ? 'lie' : 'sit';
       if (mode !== 'walk') v.yaw = lerpAngle(v.yaw, cuddle ? act.heading + Math.PI : Math.atan2(px - v.root.position.x, pz - v.root.position.z), 1 - Math.exp(-dt * 4));
@@ -3007,7 +3046,7 @@ function start() {
     if (voyage) { const f = voyage.fwd; c.root.position.set(px - f.z * 1.55 - f.x * 1.1, py, pz + f.x * 1.55 - f.z * 1.1); c.yaw = voyage.heading; c.still = 2; c.placed = false; c.root.visible = true; }
     else {
       const heading = petting ? act.heading : player.yaw, radius = companionRadius(c);
-      const target = companionTarget(c, px, pz, heading, petting ? 0 : -1.65, petting ? -.98 : 1.3, radius);
+      const target = companionTarget(c, px, pz, heading, petting ? 0 : -1.65, petting ? -cuddleReach(radius) : 1.3, radius);
       c.speed = followCompanion(c, target, dt, radius);
       if (c.speed > .1) c.still = 0; else { c.still += dt; c.yaw = lerpAngle(c.yaw, petting ? act.heading + Math.PI : Math.atan2(px - c.root.position.x, pz - c.root.position.z), 1 - Math.exp(-dt * 3)); }
       c.hop = Math.max(0, c.hop - dt); c.root.position.y += c.hop > 0 ? Math.sin((1 - c.hop / .7) * Math.PI) * .4 : 0;
