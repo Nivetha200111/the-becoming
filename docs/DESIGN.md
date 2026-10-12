@@ -31,6 +31,8 @@ Where to tune things in world3d.js:
 | Terrain shape and colours | `rawHeight()` and the terrain colour block in `start()` |
 | Tree, bush and rock shapes | `treeGeometry()`, `rockGeometry()` |
 | Character outfits and hair | `lookFor()`, `PLAYER_LOOK`, `hair()` |
+| Body shape: limbs, torso, hands, feet | `taper()`, `TORSO` and the limb blocks in `makeCharacter()` |
+| The round window that opens when scenery hides her | `occludable()` |
 | Density per device | `Q` quality tiers (phone, tablet, desktop); resolution also adapts to the frame rate |
 
 When the local design server runs, `window.world3d` exposes the scene, camera and helpers in the browser console. `world3d.setHour(21)` previews any time of day; `world3d.setHour(null)` returns to the real clock.

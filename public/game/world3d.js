@@ -280,9 +280,12 @@ function occludable(mat) {
       #include <project_vertex>`);
     sh.fragmentShader = 'uniform vec3 uPlayer; varying vec3 vOccW;\n' + sh.fragmentShader.replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
       { vec3 cp = uPlayer + vec3(0., 1.2, 0.) - cameraPosition; float t = dot(vOccW - cameraPosition, cp) / dot(cp, cp);
-        float r = length(vOccW - cameraPosition - cp * clamp(t, 0., 1.));
-        float fade = (1. - smoothstep(1.7, 3.6, r)) * smoothstep(0., .08, t) * (1. - smoothstep(.82, .94, t));
-        if (fade * .92 > fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715))))) discard; }`);
+        // A clean round window onto her, the same size on screen however near the eye the thing in the way is (the
+        // radius narrows towards the camera), with only a thin stippled rim. A wide stipple over everything in front
+        // of her read as a mesh laid across the view.
+        float r = length(vOccW - cameraPosition - cp * clamp(t, 0., 1.)) / max(t, .2);
+        float fade = (1. - smoothstep(1.45, 1.8, r)) * smoothstep(.02, .1, t) * (1. - smoothstep(.86, .96, t));
+        if (fade * 1.1 > fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715))))) discard; }`);
   };
   mat.customProgramCacheKey = () => key + '|occ';
   return mat;
@@ -657,6 +660,16 @@ const CHAR = {
 };
 const capsule = (r, l) => new THREE.CapsuleGeometry(r, l, 6, 14);
 const SPHERE = new THREE.SphereGeometry(1, 20, 14);
+// A limb segment: rounded at both ends and narrowing from r0 (top) to r1 (bottom), like an upper arm or a calf.
+// The rounded ends are centred `len` apart, so two segments that meet at a joint share one ball and bend without a gap.
+function taper(r0, r1, len) {
+  const pts = [], n = 6;
+  for (let i = 0; i <= n; i++) { const a = -Math.PI / 2 + i / n * Math.PI / 2; pts.push(new THREE.Vector2(Math.max(1e-4, Math.cos(a) * r1), -len / 2 + Math.sin(a) * r1)); }
+  for (let i = 0; i <= n; i++) { const a = i / n * Math.PI / 2; pts.push(new THREE.Vector2(Math.max(1e-4, Math.cos(a) * r0), len / 2 + Math.sin(a) * r0)); }
+  return new THREE.LatheGeometry(pts, 16);
+}
+// A torso turned from a silhouette: hips, a waist, a ribcage and shoulders that slope into the neck.
+const TORSO = new THREE.LatheGeometry([[.001, .8], [.11, .815], [.146, .86], [.142, .93], [.128, 1.0], [.126, 1.05], [.14, 1.14], [.154, 1.24], [.158, 1.31], [.135, 1.37], [.085, 1.41], [.058, 1.44], [.001, 1.45]].map(([x, y]) => new THREE.Vector2(x, y)), 22);
 // Rimless lenses stay separate, see-through meshes on the head bone; only their wire is baked into the face.
 const roundedRect = (w, h, r) => { const p = new THREE.Shape(), x = w / 2, y = h / 2; p.moveTo(-x + r, -y); p.lineTo(x - r, -y); p.quadraticCurveTo(x, -y, x, -y + r); p.lineTo(x, y - r); p.quadraticCurveTo(x, y, x - r, y); p.lineTo(-x + r, y); p.quadraticCurveTo(-x, y, -x, y - r); p.lineTo(-x, -y + r); p.quadraticCurveTo(-x, -y, -x + r, -y); return new THREE.ShapeGeometry(p, 6); };
 const LENS_SHAPE = roundedRect(.096, .088, .034), GLINT_SHAPE = roundedRect(.03, .005, .0024), WIRE = '#f3dfa6';
@@ -695,15 +708,19 @@ function makeCharacter(look) {
   const trunk = body;
   const knees = [], ankles = [];
   const legs = [-1, 1].map(s => {
-    const g = bone(body, s * .085, .86, 0);
-    part(g, capsule(.068, .22), look.legs, [0, -.18, 0]);
+    const g = bone(body, s * .085, .86, 0), k = look.athletic ? 1.08 : 1;
+    // Thigh and calf narrow towards the knee and the ankle, and share the knee, so the leg bends as one limb.
+    part(g, taper(.076 * k, .057 * k, .36), look.legs, [0, -.18, 0]);
     const knee = bone(g, 0, -.36, 0); knees.push(knee);
-    part(knee, capsule(.062, .22), look.legs, [0, -.18, 0]);
+    part(knee, taper(.057 * k, .04 * k, .4), look.legs, [0, -.2, 0]);
+    part(knee, SPHERE, look.legs, [0, -.14, -.012], { s: [.05 * k, .11, .052 * k], outline: false }); // the calf
     const ankle = bone(knee, 0, -.4, 0); ankles.push(ankle);
-    part(ankle, capsule(.078, .1), look.boots, [0, 0, .03], { s: [1, 1, 1.25] });
+    // A foot with a heel and a longer front, instead of a ball. Its sole stays where the ground checks expect it.
+    part(ankle, SPHERE, look.boots, [0, -.035, -.004], { s: [.052, .07, .058], outline: false });
+    part(ankle, SPHERE, look.boots, [0, -.082, .046], { s: [.058, .046, .118] });
     return g;
   });
-  part(trunk, capsule(.15, .3), look.top, [0, 1.1, 0], { s: [1, 1, .74] });
+  part(trunk, TORSO, look.top, [0, 0, 0], { s: [1, 1, .72] });
   part(trunk, capsule(.152, .06), look.shorts || look.legs, [0, .87, 0], { s: [1, 1, .78] });
   part(trunk, new THREE.CylinderGeometry(.05, .056, .14, 12), look.skin, [0, 1.45, 0]);
   const skirt = look.skirt ? bone(trunk, 0, .88, 0) : null;
@@ -717,14 +734,16 @@ function makeCharacter(look) {
   const elbows = [], hands = [];
   const arms = [-1, 1].map(s => {
     const g = bone(body, s * .205, 1.33, 0);
-    const r = look.athletic ? .062 : .052;
-    part(g, new THREE.SphereGeometry(r * 1.3, 14, 10), look.sleeve || look.skin, [0, 0, 0], { outline: false });
-    part(g, capsule(r, .12), look.sleeve || look.skin, [0, -.115, 0]);
+    const k = look.athletic ? 1.16 : 1, sleeve = look.sleeve || look.skin;
+    // Shoulder to elbow to wrist as two narrowing segments that share the elbow: no ball joints showing.
+    part(g, taper(.058 * k, .045 * k, .23), sleeve, [0, -.115, 0]);
     const elbow = bone(g, 0, -.23, 0); elbows.push(elbow);
-    part(elbow, new THREE.SphereGeometry(r, 12, 10), look.sleeve || look.skin, [0, 0, 0], { outline: false });
-    part(elbow, capsule(r * .92, .12), look.sleeve || look.skin, [0, -.11, 0]);
+    part(elbow, taper(.045 * k, .033 * k, .22), sleeve, [0, -.11, 0]);
     const hand = bone(elbow, 0, -.22, 0); hands.push(hand);
-    part(hand, new THREE.SphereGeometry(.054, 12, 10), look.skin, [0, 0, 0]);
+    // A hand: palm, closed fingers and a thumb turned forward.
+    part(hand, SPHERE, look.skin, [0, -.03, 0], { s: [.034, .046, .022] });
+    part(hand, SPHERE, look.skin, [0, -.072, .002], { s: [.029, .034, .019], outline: false });
+    part(hand, SPHERE, look.skin, [-s * .012, -.028, .026], { s: [.013, .028, .014], r: [.5, 0, s * .35], outline: false });
     return g;
   });
   const head = bone(body, 0, look.egg ? 1.7 : 1.63, 0); if (look.egg) head.scale.set(1.28, 1.6, 1.28); else head.scale.setScalar(1.14);
@@ -1378,11 +1397,11 @@ function buildHollow(R, F) {
   // Every frame: animals wander and nap, and gather round when she's on the blanket.
   const frame = (dt, t, me) => {
     const gather = me?.act === 'phone' || me?.act === 'sit';
-    // Solid things an animal steps round instead of through: her, Veer and Mochi, then the old tree, poles and pond.
-    const solids = [...(me ? [me, ...me.pets] : []).map(b => ({ ...b, alive: true })), ...obstacles.map(o => ({ u: o[0], v: o[1], r: o[2] - .2 }))];
+    // Solid things an animal steps round instead of through: the old tree, poles and pond, then Veer and Mochi, then her.
+    const solids = [...obstacles.map(o => ({ u: o[0], v: o[1], r: o[2] - .2 })), ...(me ? [...me.pets, me] : []).map(b => ({ ...b, alive: true }))]; // she is settled last, so her space always wins
     animals.forEach((a, i) => {
       a.timer -= dt;
-      const pad = a.dog ? .4 : .3;
+      const pad = a.dog ? .52 : .4; // half the animal's length, nose to tail
       if (gather && me) {
         const ang = i / animals.length * Math.PI * 2 + .3, rr = Math.max(1.3, me.r + pad + .12) + (i % 3) * .55; a.tu = me.u + Math.cos(ang) * rr; a.tv = me.v + Math.sin(ang) * rr;
         // Settled animals stay put; one whose place is taken by Veer or Mochi settles just beside it.
@@ -2976,7 +2995,7 @@ function start() {
       frameEl.dataset.companions = JSON.stringify({ activity: act?.id || 'idle', sailing: !!voyage, minimumClearance: observedPetClearance, pets });
     }
     for (const n of npcs) { const near = n.realm === realm && Math.hypot(px - n.ch.root.position.x, pz - n.ch.root.position.z) < 7; n.ch.yaw = lerpAngle(n.ch.yaw, near ? Math.atan2(px - n.ch.root.position.x, pz - n.ch.root.position.z) : n.face, 1 - Math.exp(-dt * 3)); n.ch.root.rotation.y = n.ch.yaw; animateCharacter(n.ch, 0, dt, t, n.seed); }
-    for (const r of realms) if (r.B.frame) r.B.frame(dt, t, r === realm && !voyage ? { u: px - r.R.at[0], v: pz - r.R.at[1], act: act && act.end < 0 ? act.id : null, r: Math.max(.45, (player.contactRadius ?? .72) - .3), pets: [veer, cat].filter(p => p.root.visible).map(p => ({ u: p.root.position.x - r.R.at[0], v: p.root.position.z - r.R.at[1], r: p === veer ? .5 : .35 })) } : null);
+    for (const r of realms) if (r.B.frame) r.B.frame(dt, t, r === realm && !voyage ? { u: px - r.R.at[0], v: pz - r.R.at[1], act: act && act.end < 0 ? act.id : null, r: Math.max(.62, (player.contactRadius ?? .72) - .1), pets: [veer, cat].filter(p => p.root.visible).map(p => ({ u: p.root.position.x - r.R.at[0], v: p.root.position.z - r.R.at[1], r: p === veer ? .62 : .42 })) } : null);
     if ((uiTimer -= dt) <= 0) { uiTimer = .3; status(); const s = !voyage && !talk.on ? nearestSpot(7) : null, nearFerry = !voyage && !talk.on && player.root.position.distanceTo(ferry.g.position) < 9; const label2 = s && act?.spot !== s ? `✦ ${s.label}` : nearFerry ? '⛵ Board the sky ferry' : ''; ctxBtn.hidden = !label2; if (label2 && ctxBtn.textContent !== label2) ctxBtn.textContent = label2; }
   };
   const PET_RADIUS = { veer: .95, mochi: .7 };
