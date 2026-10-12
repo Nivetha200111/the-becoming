@@ -1195,7 +1195,8 @@ function buildBathhouse(R, F) {
     obstacles.push([5, 4, 2.8, 1]); }
   // The outdoor hot spring.
   { const ok = kit(); ok.add(new THREE.CylinderGeometry(2.7, 2.7, .1, 30), solid('#5fb3ad', .08, { metalness: .1, envMapIntensity: 1.4 }), 0, .18, 0);
-    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; ok.rock(.42 + (i % 3) * .08, M.stoneDark, Math.cos(a) * 2.95, .15, Math.sin(a) * 2.95, i + 7); }
+    // The ring of rocks is solid, so two are left out on the side facing the path: that is the way in to soak.
+    for (let i = 0; i < 16; i++) { if (i === 4 || i === 5) continue; const a = i / 16 * Math.PI * 2; ok.rock(.42 + (i % 3) * .08, M.stoneDark, Math.cos(a) * 2.95, .15, Math.sin(a) * 2.95, i + 7); }
     ok.g.position.set(7, F.height(7, -8) - .1, -8); k.g.add(ok.g);
     dyn.add(particles(36, 1, { size: 1.2, speed: .1, rise: 3, spread: 3.4, origin: [7, F.height(7, -8) + .3, -8], color: '#ffffff', additive: false, opacity: .28 }));
     spots.push({ u: 7, v: -8, face: Math.PI / 2, act: 'soak', label: 'Soak in the hot spring' }); }
@@ -2447,7 +2448,10 @@ function start() {
     if (reduceMotion.matches) { const p = safePosition({ x, y }); return goToDirect(p.x, p.y, cb); }
     const path = findPath({ x: state.position.x, y: state.position.y }, { x, y });
     if (!path) { toast('That spot is out of reach. Choose a clear spot nearby.'); return; }
-    let i = -1; const next = () => { i++; if (i >= path.length - 1) { stuckCount = 0; goToDirect(path[path.length - 1].x, path[path.length - 1].y, cb); } else goToDirect(path[i].x, path[i].y, next); };
+    // She stops dead on arriving. Otherwise the last of her walking speed counts as still moving, which cancels
+    // the activity the callback has just started (soaking, the campfire, petting after stepping aside).
+    const arrive = cb && (() => { motor.vx = motor.vz = motor.speed = 0; cb(); });
+    let i = -1; const next = () => { i++; if (i >= path.length - 1) { stuckCount = 0; goToDirect(path[path.length - 1].x, path[path.length - 1].y, arrive); } else goToDirect(path[i].x, path[i].y, next); };
     next();
   };
   rescueTravel = () => { const t = travel; travel = null; if (++stuckCount < 3) goTo(t.x, t.y, t.callback); else { stuckCount = 0; toast('That spot is out of reach. Try somewhere nearby.'); } };
@@ -2838,7 +2842,9 @@ function start() {
     if (!act && !busy && !moving) {
       if (pendingCheer) { if (pendingCheer === 3) startAct('twirl'); else celebrate(pendingCheer === 2); pendingCheer = 0; }
       else if (idle > idleNext) {
-        const s = nearestSpot(4.5), catNear = veer.root.position.distanceTo(player.root.position) < 3 && cuddleHeading(petTarget === 'veer' ? veer : cat, player.root.position.x, player.root.position.z, player.yaw) !== null, night = look.glow > .6;
+        // Only where she already stands on the spot (the same reach as doSpot). A few metres away the pose has nothing
+        // under it: soaking beside the hot spring sank her into the paving.
+        const s = nearestSpot(14 * SCALE), catNear = veer.root.position.distanceTo(player.root.position) < 3 && cuddleHeading(petTarget === 'veer' ? veer : cat, player.root.position.x, player.root.position.z, player.yaw) !== null, night = look.glow > .6;
         if (s) startAct(s.act, s);
         else if (idle > 40) startAct('sit');
         else startAct(['stretch', 'look', 'staff', 'hum', catNear ? 'pet' : 'look', night ? 'yawn' : 'hum', 'wave'][Math.random() * 7 | 0]);
