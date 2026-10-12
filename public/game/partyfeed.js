@@ -21,11 +21,15 @@ window.PartyFeed=(function(){
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),65000);
   try{const r=await fetch('/api/party',{method:'POST',credentials:'same-origin',cache:'no-store',redirect:'error',signal:controller.signal});let data={};try{data=await r.json();}catch(e){}
    if(!r.ok)throw Error(data.error);failures=0;
-   if(data.status==='unconfigured'){say('Party HQ not set up');return;}
+   // Achievements the bots logged in Notion (ACHIEVEMENTS on NIVETHA LIFE OS) are counted into the save by the server.
+   const ach=data.achievements||{};
+   if(ach.imported||ach.updated){window.CloudSave&&CloudSave.refresh();if(ach.imported&&typeof toast==='function')toast(`${ach.imported} achievement${ach.imported===1?'':'s'} from Notion counted ✦ +${ach.xp} XP.`);}
+   const achNote=ach.status==='no-access'?' · share ACHIEVEMENTS with the game':ach.status==='error'?' · achievements will retry':'';
+   if(data.status==='unconfigured'){say((ach.status==='synced'?'Achievements synced · Party HQ not set up':'Party HQ not set up')+achNote);return;}
    apply(data);
    if(data.imported){window.CloudSave&&CloudSave.refresh();typeof toast==='function'&&toast(`Your party logged ${data.imported} completion${data.imported===1?'':'s'} ✦ XP counted.`);}
    if(data.pending)again=3000;
-   say(`Party HQ synced${data.rejected?` · ${data.rejected} entr${data.rejected===1?'y':'ies'} sent back`:''}`);
+   say(`Party HQ synced${data.rejected?` · ${data.rejected} entr${data.rejected===1?'y':'ies'} sent back`:''}${achNote}`);
   }catch(e){failures++;again=Math.min(600000,30000*2**Math.min(failures-1,4));say('Party HQ paused · will retry');}
   finally{clearTimeout(timeout);busy=false;}
   if(again)timer=setTimeout(()=>poll(true),again);

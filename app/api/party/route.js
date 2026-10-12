@@ -1,5 +1,6 @@
 import { requestAuthenticated,sameOrigin } from '../../../lib/auth.mjs';
 import { syncParty } from '../../../lib/party-sync.mjs';
+import { syncAchievements } from '../../../lib/achievements-sync.mjs';
 export const runtime='nodejs';export const dynamic='force-dynamic';export const maxDuration=60;
 function reply(body,status=200){return Response.json(body,{status,headers:{'Cache-Control':'private, no-store'}});}
 // Exchanges with Party HQ, the Notion database the Grok bots write into: counts their logged
@@ -7,5 +8,10 @@ function reply(body,status=200){return Response.json(body,{status,headers:{'Cach
 export async function POST(req){
  if(!requestAuthenticated(req))return reply({error:'Sign in to reconnect your party.'},401);
  if(!sameOrigin(req))return reply({error:'Request origin rejected.'},403);
- try{return reply(await syncParty());}catch(e){return reply({status:'error',error:e.status?e.message:'Party sync is temporarily unavailable.'},e.status===503?503:502);}
+ try{
+  const party=await syncParty();
+  // Achievements logged in Notion are counted in the same visit. A problem there never hides the Party HQ result.
+  let achievements;try{achievements=await syncAchievements();}catch(e){achievements={status:'error',error:e.status?e.message:'Achievements sync is temporarily unavailable.'};}
+  return reply({...party,achievements});
+ }catch(e){return reply({status:'error',error:e.status?e.message:'Party sync is temporarily unavailable.'},e.status===503?503:502);}
 }

@@ -64,6 +64,8 @@
       const row = document.createElement('article'); row.className = 'chat-message ' + r.role;
       const name = document.createElement('b'); name.textContent = r.role === 'user' ? 'You' : botName(bot);
       const p = document.createElement('p'); p.textContent = r.content; row.append(name, p);
+      // Small talk is answered by the game, not the bot; say so rather than pass it off as the bot's own words.
+      if (r.quick) { const tag = document.createElement('small'); tag.textContent = `Instant reply from the game · ${botName(bot)} wasn’t woken`; row.append(tag); }
       if (r.delivery) {
         const stateEl = document.createElement('small'); stateEl.textContent = { sending: 'Sending…', delivered: 'Delivered', failed: 'Delivery unconfirmed' }[r.delivery]; row.append(stateEl);
         if (r.delivery === 'failed') { const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Retry'; retry.onclick = () => transmit(bot, r); row.append(retry); }
@@ -147,6 +149,14 @@
     try {
       const data = await request('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'relay', bot, text: row.content, id: row.id }) });
       row.key = data.key; row.delivery = 'delivered'; row.since = Date.now();
+      if (data.quick) {
+        // Answered at once by the game: show both sides now and stop waiting for a bot.
+        const at = new Date().toISOString(), thread = (threads.get(bot) || []).filter(m => m.key !== data.key);
+        threads.set(bot, [...thread, { id: 'u:' + row.id, key: data.key, role: 'user', content: row.content, at }, { id: 'q:' + row.id, key: data.key, role: 'assistant', content: data.quick, at, quick: true }]);
+        const rest = (pending.get(bot) || []).filter(r => r !== row); if (rest.length) pending.set(bot, rest); else pending.delete(bot);
+        if (bot === select.value) status.textContent = 'Answered instantly · no bot turn used.';
+        return;
+      }
       if (bot === select.value) status.textContent = 'Delivered · your bot is thinking.';
       wake();
     } catch (e) {

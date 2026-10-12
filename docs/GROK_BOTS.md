@@ -94,6 +94,8 @@ Add this to each existing bot's Party HQ protocol once:
 5. Mark the original Message `Answered` only after the Reply exists.
 6. Chat messages never award XP. Real completions still go through the existing evidence-based Completion protocol.
 
+Small talk never reaches a bot. A message that is nothing but a greeting, an acknowledgement ("ok", "got it", a thumbs-up), thanks, a goodbye or a laugh is answered by the game at once. It is stored as a Message already marked `Answered` plus a Reply, both with Game note `quick`, so the dispatcher (which looks for `New`) never sees it and no bot turn is used. The game labels these as instant replies from the game. "Yes" and "no" still go to the bot, because they may answer its question. The list is `SMALL_TALK` in lib/bot-chat.mjs.
+
 The game polls the selected bot's inbox every 30 seconds while chat is visible. It reports delivery only after Notion confirms the row. A message remains labelled waiting until a Reply with its key exists. Notion is the durable shared store across devices.
 
 
