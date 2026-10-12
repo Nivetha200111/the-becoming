@@ -657,6 +657,11 @@ const CHAR = {
 };
 const capsule = (r, l) => new THREE.CapsuleGeometry(r, l, 6, 14);
 const SPHERE = new THREE.SphereGeometry(1, 20, 14);
+// Rimless lenses stay separate, see-through meshes on the head bone; only their wire is baked into the face.
+const roundedRect = (w, h, r) => { const p = new THREE.Shape(), x = w / 2, y = h / 2; p.moveTo(-x + r, -y); p.lineTo(x - r, -y); p.quadraticCurveTo(x, -y, x, -y + r); p.lineTo(x, y - r); p.quadraticCurveTo(x, y, x - r, y); p.lineTo(-x + r, y); p.quadraticCurveTo(-x, y, -x, y - r); p.lineTo(-x, -y + r); p.quadraticCurveTo(-x, -y, -x + r, -y); return new THREE.ShapeGeometry(p, 6); };
+const LENS_SHAPE = roundedRect(.096, .088, .034), GLINT_SHAPE = roundedRect(.03, .005, .0024), WIRE = '#f3dfa6';
+const LENS = new THREE.MeshBasicMaterial({ color: '#f4fbff', transparent: true, opacity: .13, depthWrite: false, side: THREE.DoubleSide });
+const GLINT = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: .75, depthWrite: false, side: THREE.DoubleSide });
 
 // Outfit and hair choices for Nivetha and the eight guides. Colours come from PARTY so party.js stays the source of truth.
 function lookFor(b) {
@@ -675,7 +680,7 @@ function lookFor(b) {
     default: return { ...base, hairStyle: 'neat', legs: '#3d4a5a', eyes: '#3d2c22' };
   }
 }
-const PLAYER_LOOK = { skin: '#c58c65', hair: '#2a2321', hairStyle: 'pixie', eyes: '#6b4430', top: '#efe4c8', sleeve: '#efe4c8', legs: '#4a4843', boots: '#5b4636', skirt: '#efe4c8', belt: '#d5b76e', cloak: true, staff: true, blush: true, flair: true };
+const PLAYER_LOOK = { skin: '#c58c65', hair: '#2a2321', hairStyle: 'pixie', glasses: 'rimless', eyes: '#6b4430', top: '#efe4c8', sleeve: '#efe4c8', legs: '#4a4843', boots: '#5b4636', skirt: '#efe4c8', belt: '#d5b76e', cloak: true, staff: true, blush: true, flair: true };
 
 function makeCharacter(look) {
   const root = new THREE.Group(), body = new THREE.Bone(), parts = [];
@@ -739,7 +744,16 @@ function makeCharacter(look) {
   const mouth = bone(head, 0, -.084, .158);
   part(mouth, SPHERE, '#8a4a42', [0, 0, 0], { s: [.022, .008, .008], basic: true });
   if (look.visor) part(head, new THREE.BoxGeometry(.21, .048, .03), look.visor, [0, -.008, .158], { basic: true });
-  if (look.glasses) { for (const s of [-1, 1]) part(head, new THREE.TorusGeometry(.034, .006, 6, 18), '#1e2420', [s * .062, -.012, .168], { basic: true }); part(head, new THREE.BoxGeometry(.04, .006, .006), '#1e2420', [0, -.006, .172], { basic: true }); }
+  if (look.glasses === 'rimless') {
+    // Frameless glasses: clear lenses with no rim, held by a fine wire bridge and temples that reach the ears.
+    for (const s of [-1, 1]) {
+      const lens = new THREE.Mesh(LENS_SHAPE, LENS); lens.position.set(s * .062, -.012, .18); lens.rotation.y = s * .22; lens.renderOrder = 2; head.add(lens);
+      const glint = new THREE.Mesh(GLINT_SHAPE, GLINT); glint.position.set(-.02, .022, .001); glint.rotation.z = -.7; glint.renderOrder = 3; lens.add(glint);
+      part(head, new THREE.BoxGeometry(.004, .005, .046), WIRE, [s * .1245, -.008, .1515], { r: [0, Math.atan2(s * .031, -.033), 0], basic: true });
+      part(head, new THREE.BoxGeometry(.004, .005, .145), WIRE, [s * .158, -.006, .065], { r: [0, Math.atan2(s * .036, -.14), 0], basic: true });
+    }
+    part(head, new THREE.BoxGeometry(.034, .004, .004), WIRE, [0, -.002, .19], { basic: true });
+  } else if (look.glasses) { for (const s of [-1, 1]) part(head, new THREE.TorusGeometry(.034, .006, 6, 18), '#1e2420', [s * .062, -.012, .168], { basic: true }); part(head, new THREE.BoxGeometry(.04, .006, .006), '#1e2420', [0, -.006, .172], { basic: true }); }
   hair(head, look, part);
   if (look.flair) {
     // Nivetha's details: a gold flower hairpin, earrings, a collar, a satchel and gold trims.
@@ -2271,7 +2285,7 @@ function start() {
     if (pointers.size || talk.on) { tip.hidden = true; return; }
     const hit = pick(e), box = canvas.getBoundingClientRect();
     if (hit) {
-      const level = E.level(E.total(state)), text = hit.kind === 'veer' ? 'Veer · Kombai · Give him a cuddle' : hit.kind === 'npc' ? hit.npc.name + ' · Talk' : hit.kind === 'ferry' ? 'The Sky Ferry · Sail to other worlds' : hit.kind === 'cat' ? 'Mochi · Give her a pat' : hit.kind === 'spot' ? '✦ ' + hit.spot.label : hit.kind === 'bot' ? hit.bot.name + ' · ' + hit.bot.role : hit.kind === 'council' ? hit.council.name + ' · ' + hit.council.role : hit.area.name + (level < hit.area.unlock ? ' · Unlock at level ' + hit.area.unlock : ' · Visit');
+      const level = E.level(E.total(state)), text = hit.kind === 'veer' ? 'Veer · Give him a cuddle' : hit.kind === 'npc' ? hit.npc.name + ' · Talk' : hit.kind === 'ferry' ? 'The Sky Ferry · Sail to other worlds' : hit.kind === 'cat' ? 'Mochi · Give her a pat' : hit.kind === 'spot' ? '✦ ' + hit.spot.label : hit.kind === 'bot' ? hit.bot.name + ' · ' + hit.bot.role : hit.kind === 'council' ? hit.council.name + ' · ' + hit.council.role : hit.area.name + (level < hit.area.unlock ? ' · Unlock at level ' + hit.area.unlock : ' · Visit');
       canvas.style.cursor = 'pointer'; tip.hidden = false; tip.textContent = text;
       tip.style.left = Math.min(e.clientX - box.left + 12, box.width - 200) + 'px'; tip.style.top = Math.max(45, e.clientY - box.top - 40) + 'px';
     } else { canvas.style.cursor = 'grab'; tip.hidden = true; }
@@ -2426,7 +2440,7 @@ function start() {
   scene.add(PR.anvil);
   const laidStaff = player.staff.clone(true); laidStaff.visible = false; scene.add(laidStaff);
   const cat = makeCat(); scene.add(cat.root); proxies.push(cat.proxy);
-  // Veer, Nivetha's Kombai: tan-red coat, black muzzle, folded ears, curled tail. He goes everywhere she goes.
+  // Veer, Nivetha's dog: tan-red coat, black muzzle, folded ears, curled tail. He goes everywhere she goes.
   const veer = makeDog('#b8662f', '#cf9256', null, { muzzle: '#2b211c', ears: 'rose', ear: '#8f4a20', collar: '#b4492f', scale: 1.5 });
   veer.yaw = 0; scene.add(veer.root); veer.tail.forEach(s => { s.rotation.x = -1.05; });
   const veerProxy = new THREE.Mesh(new THREE.SphereGeometry(.55, 8, 6), new THREE.MeshBasicMaterial({ visible: false })); veerProxy.position.y = .35; veerProxy.userData = { kind: 'veer' }; veer.root.add(veerProxy); proxies.push(veerProxy);
