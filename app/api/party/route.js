@@ -9,9 +9,11 @@ export async function POST(req){
  if(!requestAuthenticated(req))return reply({error:'Sign in to reconnect your party.'},401);
  if(!sameOrigin(req))return reply({error:'Request origin rejected.'},403);
  try{
-  const party=await syncParty();
-  // Achievements logged in Notion are counted in the same visit. A problem there never hides the Party HQ result.
+  // Achievements logged in Notion are counted in the same visit. The two are independent: a problem in one never
+  // hides or blocks the other.
+  let party,failure;try{party=await syncParty();}catch(e){failure=e;}
   let achievements;try{achievements=await syncAchievements();}catch(e){achievements={status:'error',error:e.status?e.message:'Achievements sync is temporarily unavailable.'};}
-  return reply({...party,achievements});
+  if(failure&&!(achievements.imported||achievements.updated))throw failure;
+  return reply({...(party||{status:'error',missions:[],checkins:[]}),achievements});
  }catch(e){return reply({status:'error',error:e.status?e.message:'Party sync is temporarily unavailable.'},e.status===503?503:502);}
 }

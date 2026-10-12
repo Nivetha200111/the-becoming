@@ -29,10 +29,10 @@ This has only been run against a mocked Notion API (`tests/achievements.test.mjs
 
 ## Keeping the save in Notion
 
-Set `SAVE_STORE=notion` in Vercel (Production) and redeploy. The save then lives in your own Notion workspace, with no other service involved. It needs `NOTION_TOKEN` and the Party HQ database that chat and bot sync already use; nothing new has to be created.
+Whenever Notion is connected (`NOTION_TOKEN` plus the Party HQ database that chat and bot sync already use), the save lives in your own Notion workspace, with no other service involved and no setting to turn on. `SAVE_STORE=site` forces the old backend instead; `SAVE_STORE=notion` insists on Notion and reports an error if it is not connected.
 
 - Each save is a new Party HQ row with **Type** `Save`. **Game key** holds the revision (`save:000000000042`), and **Details** and **Game note** hold the compressed save. The newest readable revision is your save. The last six are kept as backups and older ones go to Notion's trash.
-- Leave `SITES_SAVE_TOKEN` set for the first run. The first request finds Notion empty, reads your existing save from the old backend once, and writes it to Notion with the same revision. After that the old backend is never read again and the token can be removed.
+- If `SITES_SAVE_TOKEN` is set, the first request finds Notion empty, reads your existing save from the old backend once, and writes it to Notion with the same revision. After that the old backend is never read again and the token can be removed. An old backend that refuses the token counts as empty; one that is merely unreachable makes the request wait. With no token, the first device to open the game seeds Notion from its own progress.
 - Bots must not edit or delete `Save` rows. A damaged newest row is skipped and the previous revision is used, so one bad edit does not lose the save.
 - To keep the save away from the bots entirely, create a second database with the Party HQ properties (`node scripts/notion-setup.mjs create-party`), share it only with the game's integration, and set `NOTION_SAVE_DATABASE_ID` (and `NOTION_SAVE_DATA_SOURCE_ID` if it has several data sources).
 - Notion cannot lock a row, so two devices saving in the same instant are settled after the fact: both write, every device agrees on the same winner, and the other one merges and retries. A save larger than about 380,000 compressed characters (several thousand claimed quests) is refused with a clear message; export a backup before then.
