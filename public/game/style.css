@@ -653,3 +653,8 @@ body.world-full{overflow:hidden}
  .world-frame.immersive .map-caption{left:max(16px,env(safe-area-inset-left))}
  .world-frame.immersive.is-3d .w3-clock{left:max(16px,env(safe-area-inset-left))}
 }
+
+.journal-entry.penalty .journal-icon{color:#f3d6d2;background:linear-gradient(160deg,#8a4b4b,#5e3434)}
+.journal-entry.penalty small{color:#a5625c}
+.journal-entry.penalty h3{color:#8c5a55}
+#logSlip{margin:0 0 8px}

@@ -2,8 +2,9 @@
 function equal(a,b){return JSON.stringify(a)===JSON.stringify(b);}
 function merge(base,local,remote){
  const out=JSON.parse(JSON.stringify(remote));
- for(const field of ['entries','custom','purchases','rewards','armory']){
+ for(const field of ['entries','custom','purchases','rewards','armory','penalties']){
   const key=field==='entries'?'key':'id',b=new Map((base[field]||[]).map(x=>[x[key],x])),l=new Map((local[field]||[]).map(x=>[x[key],x]));
+  if(!out[field]&&!local[field])continue;
   out[field]=(out[field]||[]).filter(x=>!b.has(x[key])||l.has(x[key]));
   const known=new Set(out[field].map(x=>x[key]));
   for(const x of local[field]||[])if(!b.has(x[key])&&!known.has(x[key])){out[field].push(x);known.add(x[key]);}

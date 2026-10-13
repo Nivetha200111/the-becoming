@@ -177,3 +177,14 @@ test('new campaign quests resolve by Quest ID and the old IDs are unchanged',asy
  const ids=builtInQuests().map(q=>q.id);for(const id of ['focus','loop','human','pattern','build','forge-boss','client','case','citadel-boss','recover','train','spm','spm-errors','spm-boss','claude','claude-boss','automation','signal','interview'])assert(ids.includes(id),id);
  assert.equal(Roster.owner({questId:'lights-out',region:'camp'}),'control-room');
 });
+
+test('penalties from Notion reduce XP once per Game key, never below 0', async () => {
+  const { applyPenalties } = await import('../lib/party-sync.mjs');
+  const E = (await import('../lib/engine.cjs')).default;
+  const s = E.fresh(); s.entries.push({ key: 'k', questId: 'k', title: 't', stat: 'INT', xp: 30, note: 'n', date: '2026-10-12', region: 'camp', boss: false });
+  const row = { id: 'r1', rowId: 'r1', created: '2026-10-13T00:00:00Z', title: 'Late-night binge', details: '', status: '', xp: -20, date: '2026-10-13', key: 'penalty:abc' };
+  const a = applyPenalties(s, [row, { ...row, id: 'r2', rowId: 'r2' }], '2026-10-13');
+  assert.equal(a.added, 1); assert.equal(E.total(a.state), 10); assert.equal(a.marks.get('r1').status, 'Counted');
+  E.penalize(a.state, 'Skipped gym', 50, '2026-10-13'); assert.equal(E.total(a.state), 0);
+  const b = applyPenalties(a.state, [row], '2026-10-13'); assert.equal(b.push.length, 1); assert.equal(b.push[0].xp, 50);
+});
